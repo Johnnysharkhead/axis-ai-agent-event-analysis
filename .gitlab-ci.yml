@@ -3,18 +3,18 @@ stages:
   - deploy
 
 variables:
-  LIU_COURSE_CODE: TDDC88
+  LIU_COURSE_CODE: tddc88
   LIU_COURSE_TERM: 2025
   LIU_GROUP_NAME: company3
   LIU_PROJECT_HOST: ${LIU_COURSE_CODE}-${LIU_GROUP_NAME}-${LIU_COURSE_TERM}.kubernetes-public.it.liu.se
-  POD_NAMESPACE: TDDC88-2025-company3
+  POD_NAMESPACE: tddc88-2025-company3
 
 retrieve kubeconfig:
   stage: deploy
   when: manual
   image: bitnami/kubectl
   before_script:
-    - kubectl config use-context TDDC88-2025/infrastructure:TDDC88-2025
+    - kubectl config use-context tddc88-2025/infrastructure:tddc88-2025
   script:
     - TOKEN_DATA=$(kubectl get secret admin-user-token -o json)
     - CA=$(echo "$TOKEN_DATA" | jq '.data."ca.crt"' -r | base64 -d)
@@ -25,20 +25,20 @@ retrieve kubeconfig:
       apiVersion: v1
       clusters:
       - cluster:
-          server: https://TDDC88-2025.course.kubernetes.it.liu.se/
+          server: https://tddc88-2025.course.kubernetes.it.liu.se/
           certificate-authority-data: $(echo "$CA" | base64 -w0)
-        name: TDDC88
+        name: tddc88
       contexts:
       - context:
           cluster: 
           namespace: $POD_NAMESPACE
-          user: TDDC88
-        name: TDDC88
-      current-context: TDDC88
+          user: tddc88
+        name: tddc88
+      current-context: tddc88
       kind: Config
       preferences: {}
       users:
-      - name: TDDC88
+      - name: tddc88
         user:
           token: $TOKEN
       EOF
@@ -50,7 +50,7 @@ status:
     - kubectl version --output=yaml
     - kubectl config view
     - kubectl config get-contexts
-    - kubectl config use-context TDDC88-2025/infrastructure:TDDC88-2025
+    - kubectl config use-context tddc88-2025/infrastructure:tddc88-2025
   script:
     - kubectl config get-contexts
     - kubectl get pods
