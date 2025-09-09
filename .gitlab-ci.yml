@@ -4,7 +4,7 @@ stages:
 
 variables:
   LIU_COURSE_CODE: tddc88
-  LIU_COURSE_TERM: 2025
+  LIU_COURSE_TERM: ht25
   LIU_GROUP_NAME: company3
   LIU_PROJECT_HOST: ${LIU_COURSE_CODE}-${LIU_GROUP_NAME}-${LIU_COURSE_TERM}.kubernetes-public.it.liu.se
   POD_NAMESPACE: tddc88-2025-company3
@@ -30,7 +30,7 @@ retrieve kubeconfig:
         name: tddc88
       contexts:
       - context:
-          cluster: 
+          cluster: tddc88
           namespace: $POD_NAMESPACE
           user: tddc88
         name: tddc88
