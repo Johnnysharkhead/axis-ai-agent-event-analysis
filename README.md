@@ -56,7 +56,7 @@ Will be added to this include later:
 
 ## Commit Messages
 
-- Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:  
+- Follow format:  
   `<type>(<scope>): <description>`
 - **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - _Example: `feat(auth): add JWT-based login`_
@@ -106,5 +106,56 @@ Will be added to this include later:
 - Feature flags for incomplete work
 - Security and performance considerations addressed
 - Code is properly commented
+
+---
+
+
+# Simple Development Rules
+
+## Coding Practices
+
+- **Generative AI Usage:**  
+  You may use generative AI for coding, but always **document with comments** what was generated or assisted by AI, and describe the intent behind the code.
+- **Readable, Self-Documenting Code:**  
+  Write clear code with simple, clean names that explain what each piece of code does.
+- **Descriptive Naming:**  
+  Use descriptive variable, function, and class names.
+- **Small, Purposeful Functions:**  
+  Keep functions small with a clear, single purpose to make understanding and maintenance easier.
+- **Avoid Hardcoding:**  
+  Do not hardcode values just to “make it work”; design for flexibility and clarity.
+
+---
+
+## Documentation & Traceability
+
+- **Comment Your Code:**  
+  Add meaningful comments to clarify why something is done, not just what is done.
+- **Public Change Log:**  
+  Always document code changes in a public document (e.g., CHANGELOG.md or relevant GitLab/Trello issue) to make retracing steps easier.
+- **Bug Documentation:**  
+  If bugs are found, document them thoroughly—include steps to reproduce, diagnostics, and how/when they were fixed.
+
+---
+
+## Testing & Quality
+
+- **Local Testing:**  
+  Test all features locally before merging—never test unverified changes on the main branch.
+- **No Direct Main Branch Changes:**  
+  Never commit or test directly on the main or develop branch; use feature branches and follow the correct Git workflow.
+- **Pre-Merge Validation:**  
+  Before merging any work into the main or develop branch, ensure all tests pass and that the feature is working as intended.
+
+---
+
+## Collaboration & Planning
+
+- **Issue Tracking:**  
+  Use Trello or GitLab Issues for planning, task assignment, and tracking progress.
+- **Regular Communication:**  
+  Hold regular meetings in the R&D department to sync, share knowledge, and resolve blockers.
+- **Sprint Planning & Retrospectives:**  
+  Conduct sprint planning and retrospectives at tollgates to continuously improve team processes.
 
 ---
