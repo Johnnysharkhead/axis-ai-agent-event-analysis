@@ -23,7 +23,7 @@ returns:
 ## 📂 Structure of backend folder 
 ````
 backend/
-├── main.py              # Main Flask app
+├── main.py             # Main Flask app
 ├── requirements.txt    # Python dependencies
 ├── Dockerfile          # Docker setup
 └── instance/           # Database (ignored in Git)
