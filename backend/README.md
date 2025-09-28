@@ -9,7 +9,7 @@ It exposes REST API endpoints that the React frontend can consume.
 
 Follow instructions under `docs/docker.md`. 
 
-Then the backend will be available at: http://localhost:5000  
+Then the backend will be available at: http://localhost:5001  
 Example endpoint:
 ````
 GET /hello
@@ -23,7 +23,7 @@ returns:
 ## 📂 Structure of backend folder 
 ````
 backend/
-├── app.py              # Main Flask app
+├── main.py              # Main Flask app
 ├── requirements.txt    # Python dependencies
 ├── Dockerfile          # Docker setup
 └── instance/           # Database (ignored in Git)

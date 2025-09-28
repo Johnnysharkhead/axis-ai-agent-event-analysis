@@ -10,7 +10,7 @@ function Button({ text, onClick }) {
     <button
       onClick={onClick}
       style={{
-        background: "#2b6cb0",
+        background: "#e2c11aff",
         color: "white",
         padding: "0.5rem 1rem",
         border: "none",

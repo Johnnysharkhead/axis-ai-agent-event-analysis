@@ -4,19 +4,21 @@ services:
     build: ./backend
     container_name: backend
     ports:
-      - "${BACKEND_PORT}:5000"
+      - "${BACKEND_PORT}:5001"
     env_file:
       - .env
     volumes:
       - ./backend:/app
     environment:
       - FLASK_ENV=development
+      - FLASK_RUN_PORT=${BACKEND_PORT}
+      - FLASK_APP=main.py
 
   frontend:
     build: ./frontend
     container_name: axis-frontend
     ports:
-      - "${FRONTEND_PORT}:5000"
+      - "${FRONTEND_PORT}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
