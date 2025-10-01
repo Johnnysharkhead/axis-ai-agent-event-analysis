@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axis Camera Live Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .video-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #videoStream {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Axis Camera Live Stream</h1>
+        
+        <div id="status" class="status">Checking connection...</div>
+        
+        <div class="video-container">
+            <img id="videoStream" src="/video_feed" alt="Camera Stream" />
+        </div>
+        
+        <div class="controls">
+            <button onclick="refreshStream()">Refresh Stream</button>
+            <button onclick="checkStatus()">Check Status</button>
+        </div>
+    </div>
+
+    <script>
+        function refreshStream() {
+            const video = document.getElementById('videoStream');
+            video.src = '/video_feed?' + new Date().getTime();
+        }
+        
+        function checkStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusElement = document.getElementById('status');
+                    if (data.status === 'connected') {
+                        statusElement.textContent = 'Camera Connected';
+                        statusElement.className = 'status connected';
+                    } else {
+                        statusElement.textContent = 'Camera Disconnected';
+                        statusElement.className = 'status disconnected';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const statusElement = document.getElementById('status');
+                    statusElement.textContent = 'Status Check Failed';
+                    statusElement.className = 'status disconnected';
+                });
+        }
+        
+        // Check status when page loads
+        window.onload = function() {
+            checkStatus();
+            // Refresh status every 30 seconds
+            setInterval(checkStatus, 30000);
+        };
+        
+        // Handle image load errors
+        document.getElementById('videoStream').onerror = function() {
+            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQ4MCIgdmlld0JveD0iMCAwIDY0MCA0ODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDgwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjMyMCIgeT0iMjQwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNhbWVyYSBOb3QgQXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4K';
+        };
+    </script>
+</body>
+</html>
