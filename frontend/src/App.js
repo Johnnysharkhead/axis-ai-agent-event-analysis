@@ -38,12 +38,47 @@ function App() {
     <div className="App">
       <Navbar />
       <Home />
-      <Button onClick={handleClick}>
-        Test button
-      </Button>
-      <button onClick={openCamera}>
-        Open camera
-      </button>
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          justifyContent: "center",
+          margin: "24px 0",
+        }}
+      >
+        <button
+          onClick={handleClick}
+          style={{
+            padding: "16px 32px",
+            background: "#fff",
+            border: "2px solid #1976d2",
+            color: "#000",
+            fontSize: "1.1rem",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          API Test button
+        </button>
+
+        <button
+          onClick={openCamera}
+          style={{
+            padding: "16px 32px",
+            background: "#fff",
+            border: "2px solid #1976d2",
+            color: "#000",
+            fontSize: "1.1rem",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          Open camera
+        </button>
+      </div>
+
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
         <img
           src={`http://localhost:${5001}/video_feed`}
