@@ -3,14 +3,16 @@
  * Here we decide what the app shows (pages, layout, etc).
  */
 
-import React from "react";
+import React, { useState } from "react";
 import "./styles/App.css";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import Button from "./components/Button";
+import Modal from "./components/Modal";
 
 function App() {
+  const [modalOpen, setModalOpen] = useState(false);
   const handleClick = async () => {
     try {
       const response = await fetch(`http://localhost:${5001}/test`, {
@@ -28,6 +30,10 @@ function App() {
     }
   };
 
+  const openCamera = async () => {
+    setModalOpen(true);
+  }
+
   return (
     <div className="App">
       <Navbar />
@@ -35,6 +41,16 @@ function App() {
       <Button onClick={handleClick}>
         Test button
       </Button>
+      <button onClick={openCamera}>
+        Open camera
+      </button>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
+        <img
+          src={`http://localhost:${5001}/video_feed`}
+          alt="Live stream"
+          style={{ width: "100%", maxWidth: 600 }}
+        />
+      </Modal>
       <Footer />
     </div>
   );

@@ -54,8 +54,12 @@ def index():
     return response
 
 
-@app.route('/video_feed')
+@app.route('/video_feed', methods = ['GET', 'OPTIONS'])
 def video_feed():
+    if request.method == 'OPTIONS':
+            return _build_cors_preflight_response()
+    
+    
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
