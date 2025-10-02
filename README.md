@@ -21,9 +21,15 @@ cd company3
 ````
 
 ### 4. Copy environment variables
+Mac/Linux (bash):
 ````
 cp .env.example .env
 ````
+Windows (PowerShell):
+````
+copy .env.example .env
+````
+
 
 ### 5. Update .evn
 Open an editor, for example VS Code, and go to the file `.env`, that you just created from teh file .env.example. Replace the outcommented variables with the real secret keys (more detailed instruction are found in the file `.env.example`).
@@ -45,26 +51,23 @@ docker-compose down -v
 ## 📂 Repo structure
 ````
 company3/
-├─ backend/                # Python backend (Flask API, video ingest, auth) - more info in README in frontend/ folder
+├─ backend/                # Python backend (Flask) - more info in backend/README.md
 │    ├─ main.py
 │    ├─ requirements.txt
 │    ├─ Dockerfile
-│    ├─ instance/
-│    │  └─ database.db       # Local SQLite database, needs to be created (ignored in Git)
-│    └─ tests/
+│    └─ instance/
+│       └─ database.db
 │
-├─ frontend/               # React frontend - more info in README in frontend/ folder
+├─ frontend/               # React frontend - more info in frontend/README.md
 │    ├─ public/
 │    ├─ src/
 │    ├─ package.json
 │    ├─ package-lock.json
 │    └─ Dockerfile
-│
-├─ config/                 # System and application configuration files
-│
+││
 ├─ test/                   # System integration tests
 │
-├─ docs/                   # Project documentation
+├─ docs/                   # Documentation
 │    ├─ git-guidelines.md
 │    └─ docker.md
 │
@@ -73,10 +76,10 @@ company3/
 ├─ docker-compose.yml      # Compose setup to run backend & frontend containers
 ├─ .gitignore              # Files that are not added to Git
 ├─ .gitlab-ci.yml          # GitLab CI/CD pipelines
-└─ README.md               # Project documentation and instructions
+└─ README.md               # Project documentation and instructions, this file :)
 ````
 
 ## ⚡ Best prectices 
-* Do not commit node_modules/ or venv/
-* Always commit package-lock.json (frontend) and requirements.txt (backend)
-* Use Docker for all development — no need to install Node, Python or anything else globally on your computer
+* Do NOT commit `node_modules/` or `venv/` or `.env` or `backend/instance/`
+* Always commit `package-lock.json` (frontend) and `requirements.txt` (backend)
+* Use Docker for all development —> no need to install Node, Python or anything else globally on your computer

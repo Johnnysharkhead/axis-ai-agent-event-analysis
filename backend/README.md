@@ -33,10 +33,10 @@ backend/
 ## 📦 Database
 * By default, Flask uses SQLite with a `database.db` file inside instance/
 * The file is ignored in Git (so each developer has their own local DB)
-* The app can auto-create the database on startup
+* The app auto-create the database on startup (done in `backend/main.py`)  
 
 ## ⚡ Best practices
 * Keep API routes clear and consistent
-* Do NOT commit `database.db`
-* Add all dependencies to requirements.txt
-* Use Docker for running Flask (no global Python install needed)
+* Do NOT commit `instance/database.db`
+* Add all dependencies to `requirements.txt`
+* Use Docker for running Flask -> no global Python install etc needed

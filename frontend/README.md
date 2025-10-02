@@ -24,7 +24,7 @@ frontend/
     ├── utils/                 # Helper functions that we can reuse (API calls etc.)
     ├── App.js                 # Main app component
     ├── index.js               # Entry point
-    └── routes.js              # React Router configuration
+    └── routes.js              # Router configuration for React
 ````
 
 ## 🔗 Frontend ↔ Backend
