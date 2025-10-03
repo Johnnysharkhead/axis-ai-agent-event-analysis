@@ -13,6 +13,8 @@ import Modal from "./components/Modal";
 
 function App() {
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Base button to try a standard api fetch.
   const handleClick = async () => {
     try {
       const response = await fetch(`http://localhost:${5001}/test`, {
@@ -21,15 +23,13 @@ function App() {
         },
         credentials: "include",
       });
-      //const text = await response.text();
       const data = await response.json();
-      // console.log(text);
-      console.log(data);
     } catch (error) {
       console.error('Error fetching:', error);
     }
   };
 
+  // 
   const openCamera = async () => {
     setModalOpen(true);
   }
