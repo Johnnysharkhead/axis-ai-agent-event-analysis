@@ -53,7 +53,7 @@ def index():
     response = jsonify({'message': "Hello from Flask with an auto-created DB!"})
     return response
 
-
+# Base API call for video feed
 @app.route('/video_feed', methods = ['GET', 'OPTIONS'])
 def video_feed():
     if request.method == 'OPTIONS':
