@@ -5,15 +5,23 @@
 
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Cameras from "./pages/Cameras";
 import Floormap2D from "./pages/Floormap2D";
+
+export const appRouteConfig = [
+  { path: "/",            label: "Dashboard",   Component: Dashboard },
+  { path: "/cameras",     label: "Cameras",     Component: Cameras },
+  { path: "/floormap2D",  label: "Floormap 2D", Component: Floormap2D },
+];
 
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/floormap2D" element={<Floormap2D />} />
+        {appRouteConfig.map(({ path, Component }) => (
+          <Route key={path} path={path} element={<Component />} />
+        ))}
       </Routes>
     </BrowserRouter>
   );

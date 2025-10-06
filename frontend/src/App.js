@@ -5,14 +5,12 @@
 
 import React from "react";
 import "./styles/App.css";
-import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
+import AppRoutes from "./routes.js";
 
 function App() {
   return (
     <div className="App">
-      <Navbar />
-      <Home />
+      <AppRoutes />
     </div>
   );
 }
