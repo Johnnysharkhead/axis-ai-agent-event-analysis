@@ -81,7 +81,7 @@ function App() {
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
         <img
-          src={`http://localhost:${5001}/video_feed`}
+          src={`http://localhost:${5001}/video_feed`}  // Change to /video_feed?camera_id=1 for specific camera, tror jag /August 
           alt="Live stream"
           style={{ width: "100%", maxWidth: 600 }}
         />

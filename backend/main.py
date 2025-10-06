@@ -41,11 +41,18 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-camera = VideoCamera()
+cameras = {
+    1: VideoCamera(os.getenv("CAMERA1_IP", "192.168.0.97")),
+    2: VideoCamera(os.getenv("CAMERA2_IP", "192.168.0.98")),
+    #3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
+}
 
-
-def generate_frames():
+def generate_frames(camera_id):
     """Generate frames for the video stream"""
+    camera = cameras.get(camera_id)
+    if camera is None:
+        return None
+    
     while True:
         frame = camera.get_frame()
         if frame is not None:
@@ -64,20 +71,15 @@ def index():
 
 
 # Base API call for video feed
-@app.route("/video_feed", methods=["GET", "OPTIONS"])
-def video_feed():
-    if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-
-    return Response(
-        generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame"
-    )
-
-
-@app.route("/events", methods=["GET"])
-def events():
-    return jsonify(get_events())
-
+@app.route('/video_feed/<int:camera_id>', methods = ['GET', 'OPTIONS'])
+def video_feed(camera_id):
+    if request.method == 'OPTIONS':
+            return _build_cors_preflight_response()
+    
+    if camera_id not in cameras:
+        return jsonify({'error': f'Camera {camera_id} not found'}), 404
+    
+    return Response(generate_frames(camera_id), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
     with app.app_context():
