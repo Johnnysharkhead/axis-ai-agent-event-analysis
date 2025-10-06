@@ -3,11 +3,11 @@ import threading
 import time
 
 class VideoCamera:
-    def __init__(self):
+    def __init__(self, camera_ip):
         # Replace with your Axis camera info
         self.username = "student"
         self.password = "student"
-        self.ip = "192.168.0.97"   # Camera IP
+        self.ip = camera_ip   # Camera IP
         
         # RTSP URL (Axis standard format)
         self.url = f"rtsp://{self.username}:{self.password}@{self.ip}/axis-media/media.amp"
