@@ -12,7 +12,7 @@ const dashboardTiles = [
 
 function Dashboard() {
   return (
-    <MainLayout>
+    
       <section className="page">
         <header className="header">
           <h1 className="title">Dashboard</h1>
@@ -33,7 +33,7 @@ function Dashboard() {
           ))}
         </div>
       </section>
-    </MainLayout>
+  
   );
 }
 
