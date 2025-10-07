@@ -7,9 +7,14 @@ from flask_cors import CORS
 import os
 from livestream import VideoCamera
 from mqtt_client import start_mqtt, get_events
+import time
 
 app = Flask(__name__)
-mqtt_client = start_mqtt()
+try:
+    mqtt_client = start_mqtt()
+except TimeoutError:
+    mqtt_client = None
+    app.logger.warning("MQTT broker unreachable; continuing without MQTT")
 
 # CORS setup for API calls between front- and backend
 CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
@@ -44,7 +49,7 @@ db = SQLAlchemy(app)
 cameras = {
     1: VideoCamera(os.getenv("CAMERA1_IP", "192.168.0.97")),
     2: VideoCamera(os.getenv("CAMERA2_IP", "192.168.0.98")),
-    #3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
+    3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
 }
 
 def generate_frames(camera_id):
@@ -56,8 +61,12 @@ def generate_frames(camera_id):
     while True:
         frame = camera.get_frame()
         if frame is not None:
-            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        else:
+            # If no frame is available, wait a bit before retrying
+            time.sleep(0.1)
+            continue
 
 # Example route
 @app.route("/test", methods=["GET", "OPTIONS"])
