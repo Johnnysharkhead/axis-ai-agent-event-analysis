@@ -49,11 +49,7 @@ db = SQLAlchemy(app)
 cameras = {
     1: VideoCamera(os.getenv("CAMERA1_IP", "192.168.0.97")),
     2: VideoCamera(os.getenv("CAMERA2_IP", "192.168.0.98")),
-<<<<<<< HEAD
-    # 3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
-=======
-    3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
->>>>>>> refs/remotes/origin/develop
+    3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96")),
 }
 
 
@@ -66,12 +62,12 @@ def generate_frames(camera_id):
     while True:
         frame = camera.get_frame()
         if frame is not None:
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
         else:
             # If no frame is available, wait a bit before retrying
             time.sleep(0.1)
             continue
+
 
 # Example route
 @app.route("/test", methods=["GET", "OPTIONS"])
