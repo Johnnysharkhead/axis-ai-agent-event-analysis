@@ -1,5 +1,4 @@
 import React from "react";
-import MainLayout from "../layouts/MainLayout";
 import "../styles/pages.css";
 
 function Floormap2D({ view }) {
