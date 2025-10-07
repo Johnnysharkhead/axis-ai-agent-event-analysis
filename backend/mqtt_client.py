@@ -1,5 +1,6 @@
 import json
 import threading
+import os
 import paho.mqtt.client as mqtt
 
 # Simple in-memory store for now
@@ -27,7 +28,10 @@ def on_message(client, userdata, msg):
         events.pop(0)
 
 
-def start_mqtt(broker_host="162.168.0.99", broker_port=1883):
+def start_mqtt():
+    broker_host = os.getenv("MQTT_BROKER_HOST", "localhost")
+    broker_port = int(os.getenv("MQTT_BROKER_PORT", 1883))
+
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
