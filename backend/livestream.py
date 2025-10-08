@@ -43,6 +43,7 @@ class VideoCamera:
         self.cap = None
         try:
             cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize buffering
         except cv2.error as err:
             self.last_error = f"OpenCV init failed: {err}"
             self.logger.warning(self.last_error)
@@ -60,21 +61,35 @@ class VideoCamera:
 
     def _capture_frames(self):
         """Capture frames in a separate thread"""
+        frame_count = 0
         while self.is_running:
             if self.cap is None or not self.cap.isOpened():
                 if not self._open_stream():
                     time.sleep(self.retry_delay)
                     self.retry_delay = min(self.retry_delay * 2, 30)
                     continue
+                    
+            # Skip frames to catch up if needed
+            frame_count += 1
+            if frame_count % 2 != 0:  # Process every other frame
+                self.cap.grab()  # Just grab the frame without decoding
+                continue
+                
             ok, frame = self.cap.read()
             if not ok:
                 self.last_error = "Frame grab failed"
                 self.logger.debug("Frame read failed for %s; resetting", self.ip)
                 self._reset_camera()
                 continue
-            frame = cv2.resize(frame, (640, 480))
+                
+            # Resize only if needed (check if already close to target size)
+            h, w = frame.shape[:2]
+            if abs(w - 640) > 50 or abs(h - 480) > 50:
+                frame = cv2.resize(frame, (640, 480))
+                
             with self.thread_lock:
-                self.frame = frame.copy()
+                # Don't copy the frame unless necessary
+                self.frame = frame  # Direct assignment instead of copy
 
     def _reset_camera(self):
         """Reset camera connection"""
@@ -87,7 +102,7 @@ class VideoCamera:
         with self.thread_lock:
             if self.frame is None:
                 return None
-            ok, buffer = cv2.imencode('.jpg', self.frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            ok, buffer = cv2.imencode('.jpg', self.frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             if not ok:
                 self.last_error = "JPEG encode failed"
                 return None
