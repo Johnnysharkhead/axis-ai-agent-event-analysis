@@ -1,0 +1,79 @@
+.sidebar {
+  width: 220px;
+  background-color: #f5f7fa;
+  padding: 1rem;
+  border-right: 1px solid #ddd;
+  min-height: 100vh;
+}
+
+.sidebar-dashboard {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sidebar-dashboard.active {
+  background: #e6ecff;
+}
+
+.sidebar-section {
+  margin-top: 16px;
+}
+
+.sidebar-section-title {
+  color: #7b8aa0;
+  font-size: 12px;
+  margin: 6px 8px;
+}
+
+.sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.sidebar-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #b2bdcf;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidebar-radio.active {
+  border-color: #4f73ff;
+  background: radial-gradient(#4f73ff 45%, transparent 46%);
+}
+
+.sidebar-item {
+  flex: 1;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #2a2f3a;
+  font-size: 14px;
+  transition: background 0.15s ease;
+}
+
+.sidebar-item:hover {
+  background: #edf1f9;
+}
+
+.sidebar-item.active {
+  background: #e6ecff;
+  font-weight: 600;
+}

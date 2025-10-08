@@ -1,10 +1,10 @@
 nav {
-    background: #d3d3d3;
+    background: #eeeeee;
     color: black;
     padding: 0.5rem 0;
-    position: fixed;
+    position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 100;
     width: 100vw;
     margin: 0;
     left: 0; 
