@@ -10,7 +10,7 @@ const SECTIONS = [
 ];
 
 function getPath(id) {
-  if (id === "Dashboard") return "/";
+  if (id === "Dashboard") return "/dashboard";
   const [section, label] = id.split("|");
   return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
 }

@@ -4,12 +4,13 @@
  */
 
 import React from "react";
+import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Sidebar from "../components/Sidebar";
 import "../styles/MainLayout.css";
 
-function MainLayout({ children }) {
+function MainLayout() {
   return (
 <div className="container">
       {/* Top navigation bar */}
@@ -22,7 +23,7 @@ function MainLayout({ children }) {
         </div>
 
         <div className="pageContent">
-          {children}
+          <Outlet />
         </div>
       </div>
 

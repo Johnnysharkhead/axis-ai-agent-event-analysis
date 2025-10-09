@@ -1,24 +1,27 @@
 /**
+ * Navbar component (develop style) with Login and Signup buttons.
+ */
+/**
  * Example of a reusable component (Navbar).
  * Components = small UI building blocks that can be used across multiple pages.
  * AUTHOR: Rasmus, Emil
  */
-import '../styles/Navbar.css'; 
 import React from "react";
-import logo from '../assets/Axis_logo.png'; 
-import settingsIcon from '../assets/settings_icon.png'; // Imports settings icon
-import bellLogo from '../assets/bell_logo.png'; // Imports notification bell icon
+import { Link } from "react-router-dom";
+import "../styles/Navbar.css";
+import logo from "../assets/Axis_logo.png";
+import settingsIcon from "../assets/settings_icon.png";
+import bellLogo from "../assets/bell_logo.png";
 
 function Navbar() {
   return (
     <nav>
       <div className="navbar-container">
-        <button className="hamburger-menu">
-          ☰
-        </button>
+        <button className="hamburger-menu">☰</button>
+
         <div className="navbar-logo-search">
           <div className="navbar-logo">
-          <img  src={logo} alt="Company Logo" />
+            <img src={logo} alt="Company Logo" />
           </div>
           <div className="navbar-text">
             <strong>Axis Analytics</strong>
@@ -28,6 +31,7 @@ function Navbar() {
             <input type="text" placeholder="Search..." />
           </div>
         </div>
+
         <div className="navbar-actions">
           <div className="navbar-dropdowns">
             <div className="dropdown">
@@ -52,7 +56,9 @@ function Navbar() {
               </div>
             </div>
           </div>
+
           <div className="navbar-divider"></div>
+
           <button className="navbar-button settings-button">
             <img src={settingsIcon} alt="Settings" className="settings-icon" />
           </button>
