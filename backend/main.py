@@ -74,18 +74,22 @@ cameras = {
 
 
 def generate_frames(camera_id):
-    """Generate frames for the video stream"""
+    """Generate frames for the video stream with simpler timing"""
     camera = cameras.get(camera_id)
     if camera is None:
         return None
 
     while True:
+        # Simple approach: Get frame, yield it, minimal sleep
         frame = camera.get_frame()
         if frame is not None:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            
+            # Small fixed sleep to prevent CPU overuse
+            time.sleep(0.01)  # 10ms sleep
         else:
-            # If no frame is available, wait a bit before retrying
+            # No frame available, wait a bit longer
             time.sleep(0.1)
             continue
 
@@ -109,6 +113,8 @@ def video_feed(camera_id):
     if camera_id not in cameras:
         return jsonify({"error": f"Camera {camera_id} not found"}), 404
 
+    set_active_camera(camera_id)
+
     return Response(
         generate_frames(camera_id), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
@@ -128,6 +134,25 @@ def get_users():
     users = User.query.all()
     return jsonify([u.to_dict() for u in users]), 200
 
+
+
+# Set initial priorities - make camera 1 primary by default
+def set_active_camera(camera_id):
+    """Set which camera gets priority treatment"""
+    for cam_id, camera in cameras.items():
+        camera.set_priority(cam_id == camera_id)
+
+# Set camera 1 as the initial primary camera
+set_active_camera(1)
+
+# Add a new route to change the active camera
+@app.route("/set_active_camera/<int:camera_id>", methods=["POST"])
+def activate_camera(camera_id):
+    if camera_id not in cameras:
+        return jsonify({"success": False, "error": "Camera not found"}), 404
+    
+    set_active_camera(camera_id)
+    return jsonify({"success": True, "active_camera": camera_id})
 
 
 if __name__ == "__main__":
