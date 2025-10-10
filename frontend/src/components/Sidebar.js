@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css"; 
 
 const SECTIONS = [
-  { title: "Video Feed", items: ["Camera 1", "Camera 2", "Camera 3"] },
+  { title: "Video Feed", items: ["Camera"] },
   { title: "2D Floorplan", items: ["Overview", "Heatmap", "Zones", "Schedule Alarms"] },
   { title: "AI Features", items: ["Axis Assistant", "Menu Item"] },
   { title: "Alarms", items: ["WILOO", "Menu Item"] },
@@ -64,3 +64,4 @@ export default function Sidebar({ onSelect }) {
     </aside>
   );
 }
+
