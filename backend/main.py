@@ -93,6 +93,8 @@ def video_feed(camera_id):
     if camera_id not in cameras:
         return jsonify({"error": f"Camera {camera_id} not found"}), 404
 
+    set_active_camera(camera_id)
+
     return Response(
         generate_frames(camera_id), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
