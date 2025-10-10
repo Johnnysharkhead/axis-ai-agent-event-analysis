@@ -4,14 +4,30 @@
  */
 
 import React from "react";
+import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import Sidebar from "../components/Sidebar";
+import "../styles/MainLayout.css";
 
-function MainLayout({ children }) {
+function MainLayout() {
   return (
-    <div>
+<div className="container">
+      {/* Top navigation bar */}
       <Navbar />
-      <div style={{ padding: "1rem" }}>{children}</div>
+
+      {/* Main content area (sidebar + page) */}
+      <div className="mainContent">
+        <div className="sidebarWrapper">
+          <Sidebar />
+        </div>
+
+        <div className="pageContent">
+          <Outlet />
+        </div>
+      </div>
+
+      {/* Bottom footer */}
       <Footer />
     </div>
   );

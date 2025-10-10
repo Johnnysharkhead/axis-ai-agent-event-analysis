@@ -7,3 +7,4 @@ opencv-python-headless==4.8.1.78
 numpy>=1.24.0,<2.0.0
 paho-mqtt==1.6.1
 psutil>=5.9.0
+flask-login

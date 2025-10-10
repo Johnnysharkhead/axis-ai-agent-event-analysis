@@ -9,7 +9,20 @@ from livestream import VideoCamera
 from mqtt_client import start_mqtt, get_events
 import time
 
+import models
+import authentication as auth2
+
 app = Flask(__name__)
+
+# Add a secret key and sane cookie settings for localhost
+app.config.update(
+    SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,
+    REMEMBER_COOKIE_SAMESITE="Lax",
+    REMEMBER_COOKIE_SECURE=False,
+)
+
 try:
     mqtt_client = start_mqtt()
 except TimeoutError:
@@ -45,6 +58,13 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+with app.app_context():
+    User = models.init_models(db)  
+    auth2.init_auth(app, db, User)  
+    db.create_all()
+    print(f"✓ Database initialized at: {db_path}")
+
 
 cameras = {
     1: VideoCamera(os.getenv("CAMERA1_IP", "192.168.0.97")),
@@ -105,6 +125,15 @@ def events():
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
     return jsonify(get_events())
+
+@app.route("/users", methods=["GET", "OPTIONS"])
+def get_users():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+
+    users = User.query.all()
+    return jsonify([u.to_dict() for u in users]), 200
+
 
 
 # Set initial priorities - make camera 1 primary by default

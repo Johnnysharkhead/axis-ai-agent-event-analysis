@@ -35,10 +35,9 @@ def start_mqtt():
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
-    client.connect(broker_host, broker_port, 60)
-
-    thread = threading.Thread(target=client.loop_forever, daemon=True)
-    thread.start()
+    # client.connect(broker_host, broker_port, 60)  # <-- Comment this out
+    # thread = threading.Thread(target=client.loop_forever, daemon=True)
+    # thread.start()
     return client
 
 
