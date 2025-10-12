@@ -79,6 +79,7 @@ with app.app_context():
 def unauthorized():
     return jsonify({"error": "Unauthorized"}), 401
 
+#get user from database
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
