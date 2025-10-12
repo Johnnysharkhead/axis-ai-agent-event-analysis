@@ -86,6 +86,8 @@ export async function loginUser(payload) {
 	};
 }
 
+
+
 /**
  * Logout current user
  * @returns {Promise<object>} Response with ok status
@@ -133,4 +135,6 @@ export async function isAuthenticated() {
  */
 export async function testBackend() {
 	return safeFetch(`${BASE_URL}/test`, { method: 'GET' });
+
+
 }

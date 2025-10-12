@@ -10,33 +10,51 @@
 // Import all page components for routing
 // AppRoutes: Main routing component for the app
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Signup from "./pages/Signup";
-import Floormap2D from "./pages/Floormap2D";
 import Login from "./pages/Login";
 import MainLayout from "./layouts/MainLayout";
-import LiveCameraPage from "./pages/LiveCameraPage.js";
+import LiveCameraPage from "./pages/LiveCameraPage";
+import Floormap2D from "./pages/Floormap2D";
+import { isAuthenticated } from "./utils/api";
+
+
+function ProtectedRoute({ children }) {
+  const [auth, setAuth] = useState(null);
+
+  useEffect(() => {
+    isAuthenticated().then(setAuth);
+  }, []);
+
+  if (auth === null) return null; // optional loading placeholder
+  return auth ? children : <Navigate to="/login" replace />;
+}
+
+// Public routes (only for guests)
+function PublicRoute({ children }) {
+  const [auth, setAuth] = useState(null);
+
+  useEffect(() => {
+    isAuthenticated().then(setAuth);
+  }, []);
+
+  if (auth === null) return null;
+  return !auth ? children : <Navigate to="/dashboard" replace />;
+}
 
 function AppRoutes() {
   return (
     <Routes>
       {/* Public routes (no layout) */}
-      <Route path="/" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
+     <Route path="/" element={<PublicRoute><Signup /></PublicRoute>} />
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
       {/* Private routes (with layout) */}
-      <Route element={<MainLayout />}>
+      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
-
-        {/* Backward-compat redirect from old '/home' to '/dashboard' */}
-        <Route path="/home" element={<Navigate to="/dashboard" replace />} />
-
-        {/* Cameras */}
         <Route path="/video-feed/camera" element={<LiveCameraPage />} />
-
-        {/* 2D Floorplan */}
         <Route path="/2d-floorplan/overview" element={<Floormap2D view="overview" />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D view="heatmap" />} />
         <Route path="/2d-floorplan/zones" element={<Floormap2D view="zones" />} />

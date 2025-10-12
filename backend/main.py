@@ -11,8 +11,15 @@ import time
 
 import models
 import authentication as auth2
+from flask_login import LoginManager, login_required, current_user
+
+
 
 app = Flask(__name__)
+#Setup loginmanager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 # Add a secret key and sane cookie settings for localhost
 app.config.update(
@@ -62,8 +69,19 @@ db = SQLAlchemy(app)
 with app.app_context():
     User = models.init_models(db)  
     auth2.init_auth(app, db, User)  
+    db.drop_all()
     db.create_all()
+    
     print(f"✓ Database initialized at: {db_path}")
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    return jsonify({"error": "Unauthorized"}), 401
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 cameras = {
@@ -127,6 +145,7 @@ def events():
     return jsonify(get_events())
 
 @app.route("/users", methods=["GET", "OPTIONS"])
+@login_required
 def get_users():
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
