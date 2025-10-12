@@ -7,13 +7,25 @@
  * AUTHOR: Rasmus, Emil
  */
 import React from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/Navbar.css";
 import logo from "../assets/Axis_logo.png";
 import settingsIcon from "../assets/settings_icon.png";
 import bellLogo from "../assets/bell_logo.png";
+import { logoutUser } from "../utils/api";
 
 function Navbar() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      // ignore error; proceed to redirect
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  };
   return (
     <nav>
       <div className="navbar-container">
@@ -68,6 +80,7 @@ function Navbar() {
           <button className="navbar-button organisation-button">Organisation</button>
           <button className="navbar-button help-button">?</button>
           <button className="navbar-button profile-button">👤</button>
+          <button className="navbar-button" onClick={handleLogout} title="Log out">Logout</button>
         </div>
       </div>
     </nav>
