@@ -67,11 +67,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 with app.app_context():
-    User = models.init_models(db)  
-    auth2.init_auth(app, db, User)  
-    db.drop_all()
+    User, InviteKey = models.init_models(db) 
+    auth2.init_auth(app, db, User, InviteKey)  
     db.create_all()
-    
+    #Remove below in prod
+    raw_key, key_hash = InviteKey.generate_key()
+    invite = InviteKey(key_hash=key_hash)
+    db.session.add(invite)
+    db.session.commit()
+    print(f"✓ Test invite key: {raw_key}")
+    ####Remove above in prod
     print(f"✓ Database initialized at: {db_path}")
 
 
