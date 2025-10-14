@@ -3,12 +3,13 @@ import threading
 import logging
 import time
 import psutil
+import os
 
 class VideoCamera:
     def __init__(self, camera_ip):
         # Replace with your Axis camera info
-        self.username = "student"
-        self.password = "student"
+        self.username = os.getenv("camera_login", "student")
+        self.password = os.getenv("camera_password", "student")
         self.ip = camera_ip
         
         # RTSP URL (Axis standard format)
@@ -33,7 +34,7 @@ class VideoCamera:
         self.skip_factor = 2  # Default skip factor
         
         # Stream control
-        self.paused = True  # Start paused by default
+        self.paused = False  # Stream by default
         self.needs_reset = False  # Flag for camera reset requests
         
         # Start the camera thread
