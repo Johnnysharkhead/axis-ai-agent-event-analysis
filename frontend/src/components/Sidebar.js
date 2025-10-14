@@ -15,7 +15,7 @@ function getPath(id) {
   return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
 }
 
-export default function Sidebar({ onSelect }) {
+export default function Sidebar({ onSelect, isOpen = true }) {
   const [activeId, setActiveId] = useState("Dashboard");
   const navigate = useNavigate();
 
@@ -28,7 +28,7 @@ export default function Sidebar({ onSelect }) {
   const isActive = (id) => id === activeId;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "open" : "collapsed"}`} aria-hidden={!isOpen}>
       <button
         onClick={() => select("Dashboard", "Dashboard")}
         className={`sidebar-dashboard ${isActive("Dashboard") ? "active" : ""}`}
@@ -64,4 +64,3 @@ export default function Sidebar({ onSelect }) {
     </aside>
   );
 }
-

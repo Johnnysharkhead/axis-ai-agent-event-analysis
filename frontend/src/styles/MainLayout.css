@@ -7,16 +7,26 @@
 .mainContent {
   display: flex;
   flex: 1;
+  position: relative;
+  align-items: stretch;
 }
 
 .sidebarWrapper {
-width: 250px;
-background-color: #f5f7fa;
-color: white;
+  width: 250px;
+  background-color: #f5f7fa;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.sidebarWrapper.collapsed {
+  width: 0;
 }
 
 .pageContent {
   flex: 1;
   padding: 1rem;
+  padding-bottom: 3rem;
   background-color: #ffffff;
 }
