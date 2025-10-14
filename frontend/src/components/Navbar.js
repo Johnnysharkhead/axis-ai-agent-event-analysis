@@ -7,17 +7,24 @@
  * AUTHOR: Rasmus, Emil
  */
 import React from "react";
-import { Link } from "react-router-dom";
 import "../styles/Navbar.css";
 import logo from "../assets/Axis_logo.png";
 import settingsIcon from "../assets/settings_icon.png";
 import bellLogo from "../assets/bell_logo.png";
 
-function Navbar() {
+function Navbar({ onToggleSidebar, isSidebarOpen }) {
   return (
     <nav>
       <div className="navbar-container">
-        <button className="hamburger-menu">☰</button>
+        <button
+          type="button"
+          className="hamburger-menu"
+          aria-label={`${isSidebarOpen ? "Hide" : "Show"} sidebar`}
+          aria-expanded={!!isSidebarOpen}
+          onClick={onToggleSidebar}
+        >
+          ☰
+        </button>
 
         <div className="navbar-logo-search">
           <div className="navbar-logo">

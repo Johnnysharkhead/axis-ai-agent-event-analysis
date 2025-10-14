@@ -3,7 +3,21 @@
   background-color: #f5f7fa;
   padding: 1rem;
   border-right: 1px solid #ddd;
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar.collapsed {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+  opacity: 1;
 }
 
 .sidebar-dashboard {
