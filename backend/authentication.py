@@ -7,7 +7,7 @@ This module is designed for clarity and maintainability so all project members c
 """
 from flask import Blueprint, request, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Create Blueprint for authentication routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
@@ -155,17 +155,32 @@ def login():
         if not email or not password:
             return jsonify({'ok': False, 'message': 'Email and password required'}), 400
         
-        # Find user by email
         user = User.query.filter_by(email=email).first()
         
-        # Check credentials
+        # --- LOCKOUT LOGIC START ---
+        if user:
+            # Check if user is locked out
+            if user.failed_login_attempts is not None and user.failed_login_attempts >= 5:
+                if user.last_failed_login and datetime.utcnow() - user.last_failed_login < timedelta(minutes=5):
+                    return jsonify({'ok': False, 'message': 'Too many failed attempts. Try again in 1 minute.'}), 403
+                else:
+                    # Reset attempts after lockout period
+                    user.failed_login_attempts = 0
+                    db.session.commit()
+        # --- LOCKOUT LOGIC END ---
+        
         if not user or not user.check_password(password):
+            # Track failed attempts
+            if user:
+                user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+                user.last_failed_login = datetime.utcnow()
+                db.session.commit()
             return jsonify({'ok': False, 'message': 'Invalid email or password'}), 401
         
-        # Create session (Flask-Login does this automatically)
+        # Successful login: reset failed attempts
+        user.failed_login_attempts = 0
+        user.last_failed_login = None
         login_user(user, remember=True)
-        
-        # Update last login time
         user.last_login = datetime.utcnow()
         db.session.commit()
         
