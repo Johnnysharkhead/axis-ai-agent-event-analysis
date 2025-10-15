@@ -24,13 +24,14 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - CHOKIDAR_INTERVAL=200
-      - WATCHPACK_POLLING=true
-
+    
   mosquitto:
-    image: eclipse-mosquitto
-    container_name: mqtt-broker
+    image: eclipse-mosquitto:2.0
+    container_name: mqtt_broker
     ports:
-      - "${MQTT_BROKER_PORT}:1883"
+      - "${MQTT_BROKER_PORT:-1883}:1883"
     volumes:
-      - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto-data:/mosquitto/data 
+      - ./mosquitto-log:/mosquitto/log
+

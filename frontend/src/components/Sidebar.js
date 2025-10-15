@@ -4,7 +4,7 @@ import "../styles/Sidebar.css";
 
 const SECTIONS = [
   { title: "Video Feed", items: ["Camera"] },
-  { title: "2D Floorplan", items: ["Overview", "Heatmap", "Zones", "Schedule Alarms"] },
+  { title: "2D Floorplan", items: ["configuration", "Heatmap", "Zones", "Schedule Alarms"] },
   { title: "AI Features", items: ["Axis Assistant", "Menu Item"] },
   { title: "Alarms", items: ["WILOO", "Menu Item"] },
 ];

@@ -5,7 +5,7 @@
 
 import React from "react";
 
-function Button({ text, onClick }) {
+function Button({ text, onClick, style = {} }) {
   return (
     <button
       onClick={onClick}
@@ -16,6 +16,7 @@ function Button({ text, onClick }) {
         border: "none",
         borderRadius: "4px",
         cursor: "pointer",
+        ...style, // <-- merge parent-provided styles last (so they override defaults)
       }}
     >
       {text}
