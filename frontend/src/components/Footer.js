@@ -10,7 +10,6 @@ function Footer() {
     <footer style={{
       background: "#eee",
       padding: "1rem",
-      marginTop: "2rem",
       left: 0,
       bottom: 0,
       width: "100%"

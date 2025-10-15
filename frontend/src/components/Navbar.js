@@ -7,7 +7,7 @@
  * AUTHOR: Rasmus, Emil
  */
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/Navbar.css";
 import logo from "../assets/Axis_logo.png";
 import settingsIcon from "../assets/settings_icon.png";
@@ -29,7 +29,15 @@ function Navbar() {
   return (
     <nav>
       <div className="navbar-container">
-        <button className="hamburger-menu">☰</button>
+        <button
+          type="button"
+          className="hamburger-menu"
+          aria-label={`${isSidebarOpen ? "Hide" : "Show"} sidebar`}
+          aria-expanded={!!isSidebarOpen}
+          onClick={onToggleSidebar}
+        >
+          ☰
+        </button>
 
         <div className="navbar-logo-search">
           <div className="navbar-logo">

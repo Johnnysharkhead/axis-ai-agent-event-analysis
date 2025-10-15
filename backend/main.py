@@ -138,7 +138,12 @@ def video_feed(camera_id):
     if camera_id not in cameras:
         return jsonify({"error": f"Camera {camera_id} not found"}), 404
 
-    set_active_camera(camera_id)
+    # fetch the camera instance from the pre-created dictionary
+    cam = cameras.get(camera_id)
+    if cam is None:
+        return jsonify({"error": "Failed to retrieve camera instance"}), 500
+
+    # no active-camera switching here — all cameras stream continuously
 
     return Response(
         generate_frames(camera_id), mimetype="multipart/x-mixed-replace; boundary=frame"
@@ -162,23 +167,7 @@ def get_users():
 
 
 
-# Set initial priorities - make camera 1 primary by default
-def set_active_camera(camera_id):
-    """Set which camera gets priority treatment"""
-    for cam_id, camera in cameras.items():
-        camera.set_priority(cam_id == camera_id)
-
-# Set camera 1 as the initial primary camera
-set_active_camera(1)
-
-# Add a new route to change the active camera
-@app.route("/set_active_camera/<int:camera_id>", methods=["POST"])
-def activate_camera(camera_id):
-    if camera_id not in cameras:
-        return jsonify({"success": False, "error": "Camera not found"}), 404
-    
-    set_active_camera(camera_id)
-    return jsonify({"success": True, "active_camera": camera_id})
+# Active-camera / priority API removed — all cameras stream at full time.
 
 
 if __name__ == "__main__":
