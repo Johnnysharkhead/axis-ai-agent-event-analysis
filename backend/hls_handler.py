@@ -1,6 +1,8 @@
 import os
 from flask import Blueprint, jsonify, request, send_from_directory
 
+HLS_PLAYLIST_EXTENSION = ".m3u8"
+HLS_SEGMENT_EXTENSION  = ".ts"
 
 def normalize_rel_path(recordings_dir: str, root: str, file: str) -> str:
     """Return a POSIX-style relative path from the recordings directory."""

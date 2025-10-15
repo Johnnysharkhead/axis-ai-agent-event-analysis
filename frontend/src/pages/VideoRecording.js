@@ -5,7 +5,7 @@ import "../styles/recording.css";
 
 const API_URL = "http://localhost:5001";
 
-const VideoFeed = () => {
+const VideoFeed = ({ cameraId = 1 }) => {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,8 +45,8 @@ const VideoFeed = () => {
       {isLoading && <div className="recording-feed__loader">Loading camera feed...</div>}
       <img
         className="recording-feed__image"
-        src={`${API_URL}/video_feed`}
-        alt="Live video feed"
+        src={`${API_URL}/video_feed/${cameraId}`}
+        alt={`Live video feed (Camera ${cameraId})`}
         onLoad={handleImageLoad}
         onError={handleImageError}
       />
@@ -60,6 +60,7 @@ export default function VideoRecording() {
   const [statusCheckedAt, setStatusCheckedAt] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [cameraId, setCameraId] = useState(2);
 
   const fetchRecordingStatus = () => {
     setIsChecking(true);
@@ -83,15 +84,21 @@ export default function VideoRecording() {
     return () => clearInterval(statusInterval);
   }, []);
 
-  const handleToggleRecording = () => {
+  const handleToggleRecording = (activeCameraId) => {
     const endpoint = isRecording ? "/recording/stop" : "/recording/start";
-    fetch(`${API_URL}${endpoint}`, { method: "POST" })
-      .then((res) => {
-        if (!res.ok) {
-          return res.json().then((err) => Promise.reject(err));
-        }
-        return res.json();
-      })
+    const fetchOpts = isRecording
+      ? { method: "POST" }
+      : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ camera_id: activeCameraId }),
+        };
+
+
+    console.log("Start/Stop for camera:", activeCameraId);
+
+    fetch(`${API_URL}${endpoint}`, fetchOpts)
+      .then((res) => (res.ok ? res.json() : res.json().then((err) => Promise.reject(err))))
       .then((data) => {
         const message = data.message || "Recording status changed";
         setStatusMessage(message);
@@ -135,10 +142,9 @@ export default function VideoRecording() {
           <div className="recording-toolbar__group">
             <button
               type="button"
-              className={`recording-button ${
-                isRecording ? "recording-button--danger" : "recording-button--primary"
-              }`}
-              onClick={handleToggleRecording}
+              className={`recording-button ${isRecording ? "recording-button--danger" : "recording-button--primary"}`}
+              onClick={() => handleToggleRecording(cameraId)}   
+              disabled={cameraId == null}                       
             >
               {isRecording ? "Stop Recording" : "Start Recording"}
             </button>
@@ -150,6 +156,22 @@ export default function VideoRecording() {
             >
               {isChecking ? "Refreshing..." : "Refresh Status"}
             </button>
+          </div>
+
+          <div className="recording-toolbar__group">
+            <label className="recording-toolbar__label" htmlFor="cameraSelect">
+              Camera:
+            </label>
+            <select
+              id="cameraSelect"
+              className="recording-input"
+              value={cameraId}
+              onChange={(e) => setCameraId(Number(e.target.value))}
+            >
+              <option value={1}>Camera 1</option>
+              <option value={2}>Camera 2</option>
+              <option value={3}>Camera 3</option>
+            </select>
           </div>
 
           <div className="recording-toolbar__group recording-toolbar__spacer">
@@ -182,12 +204,12 @@ export default function VideoRecording() {
         <section className="recording-card recording-card--padded recording-player-card__wrapper">
           <h2 className="recording-section-title">Live Feed</h2>
           <div className="recording-player-card">
-            <VideoFeed />
+            <VideoFeed cameraId={cameraId} />
           </div>
         </section>
 
         <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-          <img className="recording-modal__image" src={`${API_URL}/video_feed`} alt="Live stream" />
+          <img className="recording-modal__image" src={`${API_URL}/video_feed/${cameraId}`} alt={`Live stream (Camera ${cameraId})`} />
         </Modal>
       </div>
     </div>
