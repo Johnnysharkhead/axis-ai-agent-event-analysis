@@ -6,10 +6,12 @@ from flask_cors import CORS
 # import requests
 import os
 from livestream import VideoCamera
+from video_saver import recording_manager
 from mqtt_client import start_mqtt, get_events
 import time
 
 import models
+from hls_handler import *
 import authentication as auth2
 
 app = Flask(__name__)
@@ -48,6 +50,16 @@ def _build_cors_preflight_response():
 
 # Ensure instance/ folder exists
 os.makedirs(app.instance_path, exist_ok=True)
+
+# Directory for recordings
+VIDEO_NOT_FOUND_MESSAGE = "Video file not found"
+HLS_PLAYLIST_EXTENSION = ".m3u8"
+HLS_SEGMENT_EXTENSION = ".ts"
+RECORDINGS_DIR = os.getenv(
+ "RECORDINGS_DIR",
+ os.path.abspath(os.path.join(os.path.dirname(__file__), "recordings")),
+)
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
 # Use variable from .env for port (default 5001)
 backend_port = int(os.getenv("BACKEND_PORT", 5001))
@@ -138,6 +150,159 @@ def get_users():
 
     users = User.query.all()
     return jsonify([u.to_dict() for u in users]), 200
+
+
+@app.route("/opencv_status")
+def opencv_status():
+    """Check if OpenCV is available for recording."""
+    if cv2 is None:
+        return jsonify({
+            "available": False,
+            "message": "OpenCV not found. Please install opencv-python."
+        })
+
+    return jsonify({
+        "available": True,
+        "version": cv2.__version__,
+        "message": "OpenCV is ready for recording"
+    })
+
+@app.route("/video_info/<path:filename>")
+def video_info(filename):
+    """Get information about a specific video file."""
+    recordings_dir = RECORDINGS_DIR
+    video_path = os.path.join(recordings_dir, filename)
+    
+    if not os.path.exists(video_path):
+        return jsonify({"error": VIDEO_NOT_FOUND_MESSAGE}), 404
+
+    if filename.endswith(HLS_PLAYLIST_EXTENSION):
+        return jsonify(extract_hls_metadata(video_path, filename))
+
+    try:
+        metadata = extract_standard_video_metadata(video_path, filename)
+        return jsonify(metadata)
+    except Exception as e:
+        return jsonify({
+            "filename": filename,
+            "error": f"Error analyzing video: {str(e)}"
+        })
+
+@app.route("/recording/start", methods=["POST", "OPTIONS"])
+def start_recording_route():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    # The RTSP URL is now sourced from the camera object on the backend
+    rtsp_url = cameras[1].url  # Assuming we always record from camera 1 for simplicity
+    output_dir = RECORDINGS_DIR
+    success, message = recording_manager.start_recording(rtsp_url, output_dir)
+
+    if success:
+        return jsonify({"message": f"Recording started: {message}"})
+    else:
+        return jsonify({"error": message}), 400
+
+@app.route("/recording/stop", methods=["POST", "OPTIONS"])
+def stop_recording_route():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    success, message = recording_manager.stop_recording()
+
+    if success:
+        return jsonify({"message": f"Recording stopped: {message}"})
+    else:
+        return jsonify({"error": message}), 400
+
+@app.route("/recording/status", methods=["GET", "OPTIONS"])
+def recording_status_route():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    return jsonify({"is_recording": recording_manager.is_recording()})
+
+@app.route("/videos", methods=["GET", "OPTIONS"])
+def list_videos():
+    print("In list videos")
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    print("First check")
+    recordings_dir = RECORDINGS_DIR
+    os.makedirs(recordings_dir, exist_ok=True)
+    print("Andra check")
+    
+    try:
+        print("tests")
+        entries = collect_hls_playlists(recordings_dir)
+        entries.extend(collect_legacy_recordings(recordings_dir))
+        entries.sort(key=lambda item: item[1], reverse=True)
+        return jsonify([name for name, _ in entries])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/videos/<path:filename>", methods=["GET", "OPTIONS"])
+def serve_video(filename):
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+
+    recordings_dir = RECORDINGS_DIR
+    response = send_from_directory(recordings_dir, filename)
+    lower_name = filename.lower()
+    if lower_name.endswith(HLS_PLAYLIST_EXTENSION):
+        response.headers["Content-Type"] = "application/vnd.apple.mpegurl"
+    elif lower_name.endswith(HLS_SEGMENT_EXTENSION):
+        response.headers["Content-Type"] = "video/mp2t"
+    return response
+
+
+@app.route("/videos/<path:filename>/stream")
+def stream_recorded_video(filename):
+    """Stream a saved video as MJPEG so browsers can play regardless of codec."""
+    recordings_dir = RECORDINGS_DIR
+    video_path = os.path.join(recordings_dir, filename)
+
+    if not os.path.exists(video_path):
+        return jsonify({"error": VIDEO_NOT_FOUND_MESSAGE}), 404
+
+    if filename.lower().endswith(HLS_PLAYLIST_EXTENSION):
+        return jsonify({"error": "MJPEG stream is not available for HLS playlists."}), 400
+
+    if cv2 is None:
+        return jsonify({"error": "OpenCV not available on the server"}), 500
+
+    assert cv2 is not None  # Satisfy static analysis
+    opencv = cv2
+
+    cap = opencv.VideoCapture(video_path)
+    if not cap.isOpened():
+        return jsonify({"error": "Failed to open video"}), 500
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_delay = 1.0 / float(fps) if fps and fps > 0 else 1.0 / 25.0
+
+    def generate():
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    break
+
+                success, buffer = opencv.imencode('.jpg', frame, [opencv.IMWRITE_JPEG_QUALITY, 85])
+                if not success:
+                    continue
+
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+                time.sleep(frame_delay)
+        finally:
+            cap.release()
+
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 
