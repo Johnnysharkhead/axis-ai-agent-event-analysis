@@ -69,7 +69,7 @@ db = SQLAlchemy(app)
 with app.app_context():
     User, InviteKey = models.init_models(db) 
     auth2.init_auth(app, db, User, InviteKey)  
-    # db.drop_all()  # <- This clears the local database (uncomment this if invitation key does not work)
+    # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
     db.create_all()
     #Remove below in prod
     raw_key, key_hash = InviteKey.generate_key()
