@@ -41,6 +41,8 @@ def init_models(db):
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
         last_login = db.Column(db.DateTime)
         invite_key_id = db.Column(db.Integer, nullable=True)
+        failed_login_attempts = db.Column(db.Integer, default=0)
+        last_failed_login = db.Column(db.DateTime, nullable=True)
         
         def set_password(self, password):
             """Hash and store password"""
