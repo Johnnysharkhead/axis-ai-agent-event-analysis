@@ -37,7 +37,7 @@ function AppRoutes() {
         <Route path="/video-feed/camera" element={<LiveCameraPage />} />
 
         {/* 2D Floorplan */}
-        <Route path="/2d-floorplan/overview" element={<Floormap2D view="overview" />} />
+        <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D view="heatmap" />} />
         <Route path="/2d-floorplan/zones" element={<Floormap2D view="zones" />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<Floormap2D view="schedule-alarms" />} />

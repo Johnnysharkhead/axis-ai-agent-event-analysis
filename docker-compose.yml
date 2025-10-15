@@ -26,7 +26,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=200
       - WATCHPACK_POLLING=true
-
+      
   mosquitto:
     image: eclipse-mosquitto
     container_name: mqtt-broker
