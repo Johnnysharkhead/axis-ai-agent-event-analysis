@@ -1,0 +1,136 @@
+/* Main page wrapper */
+.live-camera {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+}
+
+.live-camera__container {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Header bar with */
+.live-camera__header {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 6px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.live-camera__header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex-wrap: wrap;
+}
+
+/* View for all cameras */
+.live-camera__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Clickable card for each camera */
+.live-camera__grid-button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  display: flex;
+  justify-content: center;
+}
+
+/* View for single camera */
+.live-camera__single {
+  display: flex;
+  justify-content: center;
+}
+
+/* Design for dropdown menu */
+.live-camera-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+}
+
+.live-camera-control__select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  padding: 10px 36px 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-image: linear-gradient(45deg, transparent 50%, #d1d5db 50%),
+    linear-gradient(135deg, #d1d5db 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(1em + 2px), calc(100% - 11px) calc(1em + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* Container for camera player */
+.camera-player {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  width: clamp(260px, 80vw, 640px);
+  margin: 0 auto;
+}
+
+/* Box for the video feed */
+.camera-player__video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The live stream image */
+.camera-player__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: #f3f4f6;
+}
+
+/* Message shown if the stream fails or URL missing */
+.camera-player__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Small label below the video */
+.camera-player__label {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: right;
+}

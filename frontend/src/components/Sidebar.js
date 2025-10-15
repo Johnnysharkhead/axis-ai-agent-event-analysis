@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css"; 
 
 const SECTIONS = [
-  { title: "Video Feed", items: ["Camera 1", "Camera 2", "Camera 3"] },
-  { title: "2D Floorplan", items: ["Overview", "Heatmap", "Zones", "Schedule Alarms"] },
+  { title: "Video Feed", items: ["Camera"] },
+  { title: "2D Floorplan", items: ["configuration", "Heatmap", "Zones", "Schedule Alarms"] },
   { title: "AI Features", items: ["Axis Assistant", "Menu Item"] },
   { title: "Alarms", items: ["WILOO", "Menu Item"] },
 ];
@@ -15,7 +15,7 @@ function getPath(id) {
   return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
 }
 
-export default function Sidebar({ onSelect }) {
+export default function Sidebar({ onSelect, isOpen = true }) {
   const [activeId, setActiveId] = useState("Dashboard");
   const navigate = useNavigate();
 
@@ -28,7 +28,7 @@ export default function Sidebar({ onSelect }) {
   const isActive = (id) => id === activeId;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "open" : "collapsed"}`} aria-hidden={!isOpen}>
       <button
         onClick={() => select("Dashboard", "Dashboard")}
         className={`sidebar-dashboard ${isActive("Dashboard") ? "active" : ""}`}

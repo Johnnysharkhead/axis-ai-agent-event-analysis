@@ -74,18 +74,22 @@ cameras = {
 
 
 def generate_frames(camera_id):
-    """Generate frames for the video stream"""
+    """Generate frames for the video stream with simpler timing"""
     camera = cameras.get(camera_id)
     if camera is None:
         return None
 
     while True:
+        # Simple approach: Get frame, yield it, minimal sleep
         frame = camera.get_frame()
         if frame is not None:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            
+            # Small fixed sleep to prevent CPU overuse
+            time.sleep(0.01)  # 10ms sleep
         else:
-            # If no frame is available, wait a bit before retrying
+            # No frame available, wait a bit longer
             time.sleep(0.1)
             continue
 
@@ -109,6 +113,13 @@ def video_feed(camera_id):
     if camera_id not in cameras:
         return jsonify({"error": f"Camera {camera_id} not found"}), 404
 
+    # fetch the camera instance from the pre-created dictionary
+    cam = cameras.get(camera_id)
+    if cam is None:
+        return jsonify({"error": "Failed to retrieve camera instance"}), 500
+
+    # no active-camera switching here — all cameras stream continuously
+
     return Response(
         generate_frames(camera_id), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
@@ -128,6 +139,9 @@ def get_users():
     users = User.query.all()
     return jsonify([u.to_dict() for u in users]), 200
 
+
+
+# Active-camera / priority API removed — all cameras stream at full time.
 
 
 if __name__ == "__main__":

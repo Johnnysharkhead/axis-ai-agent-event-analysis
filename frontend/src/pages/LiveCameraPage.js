@@ -1,0 +1,94 @@
+import React, { useState } from "react";
+import CameraPlayer from "../components/CameraPlayer.js";
+import "../styles/liveCamera.css";
+
+/**
+ * Page that displays one or multiple live camera feeds.
+ * Shows a header with title and a camera selector
+ * "All" shows a grid, otherwise a single camera feed
+ */
+export default function LiveCameraPage({
+  title = "Live Camera Footage",
+  cameraFeeds = {
+    cam1: "http://localhost:5001/video_feed/1",
+    cam2: "http://localhost:5001/video_feed/2",
+    cam3: "http://localhost:5001/video_feed/3",
+  },
+  cameraOptions = [
+    { key: "cam1", label: "Camera 1" },
+    { key: "cam2", label: "Camera 2" },
+    { key: "cam3", label: "Camera 3" },
+  ],
+  initialSelected = "all",
+  controls: controlsProp,
+}) {
+
+  // Current selected state
+  const [selected, setSelected] = useState(initialSelected);
+
+  const options = cameraOptions.map((option) => ({
+    ...option,
+    url: cameraFeeds[option.key],
+  }));
+
+  const normalizedSelected =
+    selected === "all" || options.some((option) => option.key === selected) ? selected : "all";
+
+  const isMultiView = normalizedSelected === "all";
+  const active =
+    options.find((option) => option.key === normalizedSelected) ||
+    options[0];
+
+  const renderedControls =
+    controlsProp ??
+    (
+      <label htmlFor="cameraSelect" className="live-camera-control">
+        Camera:
+        <select
+          id="cameraSelect"
+          value={normalizedSelected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="live-camera-control__select"
+        >
+          <option value="all">All Cameras</option>
+          {cameraOptions.map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+
+  return (
+    <div className="live-camera">
+      <div className="live-camera__container">
+        <div className="live-camera__header">
+          <div className="live-camera__header-content">
+            <h2 className="live-camera__title">{title}</h2>
+            {renderedControls}
+          </div>
+        </div>
+
+        {isMultiView ? (
+          <div className="live-camera__grid">
+            {options.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setSelected(option.key)}
+                className="live-camera__grid-button"
+              >
+                <CameraPlayer cam={option} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="live-camera__single">
+            <CameraPlayer cam={active} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
