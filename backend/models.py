@@ -93,5 +93,69 @@ def init_models(db):
         
             
             return invite
+        
+    class Room(db.Model):
+        __tablename__ = "rooms"
 
-    return User, InviteKey
+        id      = db.Column(db.Integer, primary_key = True)
+        name    = db.Column(db.String(30), nullable = False)
+        
+        cameras = db.relationship("Camera", back_populates = "room", cascade = "all, delete-orphan")
+
+        def serialize(self):
+
+            return {
+                "id" : self.id,
+                "name" : self.name,
+                "cameras" : {
+                    [camera.serialize() for camera in self.cameras]
+                }
+            }
+
+
+    # Camera describes a physical camera in a room
+    class Camera(db.Model):
+        __tablename__ = "cameras"
+
+        id          = db.Column(db.Integer, primary_key = True)
+        room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable = False)
+
+        room        = db.relationship("Room", back_populates = "cameras")
+        recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
+
+        def serialize(self, context=None):
+            data = {
+                "id": self.id,
+                "room_id": self.room_id,
+            }
+            if context == "big":
+
+                data["room"] = self.room.serialize()
+                data["recordings"] = [rec.serialize() for rec in self.recordings]
+            elif context == "small":
+                data["name"] = getattr(self, "name", None)
+            # base case (context is None)
+            return data
+
+    # Recording describes a videao recording from a camera 
+    class Recording(db.Model):
+        __tablename__ = "recordings"
+
+        id          = db.Column(db.Integer, primary_key = True)
+        url         = db.Column(db.String(100), nullable = False)
+        camera_id   = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+
+        camera      = db.relationship("Camera", back_populates = "recordings")
+
+        recording_metadata = db.relationship("Metadata", back_populates="recording_metadata", uselist=False)
+    # Metadata describes metadata associated with a recording
+    class Metadata(db.Model):
+        __tablename__ = "metadata"
+
+        id          = db.Column(db.Integer, primary_key = True)
+        recording_id= db.Column(db.Integer, db.ForeignKey("recordings.id"), nullable = False, unique = True)
+
+        recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
+
+
+    return User, InviteKey, Room, Camera, Recording, Metadata
