@@ -14,7 +14,7 @@ import settingsIcon from "../assets/settings_icon.png";
 import bellLogo from "../assets/bell_logo.png";
 import { logoutUser } from "../utils/api";
 
-function Navbar() {
+function Navbar({ onToggleSidebar, isSidebarOpen }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
