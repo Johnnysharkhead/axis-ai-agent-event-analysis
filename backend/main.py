@@ -2,7 +2,7 @@
 from flask import Flask, Response, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from flask_migrate import Migrate
+
 
 # import requests
 import os
@@ -79,7 +79,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 with app.app_context():
     User, InviteKey, Room, Camera, Recording, Metadata = models.init_models(db) 
@@ -434,11 +433,15 @@ def list_videos():
     recordings_dir = RECORDINGS_DIR
     os.makedirs(recordings_dir, exist_ok=True)
     
+    recordings = Recording.query.all()
+
     try:
         entries = _collect_hls_playlists(recordings_dir)
         entries.extend(_collect_legacy_recordings(recordings_dir))
         entries.sort(key=lambda item: item[1], reverse=True)
-        return jsonify([name for name, _ in entries])
+
+        return jsonify([rec.serialize() for rec in recordings],
+               [name for name, _ in entries])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

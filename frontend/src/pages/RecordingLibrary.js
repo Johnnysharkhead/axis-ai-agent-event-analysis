@@ -41,7 +41,7 @@ function RecordingLibrary() {
     fetch(`${API_URL}/videos`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
-        setVideos(data);
+        setVideos(data[1]);
         if (data.length && !selectedVideo) {
           const defaultVideo = data[0];
           setSelectedVideo(defaultVideo);
