@@ -121,7 +121,7 @@ def init_models(db):
         room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable = False)
 
         room        = db.relationship("Room", back_populates = "cameras")
-        recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
+        # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
 
         def serialize(self, context=None):
             data = {
@@ -137,25 +137,34 @@ def init_models(db):
             # base case (context is None)
             return data
 
-    # Recording describes a videao recording from a camera 
+    # Recording describes a videao recording from a camera.
+    # URL Should refer to the address of the video in the file system
     class Recording(db.Model):
         __tablename__ = "recordings"
 
-        id          = db.Column(db.Integer, primary_key = True)
-        url         = db.Column(db.String(100), nullable = False)
-        camera_id   = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+        recording_id    = db.Column(db.Integer, primary_key = True)
+        url             = db.Column(db.String(100), nullable = False)
+        # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+        
+        # camera      = db.relationship("Camera", back_populates = "recordings")
 
-        camera      = db.relationship("Camera", back_populates = "recordings")
+        # recording_metadata = db.relationship("Metadata", back_populates="recording_metadata", uselist=False)
 
-        recording_metadata = db.relationship("Metadata", back_populates="recording_metadata", uselist=False)
+        def add_recording(recording_id):
+            
+            new_id = recording_id.split('_')[1] + recording_id.split('_')[2] 
     # Metadata describes metadata associated with a recording
     class Metadata(db.Model):
         __tablename__ = "metadata"
 
         id          = db.Column(db.Integer, primary_key = True)
-        recording_id= db.Column(db.Integer, db.ForeignKey("recordings.id"), nullable = False, unique = True)
+        # recording_id= db.Column(db.Integer, db.ForeignKey("recordings.id"), nullable = False, unique = True)
 
-        recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
+        # recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
 
 
     return User, InviteKey, Room, Camera, Recording, Metadata
+
+
+# def init_recording_db():
+    

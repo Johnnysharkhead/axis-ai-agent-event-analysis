@@ -10,6 +10,7 @@ from video_saver import recording_manager
 from mqtt_client import start_mqtt, get_events
 import time
 
+from datetime import datetime
 import models
 from hls_handler import *
 import authentication as auth2
@@ -366,6 +367,20 @@ def start_recording_route():
     
     payload = request.get_json(silent=True) or {}
     camera_id = payload.get("camera_id") or request.args.get("camera_id") or 1
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    rec_id = int(str(camera_id) + (timestamp.split('_')[0]) + timestamp.split('_')[1])
+    recording_folder = f"recording_{timestamp}"
+    recording_url = os.path.join(RECORDINGS_DIR, recording_folder)
+
+    new_recording = Recording(
+        recording_id = rec_id,
+        url = recording_url,
+    )
+
+    db.session.add(new_recording)
+    db.session.commit()
+    
     try:
         camera_id = int(camera_id)
     except (TypeError, ValueError):
@@ -378,7 +393,12 @@ def start_recording_route():
     rtsp_url = cam.url
     output_dir = RECORDINGS_DIR
 
+
+
+
     success, message = recording_manager.start_recording(rtsp_url, output_dir)
+    
+
     if success:
         return jsonify({"message": f"Recording started (camera {camera_id}): {message}"})
     else:
