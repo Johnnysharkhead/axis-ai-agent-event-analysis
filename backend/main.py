@@ -13,8 +13,15 @@ import time
 import models
 from hls_handler import *
 import authentication as auth2
+from flask_login import LoginManager, login_required, current_user
+
+
 
 app = Flask(__name__)
+#Setup loginmanager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 # Add a secret key and sane cookie settings for localhost
 app.config.update(
@@ -72,10 +79,28 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 with app.app_context():
-    User = models.init_models(db)  
-    auth2.init_auth(app, db, User)  
+    User, InviteKey = models.init_models(db) 
+    auth2.init_auth(app, db, User, InviteKey)  
+    # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
     db.create_all()
+    #Remove below in prod
+    raw_key, key_hash = InviteKey.generate_key()
+    invite = InviteKey(key_hash=key_hash)
+    db.session.add(invite)
+    db.session.commit()
+    print(f"✓ Test invite key: {raw_key}")
+    ####Remove above in prod
     print(f"✓ Database initialized at: {db_path}")
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    return jsonify({"error": "Unauthorized"}), 401
+
+#get user from database
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 cameras = {
@@ -289,6 +314,7 @@ def events():
     return jsonify(get_events())
 
 @app.route("/users", methods=["GET", "OPTIONS"])
+@login_required
 def get_users():
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
