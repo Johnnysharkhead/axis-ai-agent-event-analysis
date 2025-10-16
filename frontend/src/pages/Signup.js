@@ -24,7 +24,7 @@ import { signupUser } from '../utils/api';
 import logo from '../assets/Axis_logo.png';
 
 function Signup() {
-	const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
+	const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '', inviteKey: '' });
 	const [submitted, setSubmitted] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -35,7 +35,7 @@ function Signup() {
 	};
 
 	const validate = () => {
-		if (!form.username || !form.email || !form.password) return 'All fields are required.';
+		if (!form.username || !form.email || !form.password || !form.inviteKey) return 'All fields are required.';
 		// Very basic email check
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Please enter a valid email address.';
 		if (form.password.length < 6) return 'Password must be at least 6 characters.';
@@ -52,7 +52,12 @@ function Signup() {
 		}
 		setLoading(true);
 		try {
-			const res = await signupUser({ username: form.username, email: form.email, password: form.password });
+			const res = await signupUser({
+				username: form.username,
+				email: form.email,
+				password: form.password,
+				invite_key: form.inviteKey
+	});
 			if (res?.ok) setSubmitted(true);
 			else setError(res?.message || 'Could not sign up right now.');
 		} catch (err) {
@@ -128,6 +133,17 @@ function Signup() {
 								value={form.confirm}
 								onChange={handleChange}
 								placeholder="Repeat your password"
+								required
+							/>
+						</label>
+						<label>
+							Invite Key
+							<input
+								type="text"
+								name="inviteKey"
+								value={form.inviteKey}
+								onChange={handleChange}
+								placeholder="Enter your invite key"
 								required
 							/>
 						</label>

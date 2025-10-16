@@ -9,6 +9,9 @@ from flask import Blueprint, request, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
 
+
+
+
 # Create Blueprint for authentication routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
 
@@ -19,7 +22,7 @@ login_manager = None
 
 #__all__ = ['init_auth', 'auth_bp']
 
-def init_auth(app, database, user_model):
+def init_auth(app, database, user_model, invite_model):
     """
     Initialize authentication with Flask app.
     Call this from main.py after creating db and models.
@@ -29,10 +32,11 @@ def init_auth(app, database, user_model):
         database: SQLAlchemy database instance
         user_model: User model class
     """
-    global db, User, login_manager
+    global db, User, InviteKey, login_manager
     
     db = database
     User = user_model
+    InviteKey = invite_model
     
     # Setup Flask-Login
     login_manager = LoginManager()
@@ -91,6 +95,16 @@ def signup():
         username = data.get('username', '').strip()
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
+        invite_key_raw = data.get('invite_key', '').strip()
+
+        if not invite_key_raw:
+         return jsonify({'ok': False, 'message': 'Invite key required'}), 400
+
+        invite = InviteKey.verify_key(invite_key_raw)
+
+        if not invite:
+         return jsonify({'ok': False, 'message': 'Invalid or already used invite key'}), 400
+
         
         # Validation
         if not username or not email or not password:
@@ -110,6 +124,7 @@ def signup():
         # Create new user
         new_user = User(username=username, email=email)
         new_user.set_password(password)
+        new_user.invite_key_id = invite.id
         
         # Save to database
         db.session.add(new_user)
