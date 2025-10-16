@@ -16,7 +16,9 @@ import Dashboard from "./pages/Dashboard";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import MainLayout from "./layouts/MainLayout";
-import LiveCameraPage from "./pages/LiveCameraPage";
+import LiveCameraPage from "./pages/LiveCameraPage.js";
+import RecordingLibraryPage from "./pages/RecordingLibrary.js";
+import VideoRecordingPage from "./pages/VideoRecording.js";
 import Floormap2D from "./pages/Floormap2D";
 import { isAuthenticated } from "./utils/api";
 
@@ -54,10 +56,18 @@ function AppRoutes() {
       {/* Private routes (with layout) */}
       <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* Backward-compat redirect from old '/home' to '/dashboard' */}
+        <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Cameras */}
         <Route path="/video-feed/camera" element={<LiveCameraPage />} />
+        <Route path="/video-feed/live-camera" element={<LiveCameraPage />} />
+        <Route path="/video-feed/video-recording" element={<VideoRecordingPage />} />
+        <Route path="/video-feed/recording-library" element={<RecordingLibraryPage />} />
 
         {/* 2D Floorplan */}
-        <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
+        <Route path="/2d-floorplan/overview" element={<Floormap2D view="overview" />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D view="heatmap" />} />
         <Route path="/2d-floorplan/zones" element={<Floormap2D view="zones" />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<Floormap2D view="schedule-alarms" />} />
