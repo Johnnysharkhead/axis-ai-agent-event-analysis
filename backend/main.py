@@ -172,6 +172,39 @@ def _collect_hls_playlists(recordings_dir: str):
     return entries
 
 
+def collect_hls_playlists_in_subdir(subdir_path: str):
+    """
+    Collect valid HLS playlist files (.m3u8) in a single subdirectory (no recursion).
+
+    Returns:
+        List of tuples: (relative_path, mtime)
+    """
+    entries = []
+
+    if not os.path.exists(subdir_path):
+        return entries
+
+    for file in os.listdir(subdir_path):
+        if not file.endswith(HLS_PLAYLIST_EXTENSION):
+            continue
+
+        playlist_path = os.path.join(subdir_path, file)
+        try:
+            file_size = os.path.getsize(playlist_path)
+        except OSError:
+            continue
+
+        if file_size <= 0:
+            continue
+
+        mtime = os.path.getmtime(playlist_path)
+        # Optional: relative path relative to subdir
+        rel_path = os.path.relpath(playlist_path, subdir_path)
+        entries.append((rel_path, mtime))
+
+    return entries
+
+
 def _collect_legacy_recordings(recordings_dir: str):
     entries = []
     for filename in os.listdir(recordings_dir):
@@ -437,7 +470,7 @@ def list_videos():
 
     try:
         entries = _collect_hls_playlists(recordings_dir)
-        entries.extend(_collect_legacy_recordings(recordings_dir))
+        # entries.extend(_collect_legacy_recordings(recordings_dir))
         entries.sort(key=lambda item: item[1], reverse=True)
 
         return jsonify([rec.serialize() for rec in recordings],
