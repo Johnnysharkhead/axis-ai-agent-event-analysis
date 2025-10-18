@@ -79,7 +79,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 with app.app_context():
-    User, InviteKey = models.init_models(db) 
+    User, InviteKey, Room, Camera, Recording, Metadata = models.init_models(db) 
     auth2.init_auth(app, db, User, InviteKey)  
     # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
     db.create_all()
