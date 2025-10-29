@@ -96,7 +96,7 @@ def init_models(db):
         
     class Room(db.Model):
         __tablename__ = "rooms"
-
+        
         id      = db.Column(db.Integer, primary_key = True)
         name    = db.Column(db.String(30), nullable = False)
         
@@ -144,7 +144,8 @@ def init_models(db):
 
         recording_id    = db.Column(db.Integer, primary_key = True)
         url             = db.Column(db.String(100), nullable = False)
-
+        snapshot_url    = db.Column(db.String(100))
+        
         def serialize(self):
             id_to_str = str(self.recording_id)
             timestamp = id_to_str[1:]
@@ -170,6 +171,26 @@ def init_models(db):
 
         # recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
 
+    """
+    How one JSON instance of Object Analytics looks like:
+    
+    xis/B8A44F9EED3B/event/CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY 
+
+    {"topic" : "axis:CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY",
+    "timestamp" : 1760689684528,
+    "serial" : "B8A44F9EED3B",
+    "message" : {
+        "source" : {},
+        "key" : {},
+        "data" : {
+            "triggerTime" : "2025-10-17T10:28:04.528+0200",
+            "active" : "1",
+            "objectId" : "4240",
+            "classTypes" : "human"
+            }
+        }
+    } 
+    """
 
     return User, InviteKey, Room, Camera, Recording, Metadata
 
