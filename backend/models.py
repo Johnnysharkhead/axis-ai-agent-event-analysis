@@ -6,7 +6,7 @@ This module is designed to be easy to understand and extend for future models.
 """
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, DateTime
 import hashlib
 import secrets
 
@@ -145,7 +145,13 @@ def init_models(db):
         recording_id    = db.Column(db.Integer, primary_key = True)
         url             = db.Column(db.String(100), nullable = False)
         snapshot_url    = db.Column(db.String(100))
+
+        recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
         
+        # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+        
+        # camera      = db.relationship("Camera", back_populates = "recordings")
+
         def serialize(self):
             id_to_str = str(self.recording_id)
             timestamp = id_to_str[1:]
@@ -156,25 +162,29 @@ def init_models(db):
                 "url": self.url,
                 "timestamp": formatted
             }
-        # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
-        
-        # camera      = db.relationship("Camera", back_populates = "recordings")
-
-        # recording_metadata = db.relationship("Metadata", back_populates="recording_metadata", uselist=False)
 
     # Metadata describes metadata associated with a recording
     class Metadata(db.Model):
         __tablename__ = "metadata"
 
-        id          = db.Column(db.Integer, primary_key = True)
-        # recording_id= db.Column(db.Integer, db.ForeignKey("recordings.id"), nullable = False, unique = True)
+        id                 = db.Column(db.Integer, primary_key = True)
+        topic              = db.Column(db.String)
+        timestamp          = db.Column(db.BigInteger)
+        serial             = db.Column(db.String)
+        message_source     = db.Column(db.JSON)
+        message_key        = db.Column(db.JSON)
+        data_trigger_time  = db.Column(DateTime(timezone=True), nullable=False)
+        data_active        = db.Column(db.Boolean)
+        data_object_id     = db.Column(db.String)
+        data_class_types   = db.Column(db.String)
 
-        # recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
+        recording_id= db.Column(db.Integer, db.ForeignKey("recordings.recording_id")) # Set this to nullable = False later
+        recording_metadata = db.relationship("Recording", back_populates="metadata")
 
     """
     How one JSON instance of Object Analytics looks like:
     
-    xis/B8A44F9EED3B/event/CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY 
+    axis/B8A44F9EED3B/event/CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY 
 
     {"topic" : "axis:CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY",
     "timestamp" : 1760689684528,
@@ -191,6 +201,15 @@ def init_models(db):
         }
     } 
     """
+
+    #     metadata = payload.get("metadata")
+    # message = metadata["message"]
+    # data = message["data"]
+
+    # trigger_time_str = data["triggerTime"]
+    # trigger_time = datetime.strptime(trigger_time_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+
+    # active = data["active"] == 1
 
     return User, InviteKey, Room, Camera, Recording, Metadata
 
