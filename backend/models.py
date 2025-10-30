@@ -228,6 +228,110 @@ def init_models(db):
     # )
     # db.session.add(new_metadata)
 
+
+    """app route /videos:
+        @app.route("/videos", methods=["GET", "OPTIONS"])
+    def list_videos():
+        if request.method == "OPTIONS":
+            return _build_cors_preflight_response()
+
+        recordings_dir = RECORDINGS_DIR
+        os.makedirs(recordings_dir, exist_ok=True)
+        
+        recordings = Recording.query.all()
+
+        try:
+            entries = _collect_hls_playlists(recordings_dir)
+            # entries.extend(_collect_legacy_recordings(recordings_dir))
+            entries.sort(key=lambda item: item[1], reverse=True)
+
+            return jsonify([rec.serialize() for rec in recordings],
+                [name for name, _ in entries])
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    """
+
+    """app route /recording/start:
+    @app.route("/recording/start", methods=["POST", "OPTIONS"])
+def start_recording_route():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    payload = request.get_json(silent=True) or {}
+    camera_id = payload.get("camera_id") or request.args.get("camera_id") or 1
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    rec_id = int(str(camera_id) + (timestamp.split('_')[0]) + timestamp.split('_')[1])
+    recording_folder = f"recording_{timestamp}"
+    recording_url = os.path.join(RECORDINGS_DIR, recording_folder)
+
+    new_recording = Recording(
+        recording_id = rec_id,
+        url = recording_url,
+    )
+
+    db.session.add(new_recording)
+    db.session.commit()
+    
+    try:
+        camera_id = int(camera_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid camera_id"}), 400
+
+    cam = cameras.get(camera_id)
+    if not cam:
+        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+
+    rtsp_url = cam.url
+    output_dir = RECORDINGS_DIR
+
+    success, message = recording_manager.start_recording(rtsp_url, output_dir)
+    
+
+    if success:
+        return jsonify({"message": f"Recording started (camera {camera_id}): {message}"})
+    else:
+        return jsonify({"error": message}), 400  
+    """
+
+    """collect_hls_playlists_in_subdir:
+    def collect_hls_playlists_in_subdir(subdir_path: str):
+    """
+    
+    """
+    Collect valid HLS playlist files (.m3u8) in a single subdirectory (no recursion).
+
+     Returns:
+         List of tuples: (relative_path, mtime)
+    """
+    
+    """
+    entries = []
+
+    if not os.path.exists(subdir_path):
+        return entries
+
+    for file in os.listdir(subdir_path):
+        if not file.endswith(HLS_PLAYLIST_EXTENSION):
+            continue
+
+        playlist_path = os.path.join(subdir_path, file)
+        try:
+            file_size = os.path.getsize(playlist_path)
+        except OSError:
+            continue
+
+        if file_size <= 0:
+            continue
+
+        mtime = os.path.getmtime(playlist_path)
+        # Optional: relative path relative to subdir
+        rel_path = os.path.relpath(playlist_path, subdir_path)
+        entries.append((rel_path, mtime))
+
+    return entries
+    """
+
     return User, InviteKey, Room, Camera, Recording, Metadata
 
 
