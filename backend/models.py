@@ -202,6 +202,9 @@ def init_models(db):
     } 
     """
 
+    """
+    Below is only temporarily located here for dev purpose and will be moved.
+    """
     #     metadata = payload.get("metadata")
     # message = metadata["message"]
     # data = message["data"]
@@ -210,6 +213,20 @@ def init_models(db):
     # trigger_time = datetime.strptime(trigger_time_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
     # active = data["active"] == 1
+    # new_metadata = Metadata(
+    #     id = new_recording.recording_id * 10 + i,
+    #     topic = metadata["topic"],
+    #     timestamp = metadata["timestamp"],
+    #     serial = metadata["serial"],
+    #     message_source = message["source"],
+    #     message_key = message["key"],
+    #     data_trigger_time = trigger_time,
+    #     data_active = active,
+    #     data_objectId = data["objectId"],
+    #     data_class_types = data["classTypes"],
+    #     recording_id = new_recording_id
+    # )
+    # db.session.add(new_metadata)
 
     return User, InviteKey, Room, Camera, Recording, Metadata
 
