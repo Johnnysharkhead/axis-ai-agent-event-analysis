@@ -1,4 +1,8 @@
 from . import db
+
+def fk_name(table, column):
+    return f"fk_{table}_{column}"
+
 from datetime import datetime
 
 class Recording(db.Model):
@@ -29,7 +33,7 @@ class Recording(db.Model):
 class Snapshot(db.Model):
     __tablename__ = "snapshots"
     id = db.Column(db.Integer, primary_key = True)
-    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), nullable=False)
+    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("snapshot", "recording_id"), nullable=False)
     url = db.Column(db.String(200), nullable = False)
     timestamp = db.Column(db.DateTime, default = datetime.utcnow)
 
@@ -71,7 +75,7 @@ class Metadata(db.Model):
     data_object_id = db.Column(db.String)
     data_class_types = db.Column(db.String)
 
-    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), nullable=False)
+    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("metadata", "recording_id"), nullable=False)
     recording = db.relationship("Recording", back_populates="recording_metadata")
 
 

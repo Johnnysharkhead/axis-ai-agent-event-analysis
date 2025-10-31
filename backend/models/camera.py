@@ -1,9 +1,13 @@
 from . import db
+
+def fk_name(table, column):
+    return f"fk_{table}_{column}"
+
 class Camera(db.Model):
     __tablename__ = "cameras"
 
     id          = db.Column(db.Integer, primary_key = True)
-    room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable = False)
+    room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), name=fk_name("camera", "room_id"), nullable = False)
 
     room        = db.relationship("Room", back_populates = "cameras")
     # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
