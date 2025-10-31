@@ -14,10 +14,13 @@ from datetime import datetime
 recording_bp = Blueprint('recording', __name__) #, url_prefix='/recording')
 
 # Define constants
-RECORDINGS_DIR = os.getenv(
-    "RECORDINGS_DIR",
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "recordings")),
-)
+# RECORDINGS_DIR = os.getenv(
+#     "RECORDINGS_DIR",
+#     os.path.abspath(os.path.join(os.path.dirname(__file__), "recordings")),
+# )
+# os.makedirs(RECORDINGS_DIR, exist_ok=True)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # one level up
+RECORDINGS_DIR = os.getenv("RECORDINGS_DIR", os.path.join(BASE_DIR, "recordings"))
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
 VIDEO_NOT_FOUND_MESSAGE = "Video file not found"
@@ -304,18 +307,16 @@ def list_videos():
 
     os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-    # recordings = Recording.query.all()
+    recordings = Recording.query.all()
     
     try:
         entries = _collect_hls_playlists(RECORDINGS_DIR)
         entries.extend(_collect_legacy_recordings(RECORDINGS_DIR))
         entries.sort(key=lambda item: item[1], reverse=True)
-        # return jsonify({
-        #     "db_entries": [rec.serialize() for rec in recordings],
-        #     "recordings": [name for name, _ in entries]
-        # })
-        return jsonify([name for name, _ in entries])
-
+        return jsonify({
+            "db_entries": [rec.serialize() for rec in recordings],
+            "recordings": [name for name, _ in entries]
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
