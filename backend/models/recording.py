@@ -6,11 +6,8 @@ class Recording(db.Model):
 
     recording_id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(100), nullable=False)
-    """
-    Recordings should have url links to snapshots pertaining to that recording. Not yet implemented.
-    """
-    snapshot_url = db.Column(db.String(100)) 
 
+    snapshots = db.relationship("Snapshot", back_populates="recording", cascade="all, delete-orphan")
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
         
     # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
@@ -27,3 +24,54 @@ class Recording(db.Model):
             "url": self.url,
             "timestamp": formatted
         }
+    
+
+class Snapshot(db.Model):
+    __tablename__ = "snapshots"
+    id = db.Column(db.Integer, primary_key = True)
+    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), nullable=False)
+    url = db.Column(db.String(200), nullable = False)
+    timestamp = db.Column(db.DateTime, default = datetime.utcnow)
+
+    recording = db.relationship("Recording", back_populates = "snapshots")
+
+
+class Metadata(db.Model):
+    """
+    How one JSON instance of Object Analytics looks like:
+    
+    axis/B8A44F9EED3B/event/CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY 
+
+    {"topic" : "axis:CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY",
+    "timestamp" : 1760689684528,
+    "serial" : "B8A44F9EED3B",
+    "message" : {
+        "source" : {},
+        "key" : {},
+        "data" : {
+            "triggerTime" : "2025-10-17T10:28:04.528+0200",
+            "active" : "1",
+            "objectId" : "4240",
+            "classTypes" : "human"
+            }
+        }
+    } 
+    """
+
+    __tablename__ = "metadata"
+
+    id = db.Column(db.Integer, primary_key=True)
+    topic = db.Column(db.String)
+    timestamp = db.Column(db.BigInteger)
+    serial = db.Column(db.String)
+    message_source = db.Column(db.JSON)
+    message_key = db.Column(db.JSON)
+    data_trigger_time = db.Column(db.DateTime(timezone=True), nullable=False)
+    data_active = db.Column(db.Boolean)
+    data_object_id = db.Column(db.String)
+    data_class_types = db.Column(db.String)
+
+    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), nullable=False)
+    recording = db.relationship("Recording", back_populates="recording_metadata")
+
+
