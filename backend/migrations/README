@@ -1,1 +1,59 @@
-Single-database configuration for Flask.
+-- Single-database configuration for Flask.
+
+----------HOW TO USE FLASK-MIGRATE WITH DOCKER AFTER ALTERING THE DATABASE----------
+
+-- Written by: Jonatan Billger with a little help from my chatty friend
+
+-- Follow these steps whenever you modify a model in the backend (for example, adding, removing, or renaming a column).
+
+-- 1. Make Your Model Changes
+
+-- Edit your SQLAlchemy models in backend/models/ as needed.
+-- Example:
+
+-- snapshot_url = db.Column(db.String(100))
+
+-- 🏗️ 2. Create a New Migration
+
+-- Generate a new migration file based on your model changes:
+
+-- docker compose run --rm backend flask db migrate -m "Describe your change here"
+
+-- The message after -m is only descriptive — it helps identify what the migration does.
+-- Example:
+
+-- docker compose run --rm backend flask db migrate -m "Add snapshot_url to recordings"
+
+-- 3. Apply the Migration
+
+-- Apply the generated migration to your database:
+
+-- docker compose run --rm backend flask db upgrade
+
+
+-- This updates the actual database schema to match your new model definitions.
+
+-- 4. Restart the Containers
+
+-- Once migrations are applied, restart your application to load the updated models:
+
+-- docker compose restart
+
+
+-- No rebuild is needed unless you’ve changed dependencies in requirements.txt.
+
+-- Notes
+
+-- All migration files are stored in the migrations/versions/ folder.
+
+-- Never manually edit existing migration scripts unless you know exactly what you’re doing.
+
+-- Each migration is uniquely identified by a revision ID.
+
+-- You can view your migration history with:
+
+-- docker compose run --rm backend flask db history
+
+-- You can also downgrade to the previous version if needed:
+
+-- docker compose run --rm backend flask db downgrade
