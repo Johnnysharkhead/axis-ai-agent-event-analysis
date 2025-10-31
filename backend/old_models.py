@@ -1,19 +1,19 @@
 """
-models.py
+old_models.py
 Database models for the application, including the User model for authentication.
 Authors: Victor, David, Success
 This module is designed to be easy to understand and extend for future models.
 """
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, DateTime
+from datetime import datetime, timedelta
 import hashlib
 import secrets
 
 
 db = None
 
-def init_models(db):
+def init_user_models(db):
     """
     Initialize models with database instance.
     Call this from main.py after creating db.
@@ -93,7 +93,9 @@ def init_models(db):
         
             
             return invite
-        
+    return User, InviteKey
+
+def get_room_model(db):
     class Room(db.Model):
         __tablename__ = "rooms"
         
@@ -111,8 +113,9 @@ def init_models(db):
                     [camera.serialize() for camera in self.cameras]
                 }
             }
+    return Room
 
-
+def get_camera_model(db):
     # Camera describes a physical camera in a room
     class Camera(db.Model):
         __tablename__ = "cameras"
@@ -136,11 +139,14 @@ def init_models(db):
                 data["name"] = getattr(self, "name", None)
             # base case (context is None)
             return data
+    return Camera
 
+def get_recording_model(db):
     # Recording describes a videao recording from a camera.
     # URL Should refer to the address of the video in the file system
     class Recording(db.Model):
         __tablename__ = "recordings"
+        __table_args__ = {'extend_existing' : True}
 
         recording_id    = db.Column(db.Integer, primary_key = True)
         url             = db.Column(db.String(100), nullable = False)
@@ -162,24 +168,26 @@ def init_models(db):
                 "url": self.url,
                 "timestamp": formatted
             }
+    return Recording
 
+def get_metadata_model(db):
     # Metadata describes metadata associated with a recording
     class Metadata(db.Model):
         __tablename__ = "metadata"
-
+        __table_args__ = {'extend_existing' : True}
         id                 = db.Column(db.Integer, primary_key = True)
         topic              = db.Column(db.String)
         timestamp          = db.Column(db.BigInteger)
         serial             = db.Column(db.String)
         message_source     = db.Column(db.JSON)
         message_key        = db.Column(db.JSON)
-        data_trigger_time  = db.Column(DateTime(timezone=True), nullable=False)
+        data_trigger_time  = db.Column(db.DateTime(timezone=True), nullable=False)
         data_active        = db.Column(db.Boolean)
         data_object_id     = db.Column(db.String)
         data_class_types   = db.Column(db.String)
 
         recording_id= db.Column(db.Integer, db.ForeignKey("recordings.recording_id")) # Set this to nullable = False later
-        recording_metadata = db.relationship("Recording", back_populates="metadata")
+        recording = db.relationship("Recording", back_populates="metadata")
 
     """
     How one JSON instance of Object Analytics looks like:
@@ -201,10 +209,7 @@ def init_models(db):
         }
     } 
     """
-
-    """
-    Below is only temporarily located here for dev purpose and will be moved.
-    """
+    return Metadata
     #     metadata = payload.get("metadata")
     # message = metadata["message"]
     # data = message["data"]
@@ -228,112 +233,7 @@ def init_models(db):
     # )
     # db.session.add(new_metadata)
 
-
-    """app route /videos:
-        @app.route("/videos", methods=["GET", "OPTIONS"])
-    def list_videos():
-        if request.method == "OPTIONS":
-            return _build_cors_preflight_response()
-
-        recordings_dir = RECORDINGS_DIR
-        os.makedirs(recordings_dir, exist_ok=True)
-        
-        recordings = Recording.query.all()
-
-        try:
-            entries = _collect_hls_playlists(recordings_dir)
-            # entries.extend(_collect_legacy_recordings(recordings_dir))
-            entries.sort(key=lambda item: item[1], reverse=True)
-
-            return jsonify([rec.serialize() for rec in recordings],
-                [name for name, _ in entries])
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    """
-
-    """app route /recording/start:
-    @app.route("/recording/start", methods=["POST", "OPTIONS"])
-def start_recording_route():
-    if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-    
-    payload = request.get_json(silent=True) or {}
-    camera_id = payload.get("camera_id") or request.args.get("camera_id") or 1
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    rec_id = int(str(camera_id) + (timestamp.split('_')[0]) + timestamp.split('_')[1])
-    recording_folder = f"recording_{timestamp}"
-    recording_url = os.path.join(RECORDINGS_DIR, recording_folder)
-
-    new_recording = Recording(
-        recording_id = rec_id,
-        url = recording_url,
-    )
-
-    db.session.add(new_recording)
-    db.session.commit()
-    
-    try:
-        camera_id = int(camera_id)
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid camera_id"}), 400
-
-    cam = cameras.get(camera_id)
-    if not cam:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
-
-    rtsp_url = cam.url
-    output_dir = RECORDINGS_DIR
-
-    success, message = recording_manager.start_recording(rtsp_url, output_dir)
-    
-
-    if success:
-        return jsonify({"message": f"Recording started (camera {camera_id}): {message}"})
-    else:
-        return jsonify({"error": message}), 400  
-    """
-
-    """collect_hls_playlists_in_subdir:
-    def collect_hls_playlists_in_subdir(subdir_path: str):
-    """
-    
-    """
-    Collect valid HLS playlist files (.m3u8) in a single subdirectory (no recursion).
-
-     Returns:
-         List of tuples: (relative_path, mtime)
-    """
-    
-    """
-    entries = []
-
-    if not os.path.exists(subdir_path):
-        return entries
-
-    for file in os.listdir(subdir_path):
-        if not file.endswith(HLS_PLAYLIST_EXTENSION):
-            continue
-
-        playlist_path = os.path.join(subdir_path, file)
-        try:
-            file_size = os.path.getsize(playlist_path)
-        except OSError:
-            continue
-
-        if file_size <= 0:
-            continue
-
-        mtime = os.path.getmtime(playlist_path)
-        # Optional: relative path relative to subdir
-        rel_path = os.path.relpath(playlist_path, subdir_path)
-        entries.append((rel_path, mtime))
-
-    return entries
-    """
-
-    return User, InviteKey, Room, Camera, Recording, Metadata
+    # return User, InviteKey, Room, Camera, Recording, Metadata
 
 
-# def init_recording_db():
     

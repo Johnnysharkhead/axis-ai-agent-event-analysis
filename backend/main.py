@@ -2,7 +2,7 @@
 from flask import Flask, Response, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-
+# from backend_extensions import app, db
 
 # import requests
 import os
@@ -12,18 +12,19 @@ from mqtt_client import start_mqtt, get_events
 import time
 
 from datetime import datetime
-import models
+from models import db
 from hls_handler import *
 import authentication as auth2
 from flask_login import LoginManager, login_required, current_user
 
-from video_routes import video_bp
+from routes.video_routes import video_bp
 #from authentication import auth_bp
-from recording_routes import recording_bp
+from routes.recording_routes import recording_bp
 
 
 
 app = Flask(__name__)
+
 #Setup loginmanager
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -87,10 +88,21 @@ db_path = os.path.join(app.instance_path, "database.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-db = SQLAlchemy(app)
+db.init_app(app)
+
+# db = SQLAlchemy(app)
 
 with app.app_context():
+    """
     User, InviteKey, Room, Camera, Recording, Metadata = models.init_models(db) 
+    User, InviteKey = models.init_user_models(db)
+    Room = models.get_room_model(db)
+    Camera = models.get_camera_model(db)
+    Recording = models.get_recording_model(db)
+    Metadata = models.get_metadata_model(db)
+    """
+    from models import User, InviteKey, Room, Camera, Recording, Metadata
+
     auth2.init_auth(app, db, User, InviteKey)  
     # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
     db.create_all()
