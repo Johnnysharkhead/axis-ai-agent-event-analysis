@@ -8,9 +8,8 @@ class Recording(db.Model):
     url = db.Column(db.String(100), nullable=False)
     """
     Recordings should have url links to snapshots pertaining to that recording. Not yet implemented.
-        snapshot_url = db.Column(db.String(100)) 
     """
-
+    snapshot_url = db.Column(db.String(100)) 
 
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
         

@@ -1,5 +1,8 @@
 """
 old_models.py
+Model functionality has been moved to backend/models for modularity purposes. Avoids circular imports.
+This file remains here temporarily for backup purposes
+
 Database models for the application, including the User model for authentication.
 Authors: Victor, David, Success
 This module is designed to be easy to understand and extend for future models.

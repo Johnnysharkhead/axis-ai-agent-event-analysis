@@ -2,6 +2,7 @@
 from flask import Flask, Response, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_migrate import Migrate
 # from backend_extensions import app, db
 
 # import requests
@@ -89,6 +90,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+migrate = Migrate(app, db)
 
 # db = SQLAlchemy(app)
 
