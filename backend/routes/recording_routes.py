@@ -304,14 +304,19 @@ def list_videos():
 
     os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-    recordings = Recording.query.all()
+    # recordings = Recording.query.all()
     
     try:
         entries = _collect_hls_playlists(RECORDINGS_DIR)
         entries.extend(_collect_legacy_recordings(RECORDINGS_DIR))
         entries.sort(key=lambda item: item[1], reverse=True)
-        return jsonify([rec.serialize() for rec in recordings],
-            [name for name, _ in entries])
+        # return jsonify({
+        #     "db_entries": [rec.serialize() for rec in recordings],
+        #     "recordings": [name for name, _ in entries]
+        # })
+        return jsonify([name for name, _ in entries])
+
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
