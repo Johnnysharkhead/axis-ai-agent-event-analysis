@@ -22,8 +22,6 @@ from routes.video_routes import video_bp
 #from authentication import auth_bp
 from routes.recording_routes import recording_bp
 
-
-
 app = Flask(__name__)
 
 #Setup loginmanager
@@ -95,14 +93,6 @@ migrate = Migrate(app, db)
 # db = SQLAlchemy(app)
 
 with app.app_context():
-    """
-    User, InviteKey, Room, Camera, Recording, Metadata = models.init_models(db) 
-    User, InviteKey = models.init_user_models(db)
-    Room = models.get_room_model(db)
-    Camera = models.get_camera_model(db)
-    Recording = models.get_recording_model(db)
-    Metadata = models.get_metadata_model(db)
-    """
     from models import User, InviteKey, Room, Camera, Recording, Metadata
 
     auth2.init_auth(app, db, User, InviteKey)  

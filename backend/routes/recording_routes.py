@@ -243,6 +243,11 @@ def video_info(filename):
 
 @recording_bp.route("/recording/start", methods=["POST", "OPTIONS"])
 def start_recording_route():
+    """
+    Method for starting a recording and to store it in the database and the local file system.
+
+    For more information about how a Recording object is constructed, view backend/models/recording.py.
+    """
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
     
@@ -302,6 +307,14 @@ def recording_status_route():
 
 @recording_bp.route("/videos", methods=["GET", "OPTIONS"])
 def list_videos():
+    """
+    Method primarily for sending recording videos & data to Frontend.
+    This route is called in frontend/src/pages/RecordingLibrary.js
+
+    Update: Method also returns recording objects of database.
+    Currently not used in frontend but could have future implications.
+    
+    """
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
 
@@ -314,8 +327,8 @@ def list_videos():
         entries.extend(_collect_legacy_recordings(RECORDINGS_DIR))
         entries.sort(key=lambda item: item[1], reverse=True)
         return jsonify({
-            "db_entries": [rec.serialize() for rec in recordings],
-            "recordings": [name for name, _ in entries]
+            "db_entries" : [rec.serialize() for rec in recordings],
+            "recordings" : [name for name, _ in entries]
         })
 
     except Exception as e:

@@ -1,6 +1,11 @@
 from . import db
 
 class Room(db.Model):
+    """
+    Initial Class for storing rooms in the database.
+    Not currently used. Unsure if it will be used in the future.
+    May be beneficial if user wants to search for recordings from a specific room.
+    """
     __tablename__ = "rooms"
         
     id      = db.Column(db.Integer, primary_key = True)
