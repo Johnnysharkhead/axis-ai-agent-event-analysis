@@ -9,10 +9,12 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - ./backend/recordings:/app/recordings
     environment:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=${BACKEND_PORT}
       - FLASK_APP=main.py
+      - PYTHONUNBUFFERED=1
 
   frontend:
     build: ./frontend

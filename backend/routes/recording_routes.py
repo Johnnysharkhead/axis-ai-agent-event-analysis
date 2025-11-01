@@ -171,7 +171,6 @@ def _extract_hls_metadata(video_path: str, filename: str):
         "format": "hls",
     }
 
-
 def _extract_standard_video_metadata(video_path: str, filename: str):
     if cv2 is None:
         return {
@@ -312,6 +311,8 @@ def list_videos():
     This route is called in frontend/src/pages/RecordingLibrary.js
 
     Update: Method also returns recording objects of database.
+    Configured so that if database is configured as shared/global later, method only returns 
+    db entries that the user also has in his/her filesystem.
     Currently not used in frontend but could have future implications.
     
     """
@@ -321,13 +322,19 @@ def list_videos():
     os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
     recordings = Recording.query.all()
+
+    valid_recordings = [
+        rec for rec in recordings
+        if os.path.exists(rec.url)
+    ]
     
     try:
         entries = _collect_hls_playlists(RECORDINGS_DIR)
         entries.extend(_collect_legacy_recordings(RECORDINGS_DIR))
         entries.sort(key=lambda item: item[1], reverse=True)
+        
         return jsonify({
-            "db_entries" : [rec.serialize() for rec in recordings],
+            "db_entries" : [rec.serialize() for rec in valid_recordings],
             "recordings" : [name for name, _ in entries]
         })
 
