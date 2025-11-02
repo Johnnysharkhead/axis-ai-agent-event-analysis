@@ -278,7 +278,7 @@ def start_recording_route():
     rtsp_url = cam.url
     output_dir = RECORDINGS_DIR
 
-    success, message = recording_manager.start_recording(rtsp_url, output_dir)
+    success, message = recording_manager.start_recording(timestamp, rtsp_url, output_dir)
     if success:
         return jsonify({"message": f"Recording started (camera {camera_id}): {message}"})
     else:
