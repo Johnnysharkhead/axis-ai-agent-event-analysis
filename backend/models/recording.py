@@ -63,7 +63,7 @@ class Snapshot(db.Model):
     __tablename__ = "snapshots"
     id = db.Column(db.Integer, primary_key = True)
     recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("snapshot", "recording_id"), nullable=False)
-    test_url_namechange_2 = db.Column(db.String(200), nullable = False)
+    url = db.Column(db.String(200), nullable = False)
     timestamp = db.Column(db.DateTime, default = datetime.utcnow)
 
     recording = db.relationship("Recording", back_populates = "snapshots")
