@@ -1,5 +1,8 @@
 """
-models.py
+old_models.py
+Model functionality has been moved to backend/models for modularity purposes. Avoids circular imports.
+This file remains here temporarily for backup purposes
+
 Database models for the application, including the User model for authentication.
 Authors: Victor, David, Success
 This module is designed to be easy to understand and extend for future models.
@@ -13,7 +16,7 @@ import secrets
 
 db = None
 
-def init_models(db):
+def init_user_models(db):
     """
     Initialize models with database instance.
     Call this from main.py after creating db.
@@ -93,10 +96,12 @@ def init_models(db):
         
             
             return invite
-        
+    return User, InviteKey
+
+def get_room_model(db):
     class Room(db.Model):
         __tablename__ = "rooms"
-
+        
         id      = db.Column(db.Integer, primary_key = True)
         name    = db.Column(db.String(30), nullable = False)
         
@@ -111,8 +116,9 @@ def init_models(db):
                     [camera.serialize() for camera in self.cameras]
                 }
             }
+    return Room
 
-
+def get_camera_model(db):
     # Camera describes a physical camera in a room
     class Camera(db.Model):
         __tablename__ = "cameras"
@@ -121,7 +127,7 @@ def init_models(db):
         room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable = False)
 
         room        = db.relationship("Room", back_populates = "cameras")
-        recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
+        # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
 
         def serialize(self, context=None):
             data = {
@@ -136,26 +142,101 @@ def init_models(db):
                 data["name"] = getattr(self, "name", None)
             # base case (context is None)
             return data
+    return Camera
 
-    # Recording describes a videao recording from a camera 
+def get_recording_model(db):
+    # Recording describes a videao recording from a camera.
+    # URL Should refer to the address of the video in the file system
     class Recording(db.Model):
         __tablename__ = "recordings"
+        __table_args__ = {'extend_existing' : True}
 
-        id          = db.Column(db.Integer, primary_key = True)
-        url         = db.Column(db.String(100), nullable = False)
-        camera_id   = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+        recording_id    = db.Column(db.Integer, primary_key = True)
+        url             = db.Column(db.String(100), nullable = False)
+        snapshot_url    = db.Column(db.String(100))
 
-        camera      = db.relationship("Camera", back_populates = "recordings")
+        recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
+        
+        # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
+        
+        # camera      = db.relationship("Camera", back_populates = "recordings")
 
-        recording_metadata = db.relationship("Metadata", back_populates="recording_metadata", uselist=False)
+        def serialize(self):
+            id_to_str = str(self.recording_id)
+            timestamp = id_to_str[1:]
+            dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S")
+            formatted = dt.strftime("%Y-%m-%d_%H:%M:%S")
+            return {
+                "recording_id": self.recording_id,
+                "url": self.url,
+                "timestamp": formatted
+            }
+    return Recording
+
+def get_metadata_model(db):
     # Metadata describes metadata associated with a recording
     class Metadata(db.Model):
         __tablename__ = "metadata"
+        __table_args__ = {'extend_existing' : True}
+        id                 = db.Column(db.Integer, primary_key = True)
+        topic              = db.Column(db.String)
+        timestamp          = db.Column(db.BigInteger)
+        serial             = db.Column(db.String)
+        message_source     = db.Column(db.JSON)
+        message_key        = db.Column(db.JSON)
+        data_trigger_time  = db.Column(db.DateTime(timezone=True), nullable=False)
+        data_active        = db.Column(db.Boolean)
+        data_object_id     = db.Column(db.String)
+        data_class_types   = db.Column(db.String)
 
-        id          = db.Column(db.Integer, primary_key = True)
-        recording_id= db.Column(db.Integer, db.ForeignKey("recordings.id"), nullable = False, unique = True)
+        recording_id= db.Column(db.Integer, db.ForeignKey("recordings.recording_id")) # Set this to nullable = False later
+        recording = db.relationship("Recording", back_populates="metadata")
 
-        recording_metadata = db.relationship("Recording", back_populates="recording_metadata")
+    """
+    How one JSON instance of Object Analytics looks like:
+    
+    axis/B8A44F9EED3B/event/CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY 
+
+    {"topic" : "axis:CameraApplicationPlatform/ObjectAnalytics/Device1ScenarioANY",
+    "timestamp" : 1760689684528,
+    "serial" : "B8A44F9EED3B",
+    "message" : {
+        "source" : {},
+        "key" : {},
+        "data" : {
+            "triggerTime" : "2025-10-17T10:28:04.528+0200",
+            "active" : "1",
+            "objectId" : "4240",
+            "classTypes" : "human"
+            }
+        }
+    } 
+    """
+    return Metadata
+    #     metadata = payload.get("metadata")
+    # message = metadata["message"]
+    # data = message["data"]
+
+    # trigger_time_str = data["triggerTime"]
+    # trigger_time = datetime.strptime(trigger_time_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+
+    # active = data["active"] == 1
+    # new_metadata = Metadata(
+    #     id = new_recording.recording_id * 10 + i,
+    #     topic = metadata["topic"],
+    #     timestamp = metadata["timestamp"],
+    #     serial = metadata["serial"],
+    #     message_source = message["source"],
+    #     message_key = message["key"],
+    #     data_trigger_time = trigger_time,
+    #     data_active = active,
+    #     data_objectId = data["objectId"],
+    #     data_class_types = data["classTypes"],
+    #     recording_id = new_recording_id
+    # )
+    # db.session.add(new_metadata)
+
+    # return User, InviteKey, Room, Camera, Recording, Metadata
 
 
-    return User, InviteKey, Room, Camera, Recording, Metadata
+    

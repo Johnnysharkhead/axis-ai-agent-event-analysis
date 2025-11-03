@@ -3,7 +3,6 @@ import os
 from flask import Response , Blueprint, request, jsonify
 from livestream import VideoCamera
 #from main import cameras, app, _build_cors_preflight_response
-
 video_bp = Blueprint('video', __name__) #Dont know if we should have the url_prefix
 
 

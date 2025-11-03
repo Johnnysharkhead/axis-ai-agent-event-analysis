@@ -18,7 +18,7 @@ class RecordingManager:
         """Check if a recording is currently active."""
         return self.recording
 
-    def start_recording(self, rtsp_url, output_dir="recordings"):
+    def start_recording(self, timestamp, rtsp_url, output_dir="recordings"):
         """Start capturing the RTSP stream and save it as an HLS playlist."""
         if self.is_recording():
             print("A recording is already in progress.")
@@ -29,7 +29,7 @@ class RecordingManager:
         vers = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
         print(vers.stdout)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         recording_folder_name = f"recording_{timestamp}"
         self.output_root = output_dir
         self.recording_dir = os.path.join(output_dir, recording_folder_name)
