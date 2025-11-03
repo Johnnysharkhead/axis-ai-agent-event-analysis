@@ -41,9 +41,10 @@ function RecordingLibrary() {
     fetch(`${API_URL}/videos`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
-        setVideos(data);
-        if (data.length && !selectedVideo) {
-          const defaultVideo = data[0];
+        console.log(data)
+        setVideos(data.recordings);
+        if (data.recordings.length && !selectedVideo) {
+          const defaultVideo = data.recordings[0];
           setSelectedVideo(defaultVideo);
           setPlaybackKey(Date.now());
           setPlayMode(isHlsRecording(defaultVideo) ? "hls" : "direct");
