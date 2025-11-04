@@ -34,6 +34,12 @@ class Recording(db.Model):
     snapshots = db.relationship("Snapshot", back_populates="recording", cascade="all, delete-orphan")
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
         
+    # ForeignKey to EventLog
+    event_id = db.Column(db.Integer, db.ForeignKey("event_logs.id"), nullable=True)
+
+    # Relationship with EventLog
+    event = db.relationship("EventLog", back_populates="recordings")
+
     # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
         
     # camera      = db.relationship("Camera", back_populates = "recordings")
