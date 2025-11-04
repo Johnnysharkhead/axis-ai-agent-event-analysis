@@ -27,12 +27,13 @@ def capture_snapshot(recording_id):
         
         # Extract camera_id from recording_id (first digit)
         camera_id = int(str(recording_id)[0])
-        camera = Camera.query.get(camera_id)
+        print(f"Extracted camera_id: {camera_id} from recording_id: {recording_id}")
+        camera = cameras.get(camera_id)
         if not camera:
             return jsonify({'error': 'Camera not found'}), 404
         
         # Capture snapshot from camera
-        image_url = f"http://{camera.ip_address}/axis-cgi/jpg/image.cgi"
+        image_url = f"http://{camera.ip}/axis-cgi/jpg/image.cgi"
         response = requests.get(
             image_url,
             auth=(camera.username, camera.password),
