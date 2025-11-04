@@ -1,7 +1,4 @@
-from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+from . import db
 
 class EventLog(db.Model):
     __tablename__ = "event_logs"
@@ -10,7 +7,6 @@ class EventLog(db.Model):
 
     # Relationship with recordings
     recordings = db.relationship("Recording", back_populates="event", cascade="all, delete-orphan")
-
 
     def serialize(self):
         """Convert the event log to a dictionary."""
