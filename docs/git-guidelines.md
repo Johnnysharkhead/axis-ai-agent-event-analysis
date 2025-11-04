@@ -41,18 +41,24 @@
 
 ## Branch Naming
 
+- The name of the branch should **start with your issue number**.  
+  _Example for issue 15: `git checkout -b 15-some-branch-name`_
 - Use **lowercase** and **hyphens**:  
-  _Example: `feature/user-authentication`_
+  _Example: `15-feature/user-authentication`_
 - Keep names concise but descriptive
+- You find your issue number on the Issue board.
 
 ---
 
 ## Commit Messages
 
+- The commit message needs to include **"#"** followed by your **issue number**.  
+  _Example for issue 15: `git commit -m "#15 Some commit message"`_
 - Follow format:  
   `<type>(<scope>): <description>`
 - **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-- _Example: `feat(auth): add JWT-based login`_
+- _Example: `feat(auth): #15 add JWT-based login`_
+- You find your issue number on the Issue board.
 
 ---
 
