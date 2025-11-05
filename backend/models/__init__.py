@@ -17,4 +17,4 @@ db = SQLAlchemy()
 from .user import User, InviteKey
 from .room import Room
 from .camera import Camera
-from .recording import Recording, Metadata, Snapshot
+from .recording import Recording, Metadata, Snapshot, EventLog
