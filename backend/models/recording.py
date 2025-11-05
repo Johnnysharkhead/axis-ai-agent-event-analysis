@@ -34,6 +34,12 @@ class Recording(db.Model):
     snapshots = db.relationship("Snapshot", back_populates="recording", cascade="all, delete-orphan")
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
         
+    # ForeignKey to EventLog
+    event_id = db.Column(db.Integer, db.ForeignKey("event_logs.id"), nullable=True)
+
+    # Relationship with EventLog
+    event = db.relationship("EventLog", back_populates="recordings")
+
     # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
         
     # camera      = db.relationship("Camera", back_populates = "recordings")
@@ -108,4 +114,16 @@ class Metadata(db.Model):
     recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("metadata", "recording_id"), nullable=False)
     recording = db.relationship("Recording", back_populates="recording_metadata")
 
+class EventLog(db.Model):
+    __tablename__ = "event_logs"
 
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Relationship with recordings
+    recordings = db.relationship("Recording", back_populates="event", cascade="all, delete-orphan")
+
+    def serialize(self):
+        """Convert the event log to a dictionary."""
+        return {
+            "id": self.id,
+        }
