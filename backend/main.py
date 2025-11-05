@@ -87,7 +87,9 @@ backend_port = int(os.getenv("BACKEND_PORT", 5001))
 
 # Configure SQLite database inside instance/
 db_path = os.path.join(app.instance_path, "database.db")
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+# app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
@@ -150,3 +152,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()  # creates tables if they don’t exist
     app.run(host="0.0.0.0", port=backend_port)
+
