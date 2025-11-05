@@ -21,6 +21,8 @@ from flask_login import LoginManager, login_required, current_user
 from routes.video_routes import video_bp
 #from authentication import auth_bp
 from routes.recording_routes import recording_bp
+from routes.snapshot_routes import snapshot_bp
+
 
 app = Flask(__name__)
 
@@ -42,6 +44,7 @@ app.config.update(
 app.register_blueprint(video_bp)
 #app.register_blueprint(auth_bp)
 app.register_blueprint(recording_bp)
+app.register_blueprint(snapshot_bp)
 
 try:
     mqtt_client = start_mqtt()
