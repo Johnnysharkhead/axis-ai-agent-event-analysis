@@ -6,12 +6,14 @@ RUN apt-get update \
       libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 \
  && rm -rf /var/lib/apt/lists/*
 
-
 WORKDIR /app
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY . .
+COPY backend ./backend
+COPY storage ./storage
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+ENV FLASK_APP=backend.main:app
+
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0"]
