@@ -2,8 +2,11 @@ from flask import Blueprint, jsonify, send_file
 import requests
 from datetime import datetime
 import os
-from backend.domain.models import db, Camera, Snapshot, Recording
-from backend.infrastructure.camera_adapter import VideoCamera
+from models import db
+from models.camera import Camera
+from models.recording import Snapshot, Recording
+from livestream import VideoCamera
+
 
 snapshot_bp = Blueprint('snapshot', __name__)
 
