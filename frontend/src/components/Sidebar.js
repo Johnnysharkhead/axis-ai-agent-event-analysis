@@ -6,7 +6,7 @@ const SECTIONS = [
   { title: "Video Feed", items: ["Live Camera", "Video Recording","Recording Library"] },
   { title: "2D Floorplan", items: ["Configuration", "Heatmap", "Zones", "Schedule Alarms"] },
   { title: "AI Features", items: ["Axis Assistant", "Menu Item"] },
-  { title: "Alarms", items: ["WILOO", "Menu Item"] },
+  { title: "Alarms", items: ["Alarm History", "Menu Item"] },
 ];
 
 function getPath(id) {
@@ -64,4 +64,3 @@ export default function Sidebar({ onSelect }) {
     </aside>
   );
 }
-
