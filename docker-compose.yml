@@ -1,19 +1,21 @@
 version: "3.9"
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: backend
     ports:
       - "${BACKEND_PORT}:5001"
     env_file:
       - .env
     volumes:
-      - ./backend:/app
-      - ./backend/recordings:/app/recordings
+      - ./backend:/app/backend
+      - ./storage:/app/storage
     environment:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=${BACKEND_PORT}
-      - FLASK_APP=main.py
+      - FLASK_APP=backend.main:app
       - PYTHONUNBUFFERED=1
 
   frontend:
@@ -34,7 +36,7 @@ services:
     ports:
       - "${MQTT_BROKER_PORT:-1883}:1883"
     volumes:
-      - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./ops/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mosquitto-data:/mosquitto/data 
       - ./mosquitto-log:/mosquitto/log
 
