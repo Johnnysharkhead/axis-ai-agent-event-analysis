@@ -20,6 +20,7 @@ import LiveCameraPage from "./pages/LiveCameraPage.js";
 import RecordingLibraryPage from "./pages/RecordingLibrary.js";
 import VideoRecordingPage from "./pages/VideoRecording.js";
 import Floormap2D from "./pages/Floormap2D";
+import EventHistoryPage from "./pages/EventHistoryPage";
 import { isAuthenticated } from "./utils/api";
 
 
@@ -65,6 +66,9 @@ function AppRoutes() {
         <Route path="/video-feed/live-camera" element={<LiveCameraPage />} />
         <Route path="/video-feed/video-recording" element={<VideoRecordingPage />} />
         <Route path="/video-feed/recording-library" element={<RecordingLibraryPage />} />
+
+        {/* Alarms */}
+        <Route path="/alarms/alarm-history" element={<EventHistoryPage />} />
 
         {/* 2D Floorplan */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
