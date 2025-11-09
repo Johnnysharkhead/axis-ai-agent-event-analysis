@@ -91,3 +91,34 @@
   background: #e6ecff;
   font-weight: 600;
 }
+
+body.theme-dark .sidebar {
+  background-color: #0f172a;
+  border-right: 1px solid #1f2937;
+}
+
+body.theme-dark .sidebar-dashboard.active,
+body.theme-dark .sidebar-item.active {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+body.theme-dark .sidebar-section-title {
+  color: #9ca3af;
+}
+
+body.theme-dark .sidebar-item {
+  color: #e2e8f0;
+}
+
+body.theme-dark .sidebar-item:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+body.theme-dark .sidebar-radio {
+  border-color: #4c5567;
+}
+
+body.theme-dark .sidebar-radio.active {
+  border-color: #60a5fa;
+  background: radial-gradient(#60a5fa 45%, transparent 46%);
+}

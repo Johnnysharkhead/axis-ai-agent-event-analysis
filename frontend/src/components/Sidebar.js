@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css"; 
 
 const SECTIONS = [
   { title: "Video Feed", items: ["Live Camera", "Video Recording","Recording Library"] },
   { title: "2D Floorplan", items: ["Configuration", "Heatmap", "Zones", "Schedule Alarms"] },
-  { title: "AI Features", items: ["Axis Assistant", "Menu Item"] },
-  { title: "Alarms", items: ["Alarm History", "Menu Item"] },
+  { title: "AI Features", items: ["Intrusion Summary"] },
+  { title: "Alarms", items: ["Alarm History"] },
 ];
 
 function getPath(id) {
@@ -16,7 +16,8 @@ function getPath(id) {
 }
 
 export default function Sidebar({ onSelect }) {
-  const [activeId, setActiveId] = useState("Dashboard");
+  const location = useLocation();
+  const [activeId, setActiveId] = useState(() => inferIdFromPath(location.pathname));
   const navigate = useNavigate();
 
   const select = (id, label) => {
@@ -26,6 +27,13 @@ export default function Sidebar({ onSelect }) {
   };
 
   const isActive = (id) => id === activeId;
+
+  useEffect(() => {
+    const inferred = inferIdFromPath(location.pathname);
+    if (inferred !== activeId) {
+      setActiveId(inferred);
+    }
+  }, [location.pathname, activeId]);
 
   return (
     <aside className="sidebar">
@@ -63,4 +71,25 @@ export default function Sidebar({ onSelect }) {
       ))}
     </aside>
   );
+}
+
+function slugify(value) {
+  return value.toLowerCase().replace(/\s/g, "-");
+}
+
+function inferIdFromPath(pathname) {
+  if (pathname === "/dashboard" || pathname === "/home") {
+    return "Dashboard";
+  }
+
+  for (const section of SECTIONS) {
+    for (const label of section.items) {
+      const generatedPath = `/${slugify(section.title)}/${slugify(label)}`;
+      if (pathname.startsWith(generatedPath)) {
+        return `${section.title}|${label}`;
+      }
+    }
+  }
+
+  return "Dashboard";
 }

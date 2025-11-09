@@ -7,14 +7,10 @@ import React from "react";
 
 function Footer() {
   return (
-    <footer style={{
-      background: "#eee",
-      padding: "1rem",
-      left: 0,
-      bottom: 0,
-      width: "100%"
-    }}>
-      <p>© 2025 Axis Project</p>
+    <footer className="app-footer">
+      <div className="app-footer__content">
+        <p>© 2025 Axis Project</p>
+      </div>
     </footer>
   );
 }

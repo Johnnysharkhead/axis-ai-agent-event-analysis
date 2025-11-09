@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import CameraPlayer from "../components/CameraPlayer.js";
+import "../styles/pages.css";
 import "../styles/liveCamera.css";
 
 /**
@@ -25,6 +27,7 @@ export default function LiveCameraPage({
 
   // Current selected state
   const [selected, setSelected] = useState(initialSelected);
+  const handleResetView = () => setSelected("all");
 
   const options = cameraOptions.map((option) => ({
     ...option,
@@ -48,7 +51,7 @@ export default function LiveCameraPage({
           id="cameraSelect"
           value={normalizedSelected}
           onChange={(e) => setSelected(e.target.value)}
-          className="live-camera-control__select"
+          className="recording-input live-camera-control__select"
         >
           <option value="all">All Cameras</option>
           {cameraOptions.map((option) => (
@@ -61,11 +64,29 @@ export default function LiveCameraPage({
     );
 
   return (
-    <div className="live-camera">
-      <div className="live-camera__container">
+    <section className="page live-camera-page">
+      <div className="page__top-bar">
+        <header className="header">
+          <h1 className="title">{title}</h1>
+          <p className="subtitle">
+            Monitor live camera streams, switch between layouts and jump into recordings without leaving the page.
+          </p>
+        </header>
+
+        <div className="page__controls">
+          <button type="button" className="page__control page__control--primary" onClick={handleResetView}>
+            Show all feeds
+          </button>
+          <Link className="page__control" to="/video-feed/recording-library">
+            Recording library
+          </Link>
+        </div>
+      </div>
+
+      <div className="page__section live-camera__panel">
         <div className="live-camera__header">
           <div className="live-camera__header-content">
-            <h2 className="live-camera__title">{title}</h2>
+            <h2 className="page__section-title">{isMultiView ? "All cameras" : active?.label}</h2>
             {renderedControls}
           </div>
         </div>
@@ -89,6 +110,6 @@ export default function LiveCameraPage({
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

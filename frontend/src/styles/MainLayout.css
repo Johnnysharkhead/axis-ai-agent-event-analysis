@@ -26,7 +26,14 @@
 
 .pageContent {
   flex: 1;
-  padding: 1rem;
-  padding-bottom: 3rem;
+  padding: 1rem 1.5rem 3rem 2rem;
   background-color: #ffffff;
+}
+
+body.theme-dark .sidebarWrapper {
+  background-color: #0f172a;
+}
+
+body.theme-dark .pageContent {
+  background-color: #050914;
 }

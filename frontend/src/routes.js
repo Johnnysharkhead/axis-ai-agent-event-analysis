@@ -21,6 +21,7 @@ import RecordingLibraryPage from "./pages/RecordingLibrary.js";
 import VideoRecordingPage from "./pages/VideoRecording.js";
 import Floormap2D from "./pages/Floormap2D";
 import EventHistoryPage from "./pages/EventHistoryPage";
+import Profile from "./pages/Profile";
 import { isAuthenticated } from "./utils/api";
 
 
@@ -69,6 +70,9 @@ function AppRoutes() {
 
         {/* Alarms */}
         <Route path="/alarms/alarm-history" element={<EventHistoryPage />} />
+
+        {/* Profile */}
+        <Route path="/profile" element={<Profile />} />
 
         {/* 2D Floorplan */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
