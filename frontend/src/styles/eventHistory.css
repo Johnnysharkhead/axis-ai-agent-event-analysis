@@ -6,27 +6,58 @@
 }
 
 .event-history__card {
-  background: rgba(250, 252, 254, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  padding: 1.75rem;
-  display: flex;
-  flex-direction: column;
   gap: 1.5rem;
+}
+
+body.theme-dark .event-history__card {
+  background: #111827;
+  border-color: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+body.theme-dark .event-history__table-row {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(59, 130, 246, 0.12);
+  color: #e2e8f0;
+}
+
+body.theme-dark .event-history__table-row--head {
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
+}
+
+body.theme-dark .event-history__pill {
+  background: rgba(59, 130, 246, 0.12);
+  color: #e2e8f0;
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+body.theme-dark .event-history__pill--active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+
+body.theme-dark .event-history__search {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #e2e8f0;
+}
+
+body.theme-dark .event-history__search input {
+  color: inherit;
 }
 
 .event-history__card-title {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .event-history__card-subtitle {
   margin: 0.35rem 0 0;
   font-size: 0.92rem;
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .event-history__filter-group {
@@ -40,7 +71,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--color-muted);
 }
 
 .event-history__pill-group {
@@ -89,6 +120,7 @@
   justify-content: space-between;
   gap: 1.5rem;
   align-items: center;
+  color: var(--color-text);
 }
 
 .event-history__search {

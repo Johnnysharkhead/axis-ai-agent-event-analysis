@@ -237,27 +237,13 @@ function Gridmap({
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       {/* Toolbar: Export / Import / Reset */}
-      <div
-        style={{
-          position: "absolute",
-          top: 8,
-          right: 8,
-          zIndex: 2,
-          display: "inline-flex",
-          gap: 8,
-          background: "rgba(255,255,255,0.9)",
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          padding: "6px 8px",
-          backdropFilter: "blur(2px)",
-        }}
-      >
-        <button onClick={exportJSON} style={btnStyle} title="Export layout">
+      <div className="gridmap-toolbar">
+        <button onClick={exportJSON} className="gridmap-toolbar__button" title="Export layout">
           Export
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          style={btnStyle}
+          className="gridmap-toolbar__button"
           title="Import layout"
         >
           Import
@@ -269,7 +255,7 @@ function Gridmap({
           hidden
           onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])}
         />
-        <button onClick={resetLayout} style={btnStyle} title="Reset layout">
+        <button onClick={resetLayout} className="gridmap-toolbar__button" title="Reset layout">
           Reset
         </button>
       </div>

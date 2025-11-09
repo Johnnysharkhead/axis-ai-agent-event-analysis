@@ -1,165 +1,81 @@
-/* Shared layout for recording-style pages */
-.recording-page {
-  min-height: 100vh;
-  padding: 32px 16px;
-  box-sizing: border-box;
-  background: #f5f7fa;
-  display: flex;
-  justify-content: center;
-}
-
-.recording-page__container {
-  width: 100%;
-  max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.recording-card {
-  background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.recording-card--padded {
-  padding: 20px;
-}
-
-.recording-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.recording-header__content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.recording-header__title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.recording-header__cta {
-  text-decoration: none;
-  font-weight: 600;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  background: #ffd166;
-  color: #1a202c;
-  border: 1px solid #f6ad55;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.recording-header__cta:hover {
-  background: #f6ad55;
-  border-color: #ed8936;
-}
-
-.recording-layout {
-  display: grid;
-  gap: 24px;
-}
-
-@media (min-width: 900px) {
-  .recording-layout {
-    grid-template-columns: minmax(260px, 320px) 1fr;
-    align-items: start;
-  }
-}
-
+/* Recording-specific helpers layered on top of the shared page surfaces */
 .recording-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 1rem;
 }
 
 .recording-toolbar__group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 0.75rem;
+}
+
+.recording-toolbar__group--end {
+  justify-content: flex-end;
+}
+
+.recording-toolbar__label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.recording-toolbar__spacer {
+  margin-left: auto;
 }
 
 .recording-status {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.35rem;
   font-size: 0.95rem;
-  color: #4a5568;
+  color: var(--color-muted);
+  flex-basis: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .recording-status__timestamp {
   font-size: 0.8rem;
-  color: #718096;
-}
-
-.recording-player-card {
-  background: #0f172a;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.recording-player-card__media {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid #1f2937;
-  background: #000000;
-  display: block;
-}
-
-.recording-player-card__message {
-  background: #edf2f7;
-  color: #4a5568;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.recording-error {
-  color: #e53e3e;
-  font-size: 0.9rem;
-  margin: -4px 0 0;
+  color: #94a3b8;
 }
 
 .recording-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1rem;
   max-height: 76vh;
-  padding: 16px;
   overflow: hidden;
 }
 
 .recording-sidebar__search {
   display: flex;
-  gap: 8px;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .recording-input {
   flex: 1;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #cbd5e0;
+  min-width: 180px;
+  padding: 0.55rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
   font: inherit;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.95);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recording-input:focus {
+  border-color: rgba(37, 99, 235, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
 }
 
 .recording-sidebar__meta {
   font-size: 0.85rem;
-  color: #4a5568;
+  color: #64748b;
 }
 
 .recording-sidebar__list {
@@ -168,7 +84,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.5rem;
 }
 
 .recording-sidebar__item {
@@ -178,25 +94,26 @@
 .recording-sidebar__button {
   width: 100%;
   text-align: left;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   font: inherit;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  color: #1e293b;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recording-sidebar__button:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
 }
 
 .recording-sidebar__button--active {
-  border-color: #2b6cb0;
-  background: #ebf4ff;
-  color: #1a365d;
-}
-
-.recording-sidebar__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  border-color: transparent;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #f8fafc;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.25);
 }
 
 .recording-sidebar__scroll {
@@ -205,58 +122,86 @@
   padding-right: 4px;
 }
 
+.recording-sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .recording-button {
-  border-radius: 8px;
+  border-radius: 999px;
   font-weight: 600;
-  padding: 0.62rem 1.15rem;
-  border: 1px solid transparent;
+  padding: 0.5rem 1.3rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
   cursor: pointer;
   font: inherit;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  background: rgba(241, 245, 249, 0.8);
+  color: #1e293b;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+body:not(.theme-dark) .recording-button:hover:not(:disabled) {
+  background: rgba(226, 232, 240, 0.95);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
 }
 
 .recording-button--primary {
-  background: #d2dcfb;
-  border-color: #cbd5e0;
-  color: #2a2f3a;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border-color: transparent;
+  color: #f8fafc;
+  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+}
+
+body:not(.theme-dark) .recording-button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803d, #1fa049);
+  box-shadow: 0 16px 30px rgba(22, 163, 74, 0.35);
+  color: #f8fafc;
+}
+
+body:not(.theme-dark) .recording-button--danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  box-shadow: 0 16px 30px rgba(220, 38, 38, 0.35);
+  color: #fff;
 }
 
 .recording-button--danger {
-  background: #e53e3e;
-  border-color: #c53030;
-  color: #ffffff;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  border-color: transparent;
+  color: #fff;
 }
 
-.recording-button--secondary,
-.recording-button--ghost {
-  background: #ffffff;
-  border-color: #cbd5e0;
-  color: #2d3748;
+.recording-button--secondary {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .recording-button--ghost {
-  border-color: #e5e7eb;
+  background: rgba(248, 250, 252, 0.6);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #475569;
 }
 
 .recording-button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .recording-toggle {
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid #cbd5e0;
-  background: #ffffff;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.9);
   cursor: pointer;
   font: inherit;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  color: #475569;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .recording-toggle--active {
-  border-color: #2b6cb0;
-  background: #ebf4ff;
-  color: #1a365d;
+  border-color: transparent;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #f8fafc;
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
   cursor: default;
 }
 
@@ -265,76 +210,128 @@
   cursor: not-allowed;
 }
 
-.recording-toolbar__spacer {
-  margin-left: auto;
-}
-
-.recording-toolbar__label {
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.recording-info {
+.recording-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  gap: 1.5rem;
+  min-height: 60vh;
 }
 
-.recording-info__title {
-  margin: 0;
-  font-size: 1.05rem;
-  color: #1f2937;
-}
-
-.recording-info__list {
-  margin: 0;
-  padding-left: 1.2rem;
-  color: #4a5568;
-  font-size: 0.95rem;
+.recording-status-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.75rem;
 }
 
-.recording-message {
-  font-size: 0.95rem;
-  color: #4a5568;
+.recording-status-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-.recording-message--error {
-  color: #e53e3e;
+.recording-status-card__row:last-child {
+  border-bottom: none;
 }
 
-.recording-message--warning {
-  color: #dd6b20;
+.recording-status-card__label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
 }
 
-.recording-modal__image {
-  width: 100%;
-  max-width: 600px;
-  border-radius: 10px;
-  display: block;
+.recording-status-card__value {
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.recording-status-card__value--camera {
+  color: var(--color-text);
+}
+
+body.theme-dark .recording-status-card__value--camera {
+  color: #ffffff;
 }
 
 .recording-player-card__wrapper {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1.25rem;
+}
+
+.recording-player-card {
+  background: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.7);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.3);
+}
+
+.recording-player-card__media {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.6);
+  background: #000;
+  display: block;
+}
+
+.recording-player-card__message {
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--color-muted);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  font-size: 0.95rem;
+}
+
+.recording-error {
+  color: #dc2626;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.recording-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.recording-info__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.recording-info__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.recording-message {
+  font-size: 0.95rem;
+  color: var(--color-muted);
+}
+
+.recording-message--error {
+  color: #dc2626;
+}
+
+.recording-message--warning {
+  color: #d97706;
 }
 
 .recording-section-title {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
+  margin: 0;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #1f2937;
-}
-
-.recording-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 60vh;
+  color: var(--color-text);
 }
 
 .recording-feed {
@@ -344,10 +341,10 @@
 }
 
 .recording-feed__image {
-  width: clamp(260px, 80vw, 720px);
-  border-radius: 12px;
-  border: 1px solid #1f2937;
-  background: #000000;
+  width: clamp(260px, 80vw, 820px);
+  border-radius: 18px;
+  border: 2px solid rgba(15, 23, 42, 0.8);
+  background: #000;
   display: block;
 }
 
@@ -356,29 +353,109 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 10px 16px;
+  padding: 0.6rem 1.2rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.9);
   color: #e2e8f0;
   font-size: 0.9rem;
 }
 
 .recording-feed__fallback {
-  width: clamp(260px, 80vw, 720px);
-  padding: 24px;
-  border-radius: 12px;
-  border: 2px dashed #cbd5e0;
-  background: #f8fafc;
+  width: clamp(260px, 80vw, 820px);
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 2px dashed rgba(148, 163, 184, 0.5);
+  background: rgba(248, 250, 252, 0.95);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.85rem;
   align-items: center;
   text-align: center;
-  color: #4a5568;
+  color: var(--color-muted);
 }
 
 .recording-feed__fallback ul {
   margin: 0;
   padding-left: 1.2rem;
   text-align: left;
+}
+
+.recording-modal__image {
+  width: 100%;
+  max-width: 640px;
+  border-radius: 16px;
+  display: block;
+}
+
+body.theme-dark .recording-button {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #e2e8f0;
+}
+
+body.theme-dark .recording-button:hover:not(:disabled) {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #f8fafc;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.65);
+}
+
+body.theme-dark .recording-button--ghost {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.theme-dark .recording-button--primary {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #f8fafc;
+  border-color: transparent;
+}
+
+body.theme-dark .recording-button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0f8a3b, #18a34c);
+  box-shadow: 0 18px 32px rgba(16, 185, 129, 0.4);
+}
+
+body.theme-dark .recording-button--danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  border-color: transparent;
+}
+
+body.theme-dark .recording-button--danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  box-shadow: 0 18px 32px rgba(239, 68, 68, 0.4);
+}
+
+body.theme-dark .recording-player-card {
+  background: #030712;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+body.theme-dark .recording-status-card {
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 18px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+body.theme-dark .recording-feed__fallback {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #e2e8f0;
+}
+
+/* In dark mode, make the visible select value and option text black for better contrast
+   when a light/select background is used for the control. Note: styling for <option>
+   is limited in some browsers, but modern browsers will respect these rules. */
+body.theme-dark .recording-input {
+  /* keep the control visually distinct in dark mode while allowing the selected text to be black */
+  background: rgba(255, 255, 255, 0.9);
+  color: #000000;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+/* Ensure option text and the currently selected option render black where supported */
+body.theme-dark .recording-input option,
+body.theme-dark .recording-input option:checked {
+  color: #000000;
+  background: transparent;
 }

@@ -5,6 +5,8 @@
  * AUTHORS: Victor, Success, David
  */
 
+import { cacheUser, clearCachedUser } from "./userStorage";
+
 // Backend configuration
 const BACKEND_PORT = process.env.REACT_APP_BACKEND_PORT || 5001;
 const BASE_URL = `http://localhost:${BACKEND_PORT}`;
@@ -77,6 +79,10 @@ export async function loginUser(payload) {
 		method: 'POST',
 		body: JSON.stringify(payload)
 	});
+
+	if (result.ok && result.body?.user) {
+		cacheUser(result.body.user);
+	}
 	
 	// Return in expected format for Login.js
 	return {
@@ -96,6 +102,10 @@ export async function logoutUser() {
 	const result = await safeFetch(`${API_URL}/logout`, { 
 		method: 'POST'
 	});
+	
+	if (result.ok) {
+		clearCachedUser();
+	}
 	
 	return {
 		ok: result.ok,
@@ -125,7 +135,12 @@ export async function getCurrentUser() {
  */
 export async function isAuthenticated() {
 	const response = await getCurrentUser();
-	return response.ok === true;
+	if (response.ok && response.user) {
+		cacheUser(response.user);
+		return true;
+	}
+	clearCachedUser();
+	return false;
 }
 
 

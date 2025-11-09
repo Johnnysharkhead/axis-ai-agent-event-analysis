@@ -201,8 +201,8 @@ function EventHistoryPage() {
         </div>
       </div>
 
-      <div className="event-history__grid">
-        <aside className="event-history__card event-history__filters">
+      <div className="page__split page__split--sidebar event-history__grid">
+        <aside className="page__section event-history__card event-history__filters">
           <h2 className="event-history__card-title">Filters</h2>
 
           <div className="event-history__filter-group">
@@ -226,7 +226,7 @@ function EventHistoryPage() {
           </button>
         </aside>
 
-        <div className="event-history__card event-history__table-card">
+        <div className="page__section event-history__card event-history__table-card">
           <div className="event-history__table-header">
             <div>
               <h2 className="event-history__card-title">Recent intrusion events</h2>

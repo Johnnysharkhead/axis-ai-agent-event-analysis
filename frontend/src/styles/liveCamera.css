@@ -1,47 +1,28 @@
-/* Main page wrapper */
-.live-camera {
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding: 32px 16px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
+.live-camera__panel {
+  gap: 1.5rem;
 }
 
-.live-camera__container {
-  width: 100%;
-  max-width: 980px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Header bar with */
 .live-camera__header {
-  background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 6px 20px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
 }
 
 .live-camera__header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   flex-wrap: wrap;
+  gap: 1rem;
 }
 
-/* View for all cameras */
 .live-camera__grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
 }
 
-/* Clickable card for each camera */
 .live-camera__grid-button {
   cursor: pointer;
   background: none;
@@ -49,21 +30,27 @@
   padding: 0;
   font: inherit;
   display: flex;
-  justify-content: center;
+  width: 100%;
+  align-items: stretch;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-/* View for single camera */
+.live-camera__grid-button:hover,
+.live-camera__grid-button:focus-visible {
+  transform: translateY(-2px);
+}
+
 .live-camera__single {
-  display: flex;
-  justify-content: center;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
-/* Design for dropdown menu */
 .live-camera-control {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: #4b5563;
+  gap: 0.65rem;
+  color: var(--color-text);
+  font-weight: 500;
 }
 
 .live-camera-control__select {
@@ -71,35 +58,40 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   outline: none;
-  padding: 10px 36px 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background-image: linear-gradient(45deg, transparent 50%, #d1d5db 50%),
-    linear-gradient(135deg, #d1d5db 50%, transparent 50%);
-  background-position: calc(100% - 16px) calc(1em + 2px), calc(100% - 11px) calc(1em + 2px);
+  padding: 0.6rem 2.25rem 0.6rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-control-border);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% + 1px), calc(100% - 10px) calc(50% + 1px);
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
   cursor: pointer;
+  font: inherit;
+  color: #0f172a;
 }
 
-/* Container for camera player */
+.live-camera-control__select option {
+  color: #0f172a;
+}
+
 .camera-player {
-  background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  width: clamp(260px, 80vw, 640px);
-  margin: 0 auto;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
 }
 
-/* Box for the video feed */
 .camera-player__video {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
   overflow: hidden;
   position: relative;
   display: flex;
@@ -107,30 +99,61 @@
   justify-content: center;
 }
 
-/* The live stream image */
 .camera-player__image {
   display: block;
   width: 100%;
-  height: auto;
-  object-fit: contain;
-  background: #f3f4f6;
+  height: 100%;
+  object-fit: cover;
 }
 
-/* Message shown if the stream fails or URL missing */
 .camera-player__fallback {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 48px 16px;
-  color: #6b7280;
-  font-size: 14px;
+  color: #cbd5f5;
+  font-size: 0.95rem;
   text-align: center;
 }
 
-/* Small label below the video */
 .camera-player__label {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #6b7280;
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+  color: #475569;
   text-align: right;
+}
+
+body.theme-dark .live-camera__header {
+  background: #111827;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+body.theme-dark .live-camera-control {
+  color: #e2e8f0;
+}
+
+body.theme-dark .live-camera-control__select {
+  background: #ffffff;
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #0f172a;
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+}
+
+body.theme-dark .live-camera-control__select option {
+  color: #050914;
+}
+
+body.theme-dark .camera-player {
+  background: #111827;
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-dark .camera-player__label {
+  color: #cbd5f5;
+}
+
+body.theme-dark .camera-player__fallback {
+  color: #e2e8f0;
 }

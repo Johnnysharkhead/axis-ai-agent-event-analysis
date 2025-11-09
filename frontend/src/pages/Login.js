@@ -19,6 +19,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Signup.css';
 import { loginUser } from '../utils/api';
+import { cacheUser } from '../utils/userStorage';
 import logo from '../assets/Axis_logo.png';
 
 function Login() {
@@ -42,6 +43,7 @@ function Login() {
     try {
       const res = await loginUser(form);
       if (res?.ok) {
+        cacheUser(res.user);
         navigate('/dashboard');
       } else {
         setError(res?.message || 'Invalid credentials.');

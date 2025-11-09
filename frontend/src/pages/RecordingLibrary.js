@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 import Hls from "hls.js";
+import "../styles/pages.css";
 import "../styles/recording.css";
 
 const API_URL = "http://localhost:5001";
@@ -144,41 +145,50 @@ function RecordingLibrary() {
   }, [filteredVideos.length]);
 
   return (
-    <div className="recording-page">
-      <div className="recording-page__container">
-        <header className="recording-card recording-card--padded recording-header">
-          <div className="recording-header__content">
-            <h1 className="recording-header__title">Recording Library</h1>
-          </div>
-          <Link className="recording-header__cta" to="/video-feed/video-recording">
-            Go to Video Recording ▶
-          </Link>
+    <section className="page recording-page">
+      <div className="page__top-bar">
+        <header className="header">
+          <h1 className="title">Recording Library</h1>
+          <p className="subtitle">
+            Browse stored footage, switch between playback formats and inspect recording metadata.
+          </p>
         </header>
 
-        <section className="recording-layout">
-          <VideoListPanel
-            isLoading={isLoadingList}
-            error={listError}
-            videos={visibleVideos}
-            total={filteredVideos.length}
-            hasMore={visibleVideos.length < filteredVideos.length}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onRefresh={fetchVideos}
-            onLoadMore={handleLoadMore}
-            onSelect={handleSelectVideo}
+        <div className="page__controls">
+          <Link className="page__control page__control--primary" to="/video-feed/video-recording">
+            Open recording console
+          </Link>
+          <button type="button" className="page__control" onClick={fetchVideos} disabled={isLoadingList}>
+            {isLoadingList ? "Refreshing…" : "Refresh library"}
+          </button>
+        </div>
+      </div>
+
+      <div className="page__split page__split--sidebar">
+        <VideoListPanel
+          isLoading={isLoadingList}
+          error={listError}
+          videos={visibleVideos}
+          total={filteredVideos.length}
+          hasMore={visibleVideos.length < filteredVideos.length}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onRefresh={fetchVideos}
+          onLoadMore={handleLoadMore}
+          onSelect={handleSelectVideo}
+          selectedVideo={selectedVideo}
+        />
+
+        <div className="page__stack recording-column">
+          <PlaybackToolbar
+            playMode={playMode}
+            onChangeMode={handleChangeMode}
+            onReload={handleReloadPlayback}
             selectedVideo={selectedVideo}
+            availableModes={availableModes}
           />
 
-          <div className="recording-column">
-            <PlaybackToolbar
-              playMode={playMode}
-              onChangeMode={handleChangeMode}
-              onReload={handleReloadPlayback}
-              selectedVideo={selectedVideo}
-              availableModes={availableModes}
-            />
-
+          <div className="page__section recording-player-card__wrapper">
             <PlaybackSurface
               selectedVideo={selectedVideo}
               playMode={playMode}
@@ -186,12 +196,12 @@ function RecordingLibrary() {
               onError={setVideoError}
             />
             {videoError && <p className="recording-error">{videoError}</p>}
-
-            <VideoInfoCard info={info} infoState={infoState} />
           </div>
-        </section>
+
+          <VideoInfoCard info={info} infoState={infoState} />
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -245,7 +255,7 @@ function VideoListPanel({
   }
 
   return (
-    <aside className="recording-card recording-card--padded recording-sidebar">
+    <aside className="page__section recording-sidebar">
       <div className="recording-sidebar__search">
         <input
           type="search"
@@ -284,7 +294,7 @@ function VideoListPanel({
 
 function PlaybackToolbar({ playMode, onChangeMode, onReload, selectedVideo, availableModes }) {
   return (
-    <div className="recording-card recording-card--padded recording-toolbar">
+    <div className="page__section recording-toolbar">
       <div className="recording-toolbar__group">
         <span className="recording-toolbar__label">Playback mode:</span>
         {availableModes.map(({ value, label }) => (
@@ -482,7 +492,7 @@ function VideoInfoCard({ info, infoState }) {
   }
 
   return (
-    <section className="recording-card recording-card--padded recording-info">
+    <section className="page__section recording-info">
       <h3 className="recording-info__title">Recording info</h3>
       {content}
     </section>

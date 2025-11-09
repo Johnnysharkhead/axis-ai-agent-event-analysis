@@ -22,11 +22,25 @@ nav {
     box-sizing: border-box;
 }
 
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .navbar-logo-search {
     display: flex;
     align-items: center;
-    margin-left: -1; 
-    padding-left: 0; 
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+}
+
+.navbar-logo-search:hover {
+    background-color: #e0e0e0;
+    border-radius: 6px;
 }
 
 .hamburger-menu {
@@ -60,11 +74,12 @@ nav {
 
 .navbar-text strong {
     font-size: 1.2rem;
+    color: var(--color-text);
 }
 
 .navbar-text div {
     font-size: 0.9rem;
-    color: #555;
+    color: var(--color-muted);
 }
 
 .navbar-search {
@@ -77,8 +92,15 @@ nav {
     border-radius: 4px;
 }
 
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
 .navbar-dropdowns {
     display: flex;
+    align-items: center;
     gap: 1rem;
 }
 
@@ -91,37 +113,36 @@ nav {
     border: none;
     cursor: pointer;
     padding: 0.5rem 1rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    border-radius: 6px;
 }
 
 .dropdown-content {
     display: none;
     position: absolute;
-    background-color: white;
+    background-color: #fff;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
     z-index: 1000;
-    min-width: 150px;
+    min-width: 160px;
+    overflow: hidden;
 }
 
-.dropdown-content a {
-    color: black;
-    padding: 0.5rem 1rem;
-    text-decoration: none;
-    display: block;
+.dropdown-content button {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0.6rem 0.9rem;
+    text-align: left;
+    cursor: pointer;
 }
 
-.dropdown-content a:hover {
+.dropdown-content button:hover {
     background-color: #f1f1f1;
 }
 
 .dropdown:hover .dropdown-content {
     display: block;
-}
-
-.navbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
 }
 
 .navbar-divider {
@@ -136,11 +157,60 @@ nav {
     cursor: pointer;
     font-size: 1rem;
     padding: 0.5rem 1rem;
+    color: inherit;
 }
 
 .navbar-button:hover {
     background-color: #e0e0e0;
     border-radius: 4px;
+}
+
+.navbar-button.active {
+    background-color: #1d4ed8;
+    color: #fff;
+    border-radius: 8px;
+}
+
+body.theme-dark nav {
+    background: #111827;
+    color: #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-dark .navbar-button {
+    color: #e2e8f0;
+}
+
+body.theme-dark .navbar-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+body.theme-dark .navbar-divider {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+body.theme-dark .navbar-settings__input {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #1f2937;
+}
+
+body.theme-dark .dropdown-content {
+    background-color: #1f2937;
+    color: #e2e8f0;
+}
+
+body.theme-dark .dropbtn {
+    background-color: #1f2937;
+    color: #e2e8f0;
+}
+
+body.theme-dark .dropdown-content button {
+    color: inherit;
+}
+
+body.theme-dark .dropdown-content button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .settings-button {
@@ -154,6 +224,14 @@ nav {
     height: 20px;
     width: 20px; 
     object-fit: contain; 
+}
+
+.settings-button .settings-icon {
+    filter: none;
+}
+
+body.theme-dark .settings-button .settings-icon {
+    filter: invert(94%) sepia(6%) saturate(303%) hue-rotate(179deg) brightness(103%) contrast(93%);
 }
 
 .notification-button {
@@ -174,12 +252,47 @@ nav {
     font-weight: bold;
 }
 
-.help-button {
+.profile-button {
     color: #555;
     font-size: 1.2rem;
 }
 
-.profile-button {
-    color: #555;
-    font-size: 1.2rem;
+.navbar-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 260px;
+}
+
+.navbar-settings__section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.navbar-settings__section label {
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.navbar-settings__input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font: inherit;
+}
+
+.navbar-settings__save {
+    align-self: flex-start;
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 1.2rem;
+    cursor: pointer;
+    font-weight: 600;
 }
