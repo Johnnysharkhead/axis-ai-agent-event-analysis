@@ -21,7 +21,7 @@ except KeyError:
 
 # Force Alembic to load your full metadata from all models
 # This ensures FK names are visible and no 'Constraint must have a name' occurs
-from models import (
+from domain.models import (
     User, InviteKey, Room, Camera, Recording, Metadata, Snapshot
 )
 

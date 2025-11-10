@@ -2,13 +2,13 @@ from flask import Blueprint
 import os
 from flask import send_from_directory, jsonify, request, Response
 #from main import cameras, app, _build_cors_preflight_response,RECORDINGS_DIR
-from video_saver import recording_manager
-from hls_handler import HLS_PLAYLIST_EXTENSION, HLS_SEGMENT_EXTENSION
+from infrastructure.video_saver import recording_manager
+from application.hls_handler import HLS_PLAYLIST_EXTENSION, HLS_SEGMENT_EXTENSION
 import time
 import cv2
-from livestream import VideoCamera
+from infrastructure.livestream import VideoCamera
 # from backend_extensions import db
-from models import db, Recording
+from domain.models import db, Recording
 from datetime import datetime
 
 recording_bp = Blueprint('recording', __name__) #, url_prefix='/recording')

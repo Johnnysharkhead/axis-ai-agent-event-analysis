@@ -7,15 +7,15 @@ from flask_migrate import Migrate
 
 # import requests
 import os
-from livestream import VideoCamera
-from video_saver import recording_manager
-from mqtt_client import start_mqtt, get_events
+from infrastructure.livestream import VideoCamera
+from infrastructure.video_saver import recording_manager
+from infrastructure.mqtt_client import start_mqtt, get_events
 import time
 
 from datetime import datetime
-from models import db
-from hls_handler import *
-import authentication as auth2
+from domain.models import db
+from application.hls_handler import *
+import routes.authentication as auth2
 from flask_login import LoginManager, login_required, current_user
 
 from routes.video_routes import video_bp
@@ -93,12 +93,12 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, directory='infrastructure/migrations')
 
 # db = SQLAlchemy(app)
 
 with app.app_context():
-    from models import User, InviteKey, Room, Camera, Recording, Metadata
+    from domain.models import User, InviteKey, Room, Camera, Recording, Metadata
 
     auth2.init_auth(app, db, User, InviteKey)  
     # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
