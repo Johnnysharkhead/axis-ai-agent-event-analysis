@@ -9,12 +9,12 @@ services:
       - .env
     volumes:
       - ./backend:/app
-      - ./backend/recordings:/app/recordings
     environment:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=${BACKEND_PORT}
       - FLASK_APP=main.py
-      - PYTHONUNBUFFERED=1
+      - PYTHONUNBUFFERED=1      
+      - MQTT_BROKER_HOST=mosquitto 
 
   frontend:
     build: ./frontend
@@ -35,6 +35,5 @@ services:
       - "${MQTT_BROKER_PORT:-1883}:1883"
     volumes:
       - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./mosquitto-data:/mosquitto/data 
+      - ./mosquitto-data:/mosquitto/data
       - ./mosquitto-log:/mosquitto/log
-
