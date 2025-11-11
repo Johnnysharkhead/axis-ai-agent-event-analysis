@@ -10,6 +10,16 @@ class FloorplanManager:
     @staticmethod
     def meters_to_lon(delta_m, lat_deg):
         return delta_m / (111320.0 * math.cos(math.radians(lat_deg)))  # meters per degree longitude
+    
+    @staticmethod
+    def lat_to_meters(delta_lat):
+        """Convert latitude degrees to meters."""
+        return delta_lat * 111320.0
+
+    @staticmethod
+    def lon_to_meters(delta_lon, lat_deg):
+        """Convert longitude degrees to meters."""
+        return delta_lon * 111320.0 * math.cos(math.radians(lat_deg))
 
     @staticmethod
     def get_floorplan_coordinates(floorplan_dimensions, camera, placed_coords=None):
@@ -35,4 +45,18 @@ class FloorplanManager:
             "bottom_left": bottom_left,
             "bottom_right": bottom_right
         }
+    
+    def calculate_position_on_floorplan(object_lat, object_lon, bottom_left_coords):
+        lat_diff = object_lat - bottom_left_coords[0]
+        lon_diff = object_lon - bottom_left_coords[1]
+
+        lat_diff_m = FloorplanManager.lat_to_meters(lat_diff)
+        lon_diff_m = FloorplanManager.lon_to_meters(lon_diff, object_lat)
+
+        return {
+            "x_m": lon_diff_m,  # East-West offset in meters
+            "y_m": lat_diff_m 
+        }
+
+        
 
