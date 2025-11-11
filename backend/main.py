@@ -22,6 +22,8 @@ from routes.video_routes import video_bp
 #from authentication import auth_bp
 from routes.recording_routes import recording_bp
 from routes.snapshot_routes import snapshot_bp
+from routes.floorplan_routes import floorplan_bp
+from routes.camera_config_routes import camera_config_bp
 
 
 app = Flask(__name__)
@@ -45,6 +47,8 @@ app.register_blueprint(video_bp)
 #app.register_blueprint(auth_bp)
 app.register_blueprint(recording_bp)
 app.register_blueprint(snapshot_bp)
+app.register_blueprint(floorplan_bp)
+app.register_blueprint(camera_config_bp)
 
 try:
     mqtt_client = start_mqtt()

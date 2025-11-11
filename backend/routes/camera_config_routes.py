@@ -6,6 +6,8 @@ import os
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 from flask import Blueprint, request, jsonify
+from domain.models import Camera
+import traceback
 
 camera_config_bp = Blueprint('camera_config', __name__)
 
@@ -63,6 +65,22 @@ def format_coordinate(value, is_longitude=False):
             return f"{val:06.4f}"  # Total 7 chars: 2 digits + dot + 4 decimals
         else:
             return f"{val:07.4f}"  # Total 8 chars with minus sign
+
+@camera_config_bp.route("/cameras", methods = ["GET", "OPTIONS"])
+def cameras():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    if request.method == "GET":
+        try:
+            cameras = Camera.query.all()
+
+            if cameras:
+                return jsonify({"cameras" : [camera.serialize() for camera in cameras]})
+            return jsonify({"message": "no cameras in database"}), 200
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({"error": "failed fetching camears from db"}), 404
 
 
 @camera_config_bp.route("/cameras/<int:camera_id>/geolocation", methods=["POST", "OPTIONS"])
