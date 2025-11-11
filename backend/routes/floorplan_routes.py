@@ -81,15 +81,18 @@ def handle_floorplan(floorplan_id):
             camera_id = camera_data.get('camera_id')
             placed_coords = camera_data.get('placed_coords')
             camera = Camera.query.filter_by(id = camera_id).first()
+            camera.floorplan_id = floorplan_id
             if not camera:
                 return jsonify({"message" : "No camera with id {camera_id} found."})
 
             floorplan_dimensions = (floorplan.width, floorplan.depth)
-            floorplan.corner_coordinates = FloorplanManager.get_floorplan_coordinates(floorplan_dimensions, camera, placed_coords)
+
+            floorplan.camera_floorplancoordinates = placed_coords
+            floorplan.corner_geocoordinates = FloorplanManager.get_floorplan_coordinates(floorplan_dimensions, camera, placed_coords)
             
             db.session.commit()
 
-            return jsonify({'message' : 'camera added to floorplan {floorplan_id}', 'floorplan corner coordinates' : floorplan.corner_coordinates}), 200
+            return jsonify({'message' : 'camera added to floorplan {floorplan_id}', 'floorplan corner coordinates' : floorplan.corner_geocoordinates}), 200
         except Exception as e:
             traceback.print_exc()
             return jsonify({'error' : 'error while adding camera to floorplan {floorplan_id}'}), 400

@@ -59,7 +59,6 @@ function Floormap2D() {
           new_floorplan_id: floorplan.id
         });
         fetchCameras();
-
         // Mark cameras as placed if they have coordinates
         if (floorplan.cameras) {
           const camerasFromFloorplan = floorplan.cameras.map((camera) => ({
@@ -243,17 +242,68 @@ function Floormap2D() {
                 name: floorplan.name,
                 new_floorplan_id: floorplan.id,
               });
-              fetchCameras();
-              // Mark cameras as placed if they have coordinates
-              if (floorplan.cameras) {
-                const camerasFromFloorplan = floorplan.cameras.map((camera) => ({
-                  ...camera,
-                  x: camera.placed_coords ? camera.placed_coords[0] : null,
-                  y: camera.placed_coords ? camera.placed_coords[1] : null,
-                  placed: !!camera.placed_coords,
-                }));
-                setCameras(camerasFromFloorplan);
+              console.log("Floorplan selected");
+              console.log(floorplan);
+
+              // Store pre-placed camera if it exists
+              let prePlacedCamera = null;
+              if (
+                floorplan.camera_floorplancoordinates &&
+                Array.isArray(floorplan.camera_floorplancoordinates)
+              ) {
+                prePlacedCamera = {
+                  id: "virtual",
+                  name: "Previously placed camera",
+                  x: floorplan.camera_floorplancoordinates[0],
+                  y: floorplan.camera_floorplancoordinates[1],
+                  placed: true,
+                };
+                setCameras([prePlacedCamera]);
+              } else {
+                setCameras([]);
               }
+
+              // Always fetch cameras, and merge with pre-placed if needed
+              fetch("http://localhost:5001/cameras")
+                .then((res) => res.json())
+                .then((data) => {
+                  console.log(data)
+                  let fetchedCameras = [];
+                  if (data.cameras) {
+                    fetchedCameras = data.cameras.map((camera) => ({
+                      ...camera,
+                      x: camera.placed_coords ? camera.placed_coords[0] : null,
+                      y: camera.placed_coords ? camera.placed_coords[1] : null,
+                      placed: !!camera.placed_coords,
+                    }));
+                  }
+                  // Merge pre-placed camera if it exists and not already in fetched
+
+                  const placedCameraIds = [];
+                  if (prePlacedCamera && prePlacedCamera.id !== "virtual") {
+                    placedCameraIds.push(prePlacedCamera.id);
+                  }
+                  if (floorplan.cameras && Array.isArray(floorplan.cameras)) {
+                    floorplan.cameras.forEach(cam => {
+                      if (cam.id !== undefined && cam.id !== null) placedCameraIds.push(cam.id);
+                    });
+                  }
+
+                  // Filter out cameras that are already placed
+                  const filteredCameras = fetchedCameras.filter(
+                    (camera) => !placedCameraIds.includes(camera.id)
+                  );
+
+                  // Merge pre-placed camera if it exists
+                  if (prePlacedCamera) {
+                    setCameras([prePlacedCamera, ...filteredCameras]);
+                  } else {
+                    setCameras(filteredCameras);
+                  }
+                })
+                .catch((err) => {
+                  console.error("Failed to fetch cameras:", err);
+                });
             }
           }}
           style={{

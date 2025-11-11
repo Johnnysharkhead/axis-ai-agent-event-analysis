@@ -17,7 +17,7 @@ class Camera(db.Model):
     id               = db.Column(db.Integer, primary_key = True)
     floorplan_id = db.Column(
         db.Integer,
-        db.ForeignKey("floorplans.id", name=fk_name("camera", "floorplan_id")),
+        db.ForeignKey("floorplans.id", name=fk_name("camera", "floorplan_id"), ondelete="SET NULL"),
         nullable=True
     )
     ip_address       = db.Column(db.String, unique = True, nullable = False)
