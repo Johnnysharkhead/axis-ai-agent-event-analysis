@@ -9,7 +9,7 @@ from flask_migrate import Migrate
 import os
 from infrastructure.livestream import VideoCamera
 from infrastructure.video_saver import recording_manager
-from infrastructure.mqtt_client import start_mqtt, get_events
+from infrastructure.mqtt_client import start_mqtt, get_events, register_cameras
 import time
 
 from datetime import datetime
@@ -17,6 +17,7 @@ from domain.models import db
 from application.hls_handler import *
 import routes.authentication as auth2
 from flask_login import LoginManager, login_required, current_user
+
 
 from routes.video_routes import video_bp
 #from authentication import auth_bp
@@ -45,6 +46,16 @@ app.register_blueprint(video_bp)
 #app.register_blueprint(auth_bp)
 app.register_blueprint(recording_bp)
 app.register_blueprint(snapshot_bp)
+
+
+cameras = {
+    1: VideoCamera(os.getenv("CAMERA1_IP", "192.168.0.97")),
+    # 2: VideoCamera(os.getenv("CAMERA2_IP", "192.168.0.98")),
+    # 3: VideoCamera(os.getenv("CAMERA3_IP", "192.168.0.96"))
+}
+
+register_cameras(cameras)
+# client = start_mqtt()
 
 try:
     mqtt_client = start_mqtt()
@@ -87,8 +98,8 @@ backend_port = int(os.getenv("BACKEND_PORT", 5001))
 
 # Configure SQLite database inside instance/
 db_path = os.path.join(app.instance_path, "database.db")
-# app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory"
+# app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
