@@ -26,7 +26,7 @@ def on_connect(client, userdata, flags, rc):
     # Subscribe to Axis Scene Metadata topics
     client.subscribe("com.axis.analytics_scene_description.v0.beta")
     client.subscribe("axis/+/analytics/scene/#")
-    client.subscribe("axis/+/analytics/fusion") 
+    client.subscribe("axis/+/analytics/fusion")
     client.subscribe("axis/+/scene/metadata")
 
     print("[MQTT] Subscribed to Axis Scene Metadata topics")
@@ -47,15 +47,15 @@ def on_message(client, userdata, msg):
 
     # Process scene metadata
     if isinstance(payload, dict):
-        if 'frame' in payload and 'observations' in payload.get('frame', {}):
-            observations = payload['frame']['observations']
+        if "frame" in payload and "observations" in payload.get("frame", {}):
+            observations = payload["frame"]["observations"]
 
             for obs in observations:
                 # Only process humans
-                obj_class = obs.get('class', {})
-                obj_type = obj_class.get('type', '')
+                obj_class = obs.get("class", {})
+                obj_type = obj_class.get("type", "")
 
-                if obj_type in ['Human', 'Person', 'person', 'human']:
+                if obj_type in ["Human", "Person", "person", "human"]:
                     process_person_detection(obs, msg.topic)
 
     # Limit event history
@@ -65,8 +65,8 @@ def on_message(client, userdata, msg):
 
 def process_person_detection(obs, topic):
     """Process and print person detection."""
-    track_id = obs.get('track_id', 'unknown')
-    confidence = obs.get('class', {}).get('score', 0)
+    track_id = obs.get("track_id", "unknown")
+    confidence = obs.get("class", {}).get("score", 0)
 
     # Rate limiting: Print every 2 seconds per track
     current_time = time.time()
@@ -78,8 +78,8 @@ def process_person_detection(obs, topic):
 
     # Extract camera ID from topic
     camera_id = None
-    topic_parts = topic.split('/')
-    if len(topic_parts) >= 2 and topic_parts[0] == 'axis':
+    topic_parts = topic.split("/")
+    if len(topic_parts) >= 2 and topic_parts[0] == "axis":
         camera_id = topic_parts[1]
 
     # DEBUG: Print all observation fields to see what camera sends
@@ -88,24 +88,34 @@ def process_person_detection(obs, topic):
         print(f"  {key}: {value}")
 
     # Get geographic coordinates (from camera's built-in geolocation)
-    geo_coords = obs.get('geographical_coordinate') or obs.get('position') or obs.get('geolocation') or obs.get('geoposition')
+    geo_coords = (
+        obs.get("geoposition")
+        or obs.get("geographical_coordinate")
+        or obs.get("position")
+        or obs.get("geolocation")
+        or obs.get("geoposition")
+    )
 
-    #Get spherical coordinates (from camera's built-in radar)
-    spherical = obs.get('spherical_coordinate', {})
+    # Get spherical coordinates (from camera's built-in radar)
+    spherical = obs.get("spherical_coordinate", {})
 
     # Print detection
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"[PERSON DETECTED]")
     print(f"Camera: {camera_id or 'Unknown'}")
     print(f"Track ID: {track_id}")
-    print(f"Confidence: {confidence:.1%}" if isinstance(confidence, (int, float)) else f"Confidence: {confidence}")
+    print(
+        f"Confidence: {confidence:.1%}"
+        if isinstance(confidence, (int, float))
+        else f"Confidence: {confidence}"
+    )
     print("-" * 60)
 
     # Print geographic coordinates
     if geo_coords and isinstance(geo_coords, dict):
-        lat = geo_coords.get('latitude')
-        lon = geo_coords.get('longitude')
-        alt = geo_coords.get('altitude')
+        lat = geo_coords.get("latitude")
+        lon = geo_coords.get("longitude")
+        alt = geo_coords.get("altitude")
 
         print(f"Geographic Position:")
         print(f"  Latitude:  {lat}")
@@ -116,27 +126,11 @@ def process_person_detection(obs, topic):
         print(f"Geographic Position: NOT AVAILABLE")
         print(f"  Camera needs geolocation configuration")
 
-    print()
-
-    # Print radar distance data
-    if spherical and isinstance(spherical, dict):
-        distance = spherical.get('range')
-        azimuth = spherical.get('azimuth')
-        elevation = spherical.get('elevation')
-
-        print(f"Radar Data (Spherical Coordinates):")
-        print(f"  Distance:  {distance} m" if distance is not None else "  Distance:  N/A")
-        print(f"  Azimuth:   {azimuth}°" if azimuth is not None else "  Azimuth:   N/A")
-        print(f"  Elevation: {elevation}°" if elevation is not None else "  Elevation: N/A")
-    else:
-        print(f"Radar Data: NOT AVAILABLE")
-        print(f"  Camera radar not configured or person out of range")
-
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
 
 def start_mqtt():
-   
+
     broker_host = os.getenv("MQTT_BROKER_HOST", "localhost")
     broker_port = int(os.getenv("MQTT_BROKER_PORT", 1883))
 
