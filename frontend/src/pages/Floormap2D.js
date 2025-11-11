@@ -8,42 +8,167 @@ function Floormap2D() {
   const [cameras, setCameras] = useState([]);
   const [highlightEdges, setHighlightEdges] = useState(false);
   const [firstCameraPlaced, setFirstCameraPlaced] = useState(false);
+  const [floorplans, setFloorplans] = useState([]);
+  const [selectedFloorplan, setSelectedFloorplan] = useState(null);
 
+  
+  useEffect(() => {
+    fetch("http://localhost:5001/floorplan")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.floorplans) {
+          setFloorplans(data.floorplans);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch floorplans:", err));
+  }, []);
+
+  const fetchCameras = () => {
+    fetch("http://localhost:5001/cameras")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.cameras) {
+          const updatedCameras = data.cameras.map((camera) => ({
+            ...camera,
+            x: null,
+            y: null,
+            placed: false,
+          }));
+          setCameras(updatedCameras);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch cameras:", err);
+      });
+  };
+
+  <div style={{ marginBottom: "1rem" }}>
+  <label htmlFor="floorplanSelect">Select Floorplan: </label>
+  <select
+    id="floorplanSelect"
+    value={selectedFloorplan?.id || ""}
+    onChange={(e) => {
+      const floorplan = floorplans.find(fp => fp.id === parseInt(e.target.value));
+      setSelectedFloorplan(floorplan);
+      if (floorplan) {
+        setRoomConfig({
+          width: floorplan.width,
+          depth: floorplan.depth,
+          cameraHeight: floorplan.camera_height || 2,
+          name: floorplan.name,
+          new_floorplan_id: floorplan.id
+        });
+        fetchCameras();
+
+        // Mark cameras as placed if they have coordinates
+        if (floorplan.cameras) {
+          const camerasFromFloorplan = floorplan.cameras.map((camera) => ({
+            ...camera,
+            x: camera.placed_coords ? camera.placed_coords[0] : null,
+            y: camera.placed_coords ? camera.placed_coords[1] : null,
+            placed: !!camera.placed_coords
+          }));
+          setCameras(camerasFromFloorplan);
+        }
+      }
+    }}
+  >
+    <option value="">-- Select a floorplan --</option>
+    {floorplans.map((fp) => (
+      <option key={fp.id} value={fp.id}>
+        {fp.name}
+      </option>
+    ))}
+  </select>
+</div>
+
+
+  const handleFetchFloorplans = () => {
+    fetch("http://localhost:5001/floorplan", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.floorplans) {
+          console.log("Fetched floorplans:", data.floorplans);
+          setFloorplans(data.floorplans); // Spara floorplans i state
+        } else {
+          console.error("No floorplans found in the database.");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch floorplans:", err);
+      });
+  };
+  const handleSelectFloorplan = (floorplanId) => {
+    fetch(`http://localhost:5001/floorplan/${floorplanId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.floorplan) {
+          const { width, depth, camera_height, cameras } = data.floorplan;
+          setRoomConfig({ width, depth, cameraHeight: camera_height }); // Uppdatera roomConfig
+          setCameras(
+            cameras.map((camera) => ({
+              ...camera,
+              placed: true, // Markera kameror som placerade
+            }))
+          );
+          console.log(`Loaded floorplan: ${data.floorplan.name}`);
+          
+        } else {
+          console.error("No floorplan found.");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch floorplan:", err);
+      });
+  };
+
+  useEffect(() => {
+    handleFetchFloorplans();
+  }, []);
+  
+  
   // Fetch cameras from the backend when the component mounts
   const handleSaveConfig = (newConfig) => {
     setRoomConfig(newConfig);
-      fetch("http://localhost:5001/floorplan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          floorplan_name: newConfig.name,
-          floorplan_width: newConfig.width,
-          floorplan_depth: newConfig.depth,
-          camera_height: newConfig.cameraHeight,
-        }),
-      })
+    fetch("http://localhost:5001/floorplan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        floorplan_name: newConfig.name,
+        floorplan_width: newConfig.width,
+        floorplan_depth: newConfig.depth,
+        camera_height: newConfig.cameraHeight,
+      }),
+    })
       .then((res) => res.json())
       .then((data) => {
         console.log("Floorplan POST response:", data);
         newConfig.new_floorplan_id = data.new_floorplan_id;
-    
+        fetchCameras();
+
         // Fetch cameras only after room is created
-        fetch("http://localhost:5001/cameras")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.cameras) {
-            const updatedCameras = data.cameras.map((camera) => ({
-              ...camera,
-              x: null,
-              y: null,
-              placed: false,
-            }));
-            setCameras(updatedCameras);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to fetch cameras:", err);
-        });
+        // fetch("http://localhost:5001/cameras")
+        //   .then((res) => res.json())
+        //   .then((data) => {
+        //     if (data.cameras) {
+        //       const updatedCameras = data.cameras.map((camera) => ({
+        //         ...camera,
+        //         x: null,
+        //         y: null,
+        //         placed: false,
+        //       }));
+        //       setCameras(updatedCameras);
+        //     }
+        //   })
+        //   .catch((err) => {
+        //     console.error("Failed to fetch cameras:", err);
+        //   });
       })
       .catch((err) => {
         console.error("Failed to add floorplan:", err);
@@ -97,7 +222,57 @@ function Floormap2D() {
       <header className="header">
         <h1 className="title">Floormap 2D</h1>
       </header>
-
+  
+      {/* Dropdown-meny för att välja en floorplan */}
+      <div style={{ marginBottom: "1rem" }}>
+        <label htmlFor="floorplan-select" style={{ marginRight: "0.5rem" }}>
+          Select a Floorplan:
+        </label>
+        <select
+          id="floorplan-select"
+          value={selectedFloorplan?.id || ""}
+          onChange={(e) => {
+            const floorplan = floorplans.find(fp => fp.id === parseInt(e.target.value));
+            setSelectedFloorplan(floorplan);
+  
+            if (floorplan) {
+              setRoomConfig({
+                width: floorplan.width,
+                depth: floorplan.depth,
+                cameraHeight: floorplan.camera_height || 2,
+                name: floorplan.name,
+                new_floorplan_id: floorplan.id,
+              });
+              fetchCameras();
+              // Mark cameras as placed if they have coordinates
+              if (floorplan.cameras) {
+                const camerasFromFloorplan = floorplan.cameras.map((camera) => ({
+                  ...camera,
+                  x: camera.placed_coords ? camera.placed_coords[0] : null,
+                  y: camera.placed_coords ? camera.placed_coords[1] : null,
+                  placed: !!camera.placed_coords,
+                }));
+                setCameras(camerasFromFloorplan);
+              }
+            }
+          }}
+          style={{
+            padding: "0.5rem",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+          }}
+        >
+          <option value="">-- Select a Floorplan --</option>
+          {floorplans.map((fp) => (
+            <option key={fp.id} value={fp.id}>
+              {fp.name}
+            </option>
+          ))}
+        </select>
+      </div>
+  
+      {/* Resten av din komponent */}
       {/* Toggle Configuration Panel */}
       <button
         onClick={() => setIsConfigVisible(!isConfigVisible)}
@@ -114,10 +289,10 @@ function Floormap2D() {
       >
         {isConfigVisible ? "Hide Configuration" : "Show Configuration"}
       </button>
-
+  
       {/* Room Configuration Panel */}
       {isConfigVisible && <RoomConfiguration onSave={handleSaveConfig} />}
-
+  
       {/* Room Map */}
       <div
         style={{
@@ -138,13 +313,13 @@ function Floormap2D() {
           const rect = e.target.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
-
+  
           const isOnEdge =
             x <= 10 ||
             x >= rect.width - 10 ||
             y <= 10 ||
             y >= rect.height - 10;
-
+  
           setHighlightEdges(isOnEdge);
         }}
         onDragLeave={() => setHighlightEdges(false)}
@@ -154,22 +329,22 @@ function Floormap2D() {
           const rect = e.target.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
-
+  
           const isOnEdge =
             x <= 10 ||
             x >= rect.width - 10 ||
             y <= 10 ||
             y >= rect.height - 10;
-
+  
           if (isOnEdge) {
             let normalizedX = (x / rect.width) * roomConfig.width;
             let normalizedY = roomConfig.depth - (y / rect.height) * roomConfig.depth;
-
+  
             if (x <= 10) normalizedX = 0;
             if (x >= rect.width - 10) normalizedX = roomConfig.width;
             if (y <= 10) normalizedY = roomConfig.depth;
             if (y >= rect.height - 10) normalizedY = 0;
-
+  
             handleDropCamera(cameraId, normalizedX, normalizedY);
           } else {
             console.log("Camera must be placed on the edge!");
@@ -186,7 +361,7 @@ function Floormap2D() {
                 position: "absolute",
                 left: `${(camera.x / roomConfig.width) * 100}%`,
                 bottom: `${(camera.y / roomConfig.depth) * 100}%`,
-                transform: "translate(-50%, 50%)", // Center the circle on the edge
+                transform: "translate(-50%, 50%)",
                 width: "10px",
                 height: "10px",
                 backgroundColor: "blue",
