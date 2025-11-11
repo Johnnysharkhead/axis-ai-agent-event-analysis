@@ -11,45 +11,45 @@ function Floormap2D() {
 
   // Fetch cameras from the backend when the component mounts
   const handleSaveConfig = (newConfig) => {
-        setRoomConfig(newConfig);
-        fetch("http://localhost:5001/floorplan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            floorplan_name: newConfig.name,
-            floorplan_width: newConfig.width,
-            floorplan_depth: newConfig.depth,
-            camera_height: newConfig.cameraHeight,
-          }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            console.log("Floorplan POST response:", data);
-            newConfig.new_floorplan_id = data.new_floorplan_id;
+    setRoomConfig(newConfig);
+      fetch("http://localhost:5001/floorplan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          floorplan_name: newConfig.name,
+          floorplan_width: newConfig.width,
+          floorplan_depth: newConfig.depth,
+          camera_height: newConfig.cameraHeight,
+        }),
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Floorplan POST response:", data);
+        newConfig.new_floorplan_id = data.new_floorplan_id;
     
-            // Fetch cameras only after room is created
-            fetch("http://localhost:5001/cameras")
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.cameras) {
-                  const updatedCameras = data.cameras.map((camera) => ({
-                    ...camera,
-                    x: null,
-                    y: null,
-                    placed: false,
-                  }));
-                  setCameras(updatedCameras);
-                }
-              })
-              .catch((err) => {
-                console.error("Failed to fetch cameras:", err);
-              });
-          })
-          .catch((err) => {
-            console.error("Failed to add floorplan:", err);
-          });
-        console.log("Room Configuration Saved:", newConfig);
-      };
+        // Fetch cameras only after room is created
+        fetch("http://localhost:5001/cameras")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.cameras) {
+            const updatedCameras = data.cameras.map((camera) => ({
+              ...camera,
+              x: null,
+              y: null,
+              placed: false,
+            }));
+            setCameras(updatedCameras);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch cameras:", err);
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to add floorplan:", err);
+      });
+    console.log("Room Configuration Saved:", newConfig);
+  };
 
   const handleDropCamera = (cameraId, normalizedX, normalizedY) => {
     setCameras((prevCameras) =>
