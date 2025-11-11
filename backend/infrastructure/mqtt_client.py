@@ -83,7 +83,6 @@ def record_event_clip(camera_id, timestamp):
 
 
 def handle_intrusion_event(topic, payload):
-    """处理入侵事件"""
     try:
         os.makedirs(EVENT_DIR, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
