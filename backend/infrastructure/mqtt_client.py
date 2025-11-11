@@ -9,6 +9,12 @@ import os
 import time
 import paho.mqtt.client as mqtt
 
+# START  ----------
+import json
+import re
+
+# STOP ----------
+
 # In-memory store for API access
 events = []
 
@@ -26,7 +32,7 @@ def on_connect(client, userdata, flags, rc):
     # Subscribe to Axis Scene Metadata topics
     client.subscribe("com.axis.analytics_scene_description.v0.beta")
     client.subscribe("axis/+/analytics/scene/#")
-    client.subscribe("axis/+/analytics/fusion")
+    client.subscribe("axis/+/analytics/fusion/#")
     client.subscribe("axis/+/scene/metadata")
 
     print("[MQTT] Subscribed to Axis Scene Metadata topics")
@@ -41,6 +47,16 @@ def on_message(client, userdata, msg):
     except:
         payload = msg.payload.decode()
 
+    # START Added By delber You could remove this -------------------------
+    if is_fusion_topic(msg.topic):
+        handle_fusion_message(msg.topic, payload)
+
+    # (keep your existing storage + person-processing logic)
+    event = {"topic": msg.topic, "payload": payload}
+    events.append(event)
+    if len(events) > 200:
+        events.pop(0)
+    # STOP ----------------------------------------------------------
     # Store event for API access
     event = {"topic": msg.topic, "payload": payload}
     events.append(event)
@@ -150,3 +166,30 @@ def start_mqtt():
 def get_events():
     """Return recent MQTT events for API access."""
     return events[-50:]
+
+
+# Added by Delber in case you want to remove this its fine
+# Match: axis/<camera-id>/analytics/fusion (optionally with subpaths)
+FUSION_TOPIC_RE = re.compile(r"^axis/([^/]+)/analytics/fusion(?:/.*)?$")
+
+
+def is_fusion_topic(topic: str) -> bool:
+    return bool(FUSION_TOPIC_RE.match(topic))
+
+
+def handle_fusion_message(topic: str, payload):
+    """
+    Pretty-print everything the Fusion topic publishes,
+    plus a compact summary of observations if present.
+    """
+    print("\n" + "=" * 80)
+    print(f"[FUSION] topic = {topic}")
+
+    # Raw dump (exactly what the camera sent)
+    if isinstance(payload, (dict, list)):
+        print(
+            "[FUSION][RAW]\n"
+            + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
+        )
+    else:
+        print("[FUSION][RAW]\n" + str(payload))
