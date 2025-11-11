@@ -1,15 +1,19 @@
-"""
-Camera Configuration Routes
-Handles camera geolocation, orientation, and restart operations
-"""
+
+#Camera Configuration Routes
+#geolocation, orientation and restart
+#Will test with cameras 12/11
+
 import os
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
+from flask_cors import CORS
+from functools import wraps
 from domain.models import Camera
 import traceback
 
 camera_config_bp = Blueprint('camera_config', __name__)
+CORS(camera_config_bp, origins=["http://localhost:3000"], supports_credentials=True)
 
 # Camera configuration from environment
 CAMERA_IPS = {
@@ -22,75 +26,100 @@ CAMERA_PASS = os.getenv("camera_password", "pass")
 
 
 def camera_request(url, timeout=10):
-    """
-    Make authenticated request to camera, trying both Basic and Digest auth
-    (similar to curl --anyauth)
-    """
-    # Try Basic auth first
-    response = requests.get(url, auth=HTTPBasicAuth(CAMERA_USER, CAMERA_PASS), timeout=timeout)
+    try:
+        response = requests.get(url, auth=HTTPBasicAuth(CAMERA_USER, CAMERA_PASS), timeout=timeout)
+        if response.status_code == 401:
+            response = requests.get(url, auth=HTTPDigestAuth(CAMERA_USER, CAMERA_PASS), timeout=timeout)
+        return response, None
+    except requests.exceptions.RequestException as e:
+        return None, str(e)
 
-    # If 401, try Digest auth
-    if response.status_code == 401:
-        response = requests.get(url, auth=HTTPDigestAuth(CAMERA_USER, CAMERA_PASS), timeout=timeout)
+#Helper, validate camera id
+def validate_camera_id(f):
+    @wraps(f)
+    def decorated_function(camera_id, *args, **kwargs):
+        if camera_id not in CAMERA_IPS:
+            return jsonify({"error": f"Camera {camera_id} not found"}), 404
+        g.camera_ip = CAMERA_IPS[camera_id]
+        g.camera_id = camera_id
+        return f(camera_id, *args, **kwargs)
+    return decorated_function
 
-    return response
+#Helper
+def make_camera_response(response, error, success_data=None):
+    if error:
+        return jsonify({"error": f"Connection error: {error}"}), 500
 
+    if response.status_code == 200:
+        result = {"success": True, "camera_id": g.camera_id}
+        if success_data:
+            result.update(success_data)
+        result["response"] = response.text
+        return jsonify(result), 200
+    else:
+        return jsonify({
+            "error": "Request failed",
+            "status_code": response.status_code,
+            "response": response.text
+        }), response.status_code
 
-def _build_cors_preflight_response():
-    """Handle CORS preflight OPTIONS requests"""
-    response = jsonify({"message": "CORS preflight"})
-    response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
-    response.headers.add("Access-Control-Allow-Credentials", "true")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET, PUT, POST, PATCH, DELETE, OPTIONS")
-    return response
-
-
+#Format cords to ISO 6709 so it works with axis cameras
 def format_coordinate(value, is_longitude=False):
-    """
-    Format coordinate to ISO 6709 standard
-    - Latitude: 2 digits before decimal (e.g., 58.3977)
-    - Longitude: 3 digits before decimal with leading zero if needed (e.g., 015.5765)
-    """
     val = float(value)
     if is_longitude:
         # Format as +/-XXX.XXXX (3 digits before decimal)
         if val >= 0:
-            return f"{val:07.4f}"  # Total 8 chars: 3 digits + dot + 4 decimals
+            return f"{val:07.4f}"  # Total 7 chars: 3 digits + dot + 4 decimals
         else:
-            return f"{val:08.4f}"  # Total 9 chars with minus sign
+            return f"{val:08.4f}"  # Total 8 chars with minus sign
     else:
         # Format as +/-XX.XXXX (2 digits before decimal)
         if val >= 0:
-            return f"{val:06.4f}"  # Total 7 chars: 2 digits + dot + 4 decimals
+            return f"{val:06.4f}"  # Total 6 chars: 2 digits + dot + 4 decimals
         else:
-            return f"{val:07.4f}"  # Total 8 chars with minus sign
+            return f"{val:07.4f}"  # Total 7 chars with minus sign
 
-@camera_config_bp.route("/cameras", methods = ["GET", "OPTIONS"])
+#Sets cameras geolocation
+def set_geolocation(camera_ip, lat, lng):
+    formatted_lat = format_coordinate(lat, is_longitude=False)
+    formatted_lng = format_coordinate(lng, is_longitude=True)
+    url = f"http://{camera_ip}/axis-cgi/geolocation/set.cgi?lat={formatted_lat}&lng={formatted_lng}"
+    response, error = camera_request(url)
+    return response, error, formatted_lat, formatted_lng
+
+#Sets cameras orientation
+def set_orientation(camera_ip, tilt, heading, inst_height, elevation=None):
+    """Helper to set camera orientation"""
+    url = f"http://{camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=set&tilt={tilt}&heading={heading}&inst_height={inst_height}"
+    if elevation is not None:
+        url += f"&elevation={elevation}"
+    response, error = camera_request(url)
+    return response, error
+
+#List cameras
+@camera_config_bp.route("/cameras", methods=["GET", "OPTIONS"])
 def cameras():
+    """Get list of cameras from database"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-    
+        return jsonify({"message": "CORS preflight"}), 200
+
     if request.method == "GET":
         try:
             cameras = Camera.query.filter(Camera.floorplan_id == None).all()
 
             if cameras:
-                return jsonify({"cameras" : [camera.serialize() for camera in cameras]})
+                return jsonify({"cameras": [camera.serialize() for camera in cameras]})
             return jsonify({"message": "no cameras in database"}), 200
         except Exception as e:
             traceback.print_exc()
-            return jsonify({"error": "failed fetching camears from db"}), 404
+            return jsonify({"error": "failed fetching cameras from db"}), 404
 
-
+#Route to set ONLY camera geolocation by camera id, might be reduntant
 @camera_config_bp.route("/cameras/<int:camera_id>/geolocation", methods=["POST", "OPTIONS"])
+@validate_camera_id
 def set_camera_geolocation(camera_id):
-    """Set camera geolocation (latitude, longitude)"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+        return jsonify({"message": "CORS preflight"}), 200
 
     data = request.get_json()
     lat = data.get("latitude")
@@ -99,44 +128,20 @@ def set_camera_geolocation(camera_id):
     if lat is None or lng is None:
         return jsonify({"error": "latitude and longitude are required"}), 400
 
-    camera_ip = CAMERA_IPS[camera_id]
+    response, error, formatted_lat, formatted_lng = set_geolocation(g.camera_ip, lat, lng)
 
-    # Format coordinates according to ISO 6709
-    formatted_lat = format_coordinate(lat, is_longitude=False)
-    formatted_lng = format_coordinate(lng, is_longitude=True)
+    return make_camera_response(response, error, {
+        "latitude": formatted_lat,
+        "longitude": formatted_lng
+    })
 
-    url = f"http://{camera_ip}/axis-cgi/geolocation/set.cgi?lat={formatted_lat}&lng={formatted_lng}"
-
-    try:
-        response = camera_request(url)
-
-        if response.status_code == 200:
-            return jsonify({
-                "success": True,
-                "camera_id": camera_id,
-                "latitude": formatted_lat,
-                "longitude": formatted_lng,
-                "response": response.text
-            }), 200
-        else:
-            return jsonify({
-                "error": "Failed to set geolocation",
-                "status_code": response.status_code,
-                "response": response.text
-            }), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
-
-
+#Route to set ONLY camera orientation by camera id, might be reduntant
 @camera_config_bp.route("/cameras/<int:camera_id>/orientation", methods=["POST", "OPTIONS"])
+@validate_camera_id
 def set_camera_orientation(camera_id):
     """Set camera orientation (tilt, heading, elevation, installation height)"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+        return jsonify({"message": "CORS preflight"}), 200
 
     data = request.get_json()
     tilt = data.get("tilt")
@@ -147,80 +152,38 @@ def set_camera_orientation(camera_id):
     if tilt is None or heading is None or inst_height is None:
         return jsonify({"error": "tilt, heading, and installation_height are required"}), 400
 
-    camera_ip = CAMERA_IPS[camera_id]
+    response, error = set_orientation(g.camera_ip, tilt, heading, inst_height, elevation)
 
-    # Build URL with required parameters
-    url = f"http://{camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=set&tilt={tilt}&heading={heading}&inst_height={inst_height}"
-
-    # Add optional elevation parameter if provided
+    success_data = {
+        "tilt": tilt,
+        "heading": heading,
+        "installation_height": inst_height
+    }
     if elevation is not None:
-        url += f"&elevation={elevation}"
+        success_data["elevation"] = elevation
 
-    try:
-        response = camera_request(url)
+    return make_camera_response(response, error, success_data)
 
-        result = {
-            "success": True,
-            "camera_id": camera_id,
-            "tilt": tilt,
-            "heading": heading,
-            "installation_height": inst_height,
-            "response": response.text
-        }
-
-        if elevation is not None:
-            result["elevation"] = elevation
-
-        if response.status_code == 200:
-            return jsonify(result), 200
-        else:
-            return jsonify({
-                "error": "Failed to set orientation",
-                "status_code": response.status_code,
-                "response": response.text
-            }), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
-
-
+#ONLY restart cameras by ID, might be reduntant
 @camera_config_bp.route("/cameras/<int:camera_id>/restart", methods=["POST", "OPTIONS"])
+@validate_camera_id
 def restart_camera(camera_id):
-    """Restart camera"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
+        return jsonify({"message": "CORS preflight"}), 200
 
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+    url = f"http://{g.camera_ip}/axis-cgi/restart.cgi"
+    response, error = camera_request(url)
 
-    camera_ip = CAMERA_IPS[camera_id]
-    url = f"http://{camera_ip}/axis-cgi/restart.cgi"
+    return make_camera_response(response, error, {
+        "message": "Camera restart initiated"
+    })
 
-    try:
-        response = camera_request(url)
-
-        if response.status_code == 200:
-            return jsonify({
-                "success": True,
-                "camera_id": camera_id,
-                "message": "Camera restart initiated"
-            }), 200
-        else:
-            return jsonify({
-                "error": "Failed to restart camera",
-                "status_code": response.status_code,
-                "response": response.text
-            }), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
-
-
+#This route is for setting geolocation, orientation and restarting
 @camera_config_bp.route("/cameras/<int:camera_id>/configure", methods=["POST", "OPTIONS"])
+@validate_camera_id
 def configure_camera(camera_id):
     """
-    Configure camera geolocation, orientation, and restart in one request
-
+    Configure camera in one request
     Request body:
     {
         "latitude": 58.3977,
@@ -233,158 +196,91 @@ def configure_camera(camera_id):
     }
     """
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+        return jsonify({"message": "CORS preflight"}), 200
 
     data = request.get_json()
     results = {"camera_id": camera_id, "steps": []}
 
-    # Step 1: Set Geolocation
+    #Set Geolocation
     if "latitude" in data and "longitude" in data:
-        lat = data["latitude"]
-        lng = data["longitude"]
-        camera_ip = CAMERA_IPS[camera_id]
+        response, error, formatted_lat, formatted_lng = set_geolocation(
+            g.camera_ip, data["latitude"], data["longitude"]
+        )
 
-        formatted_lat = format_coordinate(lat, is_longitude=False)
-        formatted_lng = format_coordinate(lng, is_longitude=True)
-
-        url = f"http://{camera_ip}/axis-cgi/geolocation/set.cgi?lat={formatted_lat}&lng={formatted_lng}"
-
-        try:
-            response = camera_request(url)
+        if error:
+            results["steps"].append({"step": "geolocation", "success": False, "error": error})
+        else:
             results["steps"].append({
                 "step": "geolocation",
                 "success": response.status_code == 200,
                 "latitude": formatted_lat,
                 "longitude": formatted_lng
             })
-        except requests.exceptions.RequestException as e:
-            results["steps"].append({
-                "step": "geolocation",
-                "success": False,
-                "error": str(e)
-            })
 
-    # Step 2: Set Orientation
+    #Set Orientation
     if "tilt" in data and "heading" in data and "installation_height" in data:
-        tilt = data["tilt"]
-        heading = data["heading"]
-        elevation = data.get("elevation")
-        inst_height = data["installation_height"]
-        camera_ip = CAMERA_IPS[camera_id]
+        response, error = set_orientation(
+            g.camera_ip,
+            data["tilt"],
+            data["heading"],
+            data["installation_height"],
+            data.get("elevation")
+        )
 
-        url = f"http://{camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=set&tilt={tilt}&heading={heading}&inst_height={inst_height}"
-
-        # Add optional elevation parameter if provided
-        if elevation is not None:
-            url += f"&elevation={elevation}"
-
-        try:
-            response = camera_request(url)
+        if error:
+            results["steps"].append({"step": "orientation", "success": False, "error": error})
+        else:
             step_result = {
                 "step": "orientation",
                 "success": response.status_code == 200,
-                "tilt": tilt,
-                "heading": heading,
-                "installation_height": inst_height
+                "tilt": data["tilt"],
+                "heading": data["heading"],
+                "installation_height": data["installation_height"]
             }
-            if elevation is not None:
-                step_result["elevation"] = elevation
+            if data.get("elevation") is not None:
+                step_result["elevation"] = data["elevation"]
             results["steps"].append(step_result)
-        except requests.exceptions.RequestException as e:
-            results["steps"].append({
-                "step": "orientation",
-                "success": False,
-                "error": str(e)
-            })
 
-    # Step 3: Restart (optional)
+    #Restart
     if data.get("restart", False):
-        camera_ip = CAMERA_IPS[camera_id]
-        url = f"http://{camera_ip}/axis-cgi/restart.cgi"
+        url = f"http://{g.camera_ip}/axis-cgi/restart.cgi"
+        response, error = camera_request(url)
 
-        try:
-            response = camera_request(url)
+        if error:
+            results["steps"].append({"step": "restart", "success": False, "error": error})
+        else:
             results["steps"].append({
                 "step": "restart",
                 "success": response.status_code == 200,
                 "message": "Camera restart initiated"
             })
-        except requests.exceptions.RequestException as e:
-            results["steps"].append({
-                "step": "restart",
-                "success": False,
-                "error": str(e)
-            })
 
-    # Check overall success
+    #Check success
     all_success = all(step.get("success", False) for step in results["steps"])
     results["success"] = all_success
 
-    return jsonify(results), 200 if all_success else 207  # 207 = Multi-Status
+    return jsonify(results), 200 if all_success else 207
 
-
+#Get current geolocation of camera
 @camera_config_bp.route("/cameras/<int:camera_id>/geolocation", methods=["GET", "OPTIONS"])
+@validate_camera_id
 def get_camera_geolocation(camera_id):
-    """Get current camera geolocation"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
+        return jsonify({"message": "CORS preflight"}), 200
 
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+    url = f"http://{g.camera_ip}/axis-cgi/geolocation/get.cgi"
+    response, error = camera_request(url)
 
-    camera_ip = CAMERA_IPS[camera_id]
-    url = f"http://{camera_ip}/axis-cgi/geolocation/get.cgi"
+    return make_camera_response(response, error)
 
-    try:
-        response = camera_request(url)
-
-        if response.status_code == 200:
-            return jsonify({
-                "success": True,
-                "camera_id": camera_id,
-                "response": response.text
-            }), 200
-        else:
-            return jsonify({
-                "error": "Failed to get geolocation",
-                "status_code": response.status_code,
-                "response": response.text
-            }), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
-
-
+#Get current orientation of camera
 @camera_config_bp.route("/cameras/<int:camera_id>/orientation", methods=["GET", "OPTIONS"])
+@validate_camera_id
 def get_camera_orientation(camera_id):
-    """Get current camera orientation"""
     if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
+        return jsonify({"message": "CORS preflight"}), 200
 
-    if camera_id not in CAMERA_IPS:
-        return jsonify({"error": f"Camera {camera_id} not found"}), 404
+    url = f"http://{g.camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=get"
+    response, error = camera_request(url)
 
-    camera_ip = CAMERA_IPS[camera_id]
-    url = f"http://{camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=get"
-
-    try:
-        response = camera_request(url)
-
-        if response.status_code == 200:
-            return jsonify({
-                "success": True,
-                "camera_id": camera_id,
-                "response": response.text
-            }), 200
-        else:
-            return jsonify({
-                "error": "Failed to get orientation",
-                "status_code": response.status_code,
-                "response": response.text
-            }), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
+    return make_camera_response(response, error)
