@@ -3,14 +3,18 @@
 #geolocation, orientation and restart
 #Will test with cameras 12/11
 
+import json
 import os
+import time
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
-from flask import Blueprint, request, jsonify, g
+from infrastructure.mqtt_client import get_events
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from functools import wraps
 from domain.models import Camera
 import traceback
+from infrastructure.floorplan_handler import FloorplanManager
 
 camera_config_bp = Blueprint('camera_config', __name__)
 CORS(camera_config_bp, origins=["http://localhost:3000"], supports_credentials=True)
@@ -284,3 +288,37 @@ def get_camera_orientation(camera_id):
     response, error = camera_request(url)
 
     return make_camera_response(response, error)
+
+@camera_config_bp.route('/stream/positions')
+def stream_positions():
+    def generate():
+
+        tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
+        last_sent = {}
+        while True:
+            for event in get_events():
+                payload = event.get('payload', {})
+                if isinstance(payload, dict) and 'frame' in payload:
+                    obs_list = payload['frame'].get('observations', [])
+                    for obs in obs_list:
+                        track_id = obs.get('track_id')
+                        geo = obs.get('geoposition', {})
+                        if track_id and geo:
+                            lat = geo.get('latitude')
+                            lon = geo.get('longitude')
+                            if lat is not None and lon is not None:
+                                pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan(
+                                    float(lat), float(lon), tmp_bottom_left_coord
+                                )
+                                data = {
+                                    'track_id': track_id,
+                                    'x_m': pos_on_floorplan['x_m'],
+                                    'y_m': pos_on_floorplan['y_m'],
+                                }
+                                if last_sent.get(track_id) != data:
+                                    yield f"data: {json.dumps(data)}\n\n"
+                                    last_sent[track_id] = data
+            time.sleep(0.5)
+    return Response(stream_with_context(generate()),
+                    mimetype='text/event-stream')
+

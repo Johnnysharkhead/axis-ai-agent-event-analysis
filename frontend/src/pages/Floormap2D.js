@@ -11,6 +11,12 @@ function Floormap2D() {
   const [floorplans, setFloorplans] = useState([]);
   const [selectedFloorplan, setSelectedFloorplan] = useState(null);
 
+  const eventSource = new EventSource('/stream/positions');
+  eventSource.onmessage = (e) => {
+      const pos = JSON.parse(e.data);
+      console.log(pos)
+      // updatePersonOnMap(pos.track_id, pos.lat, pos.lon);
+  }
   
   useEffect(() => {
     fetch("http://localhost:5001/floorplan")
@@ -150,24 +156,6 @@ function Floormap2D() {
         console.log("Floorplan POST response:", data);
         newConfig.new_floorplan_id = data.new_floorplan_id;
         fetchCameras();
-
-        // Fetch cameras only after room is created
-        // fetch("http://localhost:5001/cameras")
-        //   .then((res) => res.json())
-        //   .then((data) => {
-        //     if (data.cameras) {
-        //       const updatedCameras = data.cameras.map((camera) => ({
-        //         ...camera,
-        //         x: null,
-        //         y: null,
-        //         placed: false,
-        //       }));
-        //       setCameras(updatedCameras);
-        //     }
-        //   })
-        //   .catch((err) => {
-        //     console.error("Failed to fetch cameras:", err);
-        //   });
       })
       .catch((err) => {
         console.error("Failed to add floorplan:", err);
