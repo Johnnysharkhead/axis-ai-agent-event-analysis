@@ -15,7 +15,7 @@
   // Handles input changes and resets error
   // Handles form submission, calls loginUser, and manages loading/error states
   // Renders login form, error messages, and link to signup
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Signup.css';
 import { loginUser } from '../utils/api';
@@ -27,6 +27,16 @@ function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && error.includes('Try again')) {
+      setError('');
+    }
+  }, [countdown, error]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,6 +49,7 @@ function Login() {
       setError('Email and password are required.');
       return;
     }
+    if (countdown > 0) return; // Prevent submission during countdown
     setLoading(true);
     try {
       const res = await loginUser(form);
@@ -47,6 +58,9 @@ function Login() {
         navigate('/dashboard');
       } else {
         setError(res?.message || 'Invalid credentials.');
+        if (res?.remaining_seconds) {
+          setCountdown(res.remaining_seconds);
+        }
       }
     } catch (err) {
       setError('Unexpected error. Please try again.');
@@ -67,7 +81,8 @@ function Login() {
         </div>
         <h2 className="auth-title">Welcome back</h2>
         <form className="signup-form" onSubmit={handleSubmit}>
-          {error && <div className="auth-error">{error}</div>}
+          {error && countdown === 0 && <div className="auth-error">{error}</div>}
+          {countdown > 0 && <div className="auth-countdown">Too many failed attempts! You can login in {countdown}</div>}
           <label>
             Email
             <input
@@ -77,6 +92,7 @@ function Login() {
               onChange={handleChange}
               placeholder="name@example.com"
               required
+              disabled={countdown > 0}
             />
           </label>
           <label>
@@ -88,10 +104,11 @@ function Login() {
               onChange={handleChange}
               placeholder="Your password"
               required
+              disabled={countdown > 0}
             />
           </label>
-          <button type="submit" className="primary-btn" disabled={loading}>
-            {loading ? 'Signing in…' : 'Log in'}
+          <button type="submit" className="primary-btn" disabled={loading || countdown > 0}>
+            {loading ? 'Signing in…' : countdown > 0 ? `Wait ${countdown}s` : 'Log in'}
           </button>
         </form>
         <p className="auth-switch">

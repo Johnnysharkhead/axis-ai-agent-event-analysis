@@ -176,8 +176,10 @@ def login():
         if user:
             # Check if user is locked out
             if user.failed_login_attempts is not None and user.failed_login_attempts >= 5:
-                if user.last_failed_login and datetime.utcnow() - user.last_failed_login < timedelta(minutes=5):
-                    return jsonify({'ok': False, 'message': 'Too many failed attempts. Try again in 1 minute.'}), 403
+                if user.last_failed_login and datetime.utcnow() - user.last_failed_login < timedelta(minutes=1):
+                    remaining_time = timedelta(minutes=1) - (datetime.utcnow() - user.last_failed_login)
+                    remaining_seconds = int(remaining_time.total_seconds())
+                    return jsonify({'ok': False, 'message': f'Too many failed attempts. Try again in {remaining_seconds} seconds.', 'remaining_seconds': remaining_seconds}), 403
                 else:
                     # Reset attempts after lockout period
                     user.failed_login_attempts = 0
