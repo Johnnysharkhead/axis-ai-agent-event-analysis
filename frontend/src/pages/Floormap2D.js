@@ -10,12 +10,10 @@ function Floormap2D() {
   const [firstCameraPlaced, setFirstCameraPlaced] = useState(false);
   const [floorplans, setFloorplans] = useState([]);
   const [selectedFloorplan, setSelectedFloorplan] = useState(null);
-  // NEW: Track people on floormap - key is track_id, value is {x_m, y_m, lastSeen}
   const [people, setPeople] = useState({});
-  // NEW: Toggle between real camera stream and mock test stream
   const [useMockStream, setUseMockStream] = useState(false);
 
-  // NEW: Connect to real-time position stream and update people positions
+ 
   useEffect(() => {
     
     const streamUrl = useMockStream
