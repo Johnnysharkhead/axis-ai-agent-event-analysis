@@ -10,14 +10,66 @@ function Floormap2D() {
   const [firstCameraPlaced, setFirstCameraPlaced] = useState(false);
   const [floorplans, setFloorplans] = useState([]);
   const [selectedFloorplan, setSelectedFloorplan] = useState(null);
+  // NEW: Track people on floormap - key is track_id, value is {x_m, y_m, lastSeen}
+  const [people, setPeople] = useState({});
+  // NEW: Toggle between real camera stream and mock test stream
+  const [useMockStream, setUseMockStream] = useState(false);
 
-  const eventSource = new EventSource('/stream/positions');
-  eventSource.onmessage = (e) => {
+  // NEW: Connect to real-time position stream and update people positions
+  useEffect(() => {
+    
+    const streamUrl = useMockStream
+      ? 'http://localhost:5001/test/mock-stream' //Connect to testing stream
+      : 'http://localhost:5001/stream/positions'; //Connect to position REAL positon stream
+
+    const eventSource = new EventSource(streamUrl);
+    console.log(`Connected to ${useMockStream ? 'MOCK' : 'REAL'} position stream`);
+
+    eventSource.onmessage = (e) => {
       const pos = JSON.parse(e.data);
-      console.log(pos)
-      // updatePersonOnMap(pos.track_id, pos.lat, pos.lon);
-  }
-  
+      console.log('Position update:', pos);
+
+      //Add people with postion and timestamp of lastseen
+      setPeople(prev => ({
+        ...prev,
+        [pos.track_id]: {
+          x_m: pos.x_m,
+          y_m: pos.y_m,
+          lastSeen: Date.now()
+        }
+      }));
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('EventSource error:', err);
+    };
+
+    
+    return () => {
+      eventSource.close(); //stop listening when disconnect from stream
+    };
+  }, [useMockStream]); //Reconnect when switching between real and test stream
+
+  //Remove people that havent been seen for 30s
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setPeople(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(trackId => {
+          // Remove track if not seen in last 30 seconds
+          if (now - updated[trackId].lastSeen > 30000) {
+            console.log(`Removing stale track: ${trackId}`);
+            delete updated[trackId];
+          }
+        });
+        return updated;
+      });
+    }, 1000); //Updated once a second
+
+    return () => clearInterval(cleanup);
+  }, []);
+
   useEffect(() => {
     fetch("http://localhost:5001/floorplan")
       .then((res) => res.json())
@@ -310,23 +362,43 @@ function Floormap2D() {
         </select>
       </div>
   
-      {/* Resten av din komponent */}
-      {/* Toggle Configuration Panel */}
-      <button
-        onClick={() => setIsConfigVisible(!isConfigVisible)}
-        style={{
-          marginBottom: "1rem",
-          padding: "0.3rem 0.8rem",
-          backgroundColor: "#f0f0f0",
-          color: "#333",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer",
-          fontSize: "0.9rem",
-        }}
-      >
-        {isConfigVisible ? "Hide Configuration" : "Show Configuration"}
-      </button>
+      
+      {/* Toggle Mock Stream for Testing */}
+      <div style={{ marginBottom: "1rem", display: "flex", gap: "1rem" }}>
+        <button
+          onClick={() => setIsConfigVisible(!isConfigVisible)}
+          style={{
+            padding: "0.3rem 0.8rem",
+            backgroundColor: "#f0f0f0",
+            color: "#333",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+          }}
+        >
+          {isConfigVisible ? "Hide Configuration" : "Show Configuration"}
+        </button>
+
+        <button
+          onClick={() => {
+            setUseMockStream(!useMockStream);
+            setPeople({}); // Clear people when switching streams
+          }}
+          style={{
+            padding: "0.3rem 0.8rem",
+            backgroundColor: useMockStream ? "#4CAF50" : "#ff9800",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: "bold",
+          }}
+        >
+          {useMockStream ? "Using MOCK Stream (Testing)" : "Using REAL Stream (Camera)"}
+        </button>
+      </div>
   
       {/* Room Configuration Panel */}
       {isConfigVisible && <RoomConfiguration onSave={handleSaveConfig} />}
@@ -408,6 +480,25 @@ function Floormap2D() {
               }}
             />
           ))}
+
+        {/*Render people as red circles */}
+        {Object.entries(people).map(([trackId, person]) => (
+          <div
+            key={trackId}
+            style={{
+              position: "absolute",
+              left: `${(person.x_m / roomConfig.width) * 100}%`,
+              bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
+              transform: "translate(-50%, 50%)",
+              width: "8px",
+              height: "8px",
+              backgroundColor: "red",
+              borderRadius: "50%",
+              boxShadow: "0 0 5px rgba(255, 0, 0, 0.8)",
+            }}
+            title={`Track ID: ${trackId}`}
+          />
+        ))}
       </div>
 
       {/* Control Panel for Placed Cameras */}
@@ -450,6 +541,33 @@ function Floormap2D() {
               </li>
             ))}
         </ul>
+      </div>
+
+      {/* NEW: Control Panel for Active People */}
+      <div style={{ marginTop: "1rem" }}>
+        <h3>Active People ({Object.keys(people).length})</h3>
+        {Object.keys(people).length === 0 ? (
+          <p style={{ color: "#999", fontStyle: "italic" }}>No people detected</p>
+        ) : (
+          <ul style={{ listStyleType: "none", padding: 0 }}>
+            {Object.entries(people).map(([trackId, person]) => (
+              <li
+                key={trackId}
+                style={{
+                  marginBottom: "0.5rem",
+                  padding: "0.5rem",
+                  backgroundColor: "#fff0f0",
+                  border: "1px solid #ffcccc",
+                  borderRadius: "4px",
+                }}
+              >
+                <span>
+                  Track ID: {trackId} - Position: ({person.x_m.toFixed(2)}m, {person.y_m.toFixed(2)}m)
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Camera Selection */}

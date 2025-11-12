@@ -9,7 +9,7 @@ import time
 import requests
 from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 from infrastructure.mqtt_client import get_events
-from flask import Blueprint, request, jsonify, Response, stream_with_context
+from flask import Blueprint, request, jsonify, Response, stream_with_context, g
 from flask_cors import CORS
 from functools import wraps
 from domain.models import Camera
@@ -289,13 +289,14 @@ def get_camera_orientation(camera_id):
 
     return make_camera_response(response, error)
 
+#Stream object geopostion 
 @camera_config_bp.route('/stream/positions')
 def stream_positions():
     def generate():
 
         tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
         last_sent = {}
-        while True:
+        while True: # O^3
             for event in get_events():
                 payload = event.get('payload', {})
                 if isinstance(payload, dict) and 'frame' in payload:
@@ -307,7 +308,7 @@ def stream_positions():
                             lat = geo.get('latitude')
                             lon = geo.get('longitude')
                             if lat is not None and lon is not None:
-                                pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan(
+                                pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan( #Converts geo cords to meters
                                     float(lat), float(lon), tmp_bottom_left_coord
                                 )
                                 data = {
@@ -322,3 +323,76 @@ def stream_positions():
     return Response(stream_with_context(generate()),
                     mimetype='text/event-stream')
 
+#testing endpoint for when we dont have acces to cameras
+@camera_config_bp.route('/test/mock-stream')
+def mock_stream():
+ 
+    def generate():
+        import random
+
+        # Simulate 2 people moving
+        people = {
+            'person_1': {'x': 2.0, 'y': 2.0, 'dx': 0.2, 'dy': 0.1},
+            'person_2': {'x': 8.0, 'y': 7.0, 'dx': -0.15, 'dy': -0.2}
+        }
+
+        while True:
+            for track_id, person in people.items():
+                # Update position
+                person['x'] += person['dx']
+                person['y'] += person['dy']
+
+                # Bounce off walls (assuming 10x10m room)
+                if person['x'] <= 0 or person['x'] >= 10:
+                    person['dx'] *= -1
+                if person['y'] <= 0 or person['y'] >= 10:
+                    person['dy'] *= -1
+
+                # Send position update
+                data = {
+                    'track_id': track_id,
+                    'x_m': round(person['x'], 2),
+                    'y_m': round(person['y'], 2)
+                }
+                yield f"data: {json.dumps(data)}\n\n"
+
+            time.sleep(0.5)  # Update every 0.5 seconds
+
+    return Response(stream_with_context(generate()),
+                    mimetype='text/event-stream')
+
+#Test
+@camera_config_bp.route('/test/calc-position', methods=['POST', 'OPTIONS'])
+def calculate_position():
+    """
+    Test endpoint to calculate floorplan position from GPS coordinates
+    POST body example:
+    {
+        "latitude": 58.396,
+        "longitude": 15.578
+    }
+    """
+    if request.method == "OPTIONS":
+        return jsonify({"message": "CORS preflight"}), 200
+
+    data = request.get_json()
+    lat = data.get('latitude', 58.396)
+    lon = data.get('longitude', 15.578)
+
+    # Use same bottom-left coord as stream endpoint
+    tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
+
+    pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan(
+        float(lat), float(lon), tmp_bottom_left_coord
+    )
+
+    result = {
+        'x_m': pos_on_floorplan['x_m'],
+        'y_m': pos_on_floorplan['y_m'],
+        'input': {
+            'latitude': lat,
+            'longitude': lon
+        }
+    }
+
+    return jsonify(result), 200

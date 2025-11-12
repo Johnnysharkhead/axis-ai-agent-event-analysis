@@ -46,6 +46,7 @@ class FloorplanManager:
             "bottom_right": bottom_right
         }
     
+    @staticmethod
     def calculate_position_on_floorplan(object_lat, object_lon, bottom_left_coords):
         lat_diff = object_lat - bottom_left_coords[0]
         lon_diff = object_lon - bottom_left_coords[1]
