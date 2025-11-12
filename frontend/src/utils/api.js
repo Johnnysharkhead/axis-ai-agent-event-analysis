@@ -88,7 +88,8 @@ export async function loginUser(payload) {
 	return {
 		ok: result.ok,
 		message: result.message,
-		user: result.body?.user
+		user: result.body?.user,
+		remaining_seconds: result.body?.remaining_seconds
 	};
 }
 
