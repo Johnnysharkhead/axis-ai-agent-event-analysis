@@ -380,7 +380,8 @@ def calculate_position():
     lon = data.get('longitude', 15.578)
 
     # Use same bottom-left coord as stream endpoint
-    tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
+    # [58.39775183023039,15.576700744793811]
+    tmp_bottom_left_coord = [58.39775183023039, 15.576700744793811]
 
     pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan(
         float(lat), float(lon), tmp_bottom_left_coord
@@ -389,10 +390,6 @@ def calculate_position():
     result = {
         'x_m': pos_on_floorplan['x_m'],
         'y_m': pos_on_floorplan['y_m'],
-        'input': {
-            'latitude': lat,
-            'longitude': lon
-        }
     }
 
     return jsonify(result), 200
