@@ -52,7 +52,7 @@ class InviteKey(db.Model):
     __tablename__ = 'invite_keys'
     id = db.Column(db.Integer, primary_key=True)
     key_hash = db.Column(db.String(128), unique=True, nullable=False)
-    used = db.Column(db.Boolean, default=False)
+    #used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
        
 
@@ -71,7 +71,7 @@ class InviteKey(db.Model):
         if not raw_key:
             return None
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        invite = InviteKey.query.filter_by(key_hash=key_hash, used=False).first()
+        invite = InviteKey.query.filter_by(key_hash=key_hash).first()
             
         if not invite:
             return None

@@ -22,6 +22,7 @@ import VideoRecordingPage from "./pages/VideoRecording.js";
 import Floormap2D from "./pages/Floormap2D";
 import EventHistoryPage from "./pages/EventHistoryPage";
 import Profile from "./pages/Profile";
+import CameraConfig from "./pages/CameraConfig";
 import { isAuthenticated } from "./utils/api";
 
 
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/video-feed/live-camera" element={<LiveCameraPage />} />
         <Route path="/video-feed/video-recording" element={<VideoRecordingPage />} />
         <Route path="/video-feed/recording-library" element={<RecordingLibraryPage />} />
+        <Route path="/cameras/configure" element={<CameraConfig />} />
 
         {/* Alarms */}
         <Route path="/alarms/alarm-history" element={<EventHistoryPage />} />

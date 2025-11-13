@@ -159,6 +159,7 @@ function getPageLabel(path) {
   if (path.startsWith("/2d-floorplan/heatmap")) return "2D Floorplan · Heatmap";
   if (path.startsWith("/2d-floorplan/zones")) return "2D Floorplan · Zones";
   if (path.startsWith("/2d-floorplan/schedule-alarms")) return "2D Floorplan · Schedule Alarms";
+  if (path.startsWith("/cameras/configure")) return "2D Floorplan · Camera Configure";
   if (path.startsWith("/dashboard") || path.startsWith("/home")) return "Dashboard";
   return "Axis Analytics";
 }

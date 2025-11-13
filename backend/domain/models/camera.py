@@ -14,22 +14,26 @@ class Camera(db.Model):
     """
     __tablename__ = "cameras"
 
-    id          = db.Column(db.Integer, primary_key = True)
-    room_id     = db.Column(db.Integer, db.ForeignKey("rooms.id"), name=fk_name("camera", "room_id"), nullable = False)
-
-    room        = db.relationship("Room", back_populates = "cameras")
+    id               = db.Column(db.Integer, primary_key = True)
+    floorplan_id = db.Column(
+        db.Integer,
+        db.ForeignKey("floorplans.id", name=fk_name("camera", "floorplan_id"), ondelete="SET NULL"),
+        nullable=True
+    )
+    ip_address       = db.Column(db.String, unique = True, nullable = False)
+    lat = db.Column(db.Numeric(18, 15), nullable=True)
+    lon = db.Column(db.Numeric(18, 15), nullable=True) 
+    serialno         = db.Column(db.String, nullable  = True)
+    
+    floorplan        = db.relationship("Floorplan", back_populates = "cameras")
     # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
 
-    def serialize(self, context=None):
-        data = {
-            "id": self.id,
-            "room_id": self.room_id,
+    def serialize(self):
+        return {
+            "id" : self.id,
+            "floorplan_id" : self.floorplan_id if self.floorplan_id else None,
+            "ip_address" : self.ip_address,
+            "lat" : self.lat if self.lat else None,
+            "lon" : self.lon if self.lon else None,
+            "serialno" : self.serialno
         }
-        if context == "big":
-
-            data["room"] = self.room.serialize()
-            data["recordings"] = [rec.serialize() for rec in self.recordings]
-        elif context == "small":
-            data["name"] = getattr(self, "name", None)
-        # base case (context is None)
-        return data

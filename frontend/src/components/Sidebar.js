@@ -4,13 +4,14 @@ import "../styles/Sidebar.css";
 
 const SECTIONS = [
   { title: "Video Feed", items: ["Live Camera", "Video Recording","Recording Library"] },
-  { title: "2D Floorplan", items: ["Configuration", "Heatmap", "Zones", "Schedule Alarms"] },
+  { title: "2D Floorplan", items: ["Configuration", "Heatmap", "Zones", "Schedule Alarms", "Camera Configure"] },
   { title: "AI Features", items: ["Intrusion Summary"] },
   { title: "Alarms", items: ["Alarm History"] },
 ];
 
 function getPath(id) {
   if (id === "Dashboard") return "/dashboard";
+  if (id === "2D Floorplan|Camera Configure") return "/cameras/configure";
   const [section, label] = id.split("|");
   return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
 }
@@ -80,6 +81,10 @@ function slugify(value) {
 function inferIdFromPath(pathname) {
   if (pathname === "/dashboard" || pathname === "/home") {
     return "Dashboard";
+  }
+
+  if (pathname.startsWith("/cameras/configure")) {
+    return "2D Floorplan|Camera Configure";
   }
 
   for (const section of SECTIONS) {
