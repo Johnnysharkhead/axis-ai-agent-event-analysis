@@ -12,7 +12,7 @@ function Floormap2D() {
   const [selectedFloorplan, setSelectedFloorplan] = useState(null);
   const [people, setPeople] = useState({});
   const [useMockStream, setUseMockStream] = useState(false);
-
+  const [newCamera, setNewCamera] = useState({ x: "", y: "" });
 
   useEffect(() => {
 
@@ -452,42 +452,139 @@ function Floormap2D() {
           </div>
 
           {/* Available Cameras Panel */}
-          <div className="page__section">
-            <h3 className="page__section-title">Available Cameras</h3>
-            <p className="page__section-subtitle">Drag cameras to place them on the floormap edges</p>
-            {cameras.filter((camera) => !camera.placed).length === 0 ? (
-              <p style={{ color: "var(--color-muted)", fontStyle: "italic", margin: 0 }}>All cameras placed</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {cameras
-                  .filter((camera) => !camera.placed)
-                  .sort((a, b) => a.id - b.id)
-                  .map((camera) => (
-                    <div
-                      key={camera.id}
-                      draggable
-                      onDragStart={(e) => {
-                        console.log(`Dragging camera with ID: ${camera.id}`);
-                        e.dataTransfer.setData("cameraId", camera.id);
-                      }}
-                      style={{
-                        padding: "0.75rem",
-                        background: "linear-gradient(135deg, #1d4ed8, #2563eb)",
-                        color: "white",
-                        borderRadius: "8px",
-                        cursor: "grab",
-                        textAlign: "center",
-                        fontWeight: "600",
-                        boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
-                      }}
-                    >
-                      {camera.name || `Camera ${camera.id}`}
-                    </div>
-                  ))}
+<div className="page__section">
+  <h3 className="page__section-title">Available Cameras</h3>
+  <p className="page__section-subtitle">Drag cameras to place them on the floormap edges or set coordinates</p>
+  {cameras.filter((camera) => !camera.placed).length === 0 ? (
+    <p style={{ color: "var(--color-muted)", fontStyle: "italic", margin: 0 }}>All cameras placed</p>
+  ) : (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {cameras
+        .filter((camera) => !camera.placed)
+        .sort((a, b) => a.id - b.id)
+        .map((camera) => (
+          <div
+            key={camera.id}
+            style={{
+              padding: "1rem",
+              background: "var(--color-surface)",
+              borderRadius: "8px",
+              border: "1px solid var(--color-border)",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <strong>{camera.name || `Camera ${camera.id}`}</strong>
               </div>
-            )}
-          </div>
+              <button
+                draggable
+                onDragStart={(e) => {
+                  console.log(`Dragging camera with ID: ${camera.id}`);
+                  e.dataTransfer.setData("cameraId", camera.id);
+                }}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#2563eb",
+                  color: "white",
+                  borderRadius: "8px",
+                  cursor: "grab",
+                  fontWeight: "600",
+                  border: "none",
+                }}
+              >
+                Drag
+              </button>
+            </div>
 
+            {/* Form for setting coordinates */}
+            <form
+  onSubmit={(e) => {
+    e.preventDefault();
+
+    const x = parseFloat(camera.newX);
+    const y = parseFloat(camera.newY);
+
+    // Validera att koordinaterna är på rummets kanter
+    const isOnEdge =
+      (x === 0 || x === roomConfig.width) || // Vänster eller höger kant
+      (y === 0 || y === roomConfig.depth);   // Nedre eller övre kant
+
+    if (!isOnEdge) {
+      alert("Cameras can only be placed on the edges of the room!");
+      return;
+    }
+
+    // Uppdatera kamerans position
+    if (x >= 0 && x <= roomConfig.width && y >= 0 && y <= roomConfig.depth) {
+      setCameras((prevCameras) =>
+        prevCameras.map((cam) =>
+          cam.id === camera.id ? { ...cam, x, y, placed: true } : cam
+        )
+      );
+      console.log(`Camera ${camera.id} placed at (${x}, ${y})`);
+    } else {
+      alert("Coordinates must be within the room dimensions!");
+    }
+  }}
+  style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", alignItems: "center" }}
+>
+  <input
+    type="number"
+    placeholder="X"
+    value={camera.newX || ""}
+    onChange={(e) =>
+      setCameras((prevCameras) =>
+        prevCameras.map((cam) =>
+          cam.id === camera.id ? { ...cam, newX: e.target.value } : cam
+        )
+      )
+    }
+    style={{
+      width: "4rem",
+      padding: "0.5rem",
+      borderRadius: "4px",
+      border: "1px solid var(--color-border)",
+    }}
+  />
+  <input
+    type="number"
+    placeholder="Y"
+    value={camera.newY || ""}
+    onChange={(e) =>
+      setCameras((prevCameras) =>
+        prevCameras.map((cam) =>
+          cam.id === camera.id ? { ...cam, newY: e.target.value } : cam
+        )
+      )
+    }
+    style={{
+      width: "4rem",
+      padding: "0.5rem",
+      borderRadius: "4px",
+      border: "1px solid var(--color-border)",
+    }}
+  />
+  <button
+    type="submit"
+    style={{
+      padding: "0.5rem 1rem",
+      backgroundColor: "#4CAF50",
+      color: "white",
+      borderRadius: "8px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "600",
+    }}
+  >
+    Set
+  </button>
+</form>
+          </div>
+        ))}
+    </div>
+  )}
+</div>
         </aside>
 
         {/*Floormap*/}
@@ -500,7 +597,8 @@ function Floormap2D() {
               </p>
             </div>
           </div>
-
+            
+          
           {/* The Floormap Container */}
           <div
             style={{
