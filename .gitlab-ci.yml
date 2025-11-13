@@ -27,7 +27,8 @@ tests:
     when: always
     paths:
       - reports/backend_report.html
-
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
 
 retrieve kubeconfig:
   stage: deploy
