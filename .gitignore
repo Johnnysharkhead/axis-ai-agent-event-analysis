@@ -32,3 +32,5 @@ docker-data/
 
 recordings/
 snapshots/
+events/
+instance/

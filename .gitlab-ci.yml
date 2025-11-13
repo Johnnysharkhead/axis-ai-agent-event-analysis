@@ -1,5 +1,6 @@
 ---
 stages:
+  - test
   - deploy
 
 variables:
@@ -8,6 +9,25 @@ variables:
   LIU_GROUP_NAME: company3
   LIU_PROJECT_HOST: ${LIU_COURSE_CODE}-${LIU_GROUP_NAME}-${LIU_COURSE_TERM}.kubernetes-public.it.liu.se
   POD_NAMESPACE: tddc88-2025-company3
+
+tests:
+  image: python:3.12
+  stage: test
+  variables:
+    PYTHONPATH: "${CI_PROJECT_DIR}"
+  before_script:
+    - python -V
+    - pip install --upgrade pip
+    - pip install pytest pytest-html
+    - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+  script:
+    - mkdir -p reports
+    - pytest backend/tests/test_authentication.py --html=reports/backend_report.html --self-contained-html --tb=short --verbose
+  artifacts:
+    when: always
+    paths:
+      - reports/backend_report.html
+
 
 retrieve kubeconfig:
   stage: deploy
