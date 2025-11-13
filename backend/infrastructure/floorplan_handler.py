@@ -59,8 +59,8 @@ class FloorplanManager:
         # print(f"bottom_lon: {bottom_lon}")
 
 
-        delta_lat = object_lat - bottom_lat
-        delta_lon = object_lon - bottom_lon
+        delta_lat = abs(object_lat - bottom_lat)
+        delta_lon = abs(object_lon - bottom_lon)
 
         # print(f"delta_lat: {delta_lat}")
         # print(f"delta_lon: {delta_lon}")

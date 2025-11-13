@@ -116,10 +116,10 @@ def process_person_detection(obs, topic):
     spherical = obs.get("spherical_coordinate", {})
 
     # Print detection
-    print("\n" + "=" * 60)
-    print(f"[PERSON DETECTED]")
-    print(f"Camera: {camera_id or 'Unknown'}")
-    print(f"Track ID: {track_id}")
+    # print("\n" + "=" * 60)
+    # print(f"[PERSON DETECTED]")
+    # print(f"Camera: {camera_id or 'Unknown'}")
+    # print(f"Track ID: {track_id}")
     print(
         f"Confidence: {confidence:.1%}"
         if isinstance(confidence, (int, float))
@@ -183,13 +183,13 @@ def handle_fusion_message(topic: str, payload):
     plus a compact summary of observations if present.
     """
     print("\n" + "=" * 80)
-    print(f"[FUSION] topic = {topic}")
+    # print(f"[FUSION] topic = {topic}")
 
     # Raw dump (exactly what the camera sent)
-    if isinstance(payload, (dict, list)):
-        print(
-            "[FUSION][RAW]\n"
-            + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
-        )
-    else:
-        print("[FUSION][RAW]\n" + str(payload))
+    # if isinstance(payload, (dict, list)):
+    #     print(
+    #         "[FUSION][RAW]\n"
+    #         + json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)
+    #     )
+    # else:
+    #     print("[FUSION][RAW]\n" + str(payload))
