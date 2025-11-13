@@ -4,10 +4,13 @@ MQTT client for Axis Q1656 camera scene metadata.
 Receives person detections with geographic coordinates and radar distance.
 """
 import json
+from multiprocessing.util import debug
+import subprocess
 import threading
 import os
 import time
 import paho.mqtt.client as mqtt
+import datetime
 
 # START  ----------
 import json
