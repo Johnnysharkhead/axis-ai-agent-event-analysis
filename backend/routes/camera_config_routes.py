@@ -93,7 +93,6 @@ def set_geolocation(camera_ip, lat, lng):
 
 #Sets cameras orientation
 def set_orientation(camera_ip, tilt, heading, inst_height, elevation=None):
-    """Helper to set camera orientation"""
     url = f"http://{camera_ip}/axis-cgi/geoorientation/geoorientation.cgi?action=set&tilt={tilt}&heading={heading}&inst_height={inst_height}"
     if elevation is not None:
         url += f"&elevation={elevation}"
@@ -103,7 +102,6 @@ def set_orientation(camera_ip, tilt, heading, inst_height, elevation=None):
 #List cameras
 @camera_config_bp.route("/cameras", methods=["GET", "OPTIONS"])
 def cameras():
-    """Get list of cameras from database"""
     if request.method == "OPTIONS":
         return jsonify({"message": "CORS preflight"}), 200
 
@@ -380,8 +378,7 @@ def calculate_position():
     lon = data.get('longitude', 15.578)
 
     # Use same bottom-left coord as stream endpoint
-    # [58.39775183023039,15.576700744793811]
-    tmp_bottom_left_coord = [58.39775183023039, 15.576700744793811]
+    tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
 
     pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan(
         float(lat), float(lon), tmp_bottom_left_coord
@@ -390,6 +387,10 @@ def calculate_position():
     result = {
         'x_m': pos_on_floorplan['x_m'],
         'y_m': pos_on_floorplan['y_m'],
+        'input': {
+            'latitude': lat,
+            'longitude': lon
+        }
     }
 
     return jsonify(result), 200
