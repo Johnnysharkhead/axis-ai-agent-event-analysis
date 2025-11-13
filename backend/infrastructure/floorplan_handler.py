@@ -49,8 +49,10 @@ class FloorplanManager:
     @staticmethod
     def calculate_position_on_floorplan(object_lat, object_lon, bottom_left_coords):
         # bottom_lat, bottom_lon = bottom_left_coords
-        bottom_lat = 58.39775183023039
-        bottom_lon = 15.576700744793811
+        # [58.395905940369715, 15.577995083109268]
+        bottom_lat = 58.395905940369715
+        bottom_lon = 15.577995083109268
+        
         # print(f"object_lat : {object_lat}")
         # print(f"object_lon : {object_lon}")
         # print(f"bottom_lat: {bottom_lat}")
