@@ -70,18 +70,40 @@ def make_camera_response(response, error, success_data=None):
 #Format cords to ISO 6709 so it works with axis cameras
 def format_coordinate(value, is_longitude=False):
     val = float(value)
-    if is_longitude:
-        # Format as +/-XXX.XXXX (3 digits before decimal)
-        if val >= 0:
-            return f"{val:08.4f}"  # Total 8 chars: 3 digits + dot + 4 decimals (with leading zero)
-        else:
-            return f"{val:09.4f}"  # Total 9 chars with minus sign
+
+    # Format with max 9 decimals, remove trailing zeros
+    formatted = f"{val:.9f}".rstrip('0').rstrip('.')
+
+    # Split into integer and decimal parts
+    if '.' in formatted:
+        int_part, dec_part = formatted.split('.')
     else:
-        # Format as +/-XX.XXXX (2 digits before decimal)
-        if val >= 0:
-            return f"{val:07.4f}"  # Total 7 chars: 2 digits + dot + 4 decimals (with leading zero)
-        else:
-            return f"{val:08.4f}"  # Total 8 chars with minus sign
+        int_part = formatted
+        dec_part = None
+
+    # Handle negative numbers
+    is_negative = int_part.startswith('-')
+    if is_negative:
+        abs_int_part = int_part[1:]  # Remove minus sign temporarily
+    else:
+        abs_int_part = int_part
+
+    # Pad integer part with leading zeros for ISO 6709
+    if is_longitude:
+        abs_int_part = abs_int_part.zfill(3)  # 3 digits for longitude
+    else:
+        abs_int_part = abs_int_part.zfill(2)  # 2 digits for latitude
+
+    # Reconstruct with proper formatting
+    if is_negative:
+        int_part = '-' + abs_int_part
+    else:
+        int_part = abs_int_part
+
+    if dec_part:
+        return f"{int_part}.{dec_part}"
+    else:
+        return int_part
 
 #Sets cameras geolocation
 def set_geolocation(camera_ip, lat, lng):
