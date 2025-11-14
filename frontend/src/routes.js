@@ -22,6 +22,7 @@ import VideoRecordingPage from "./pages/VideoRecording.js";
 import Floormap2D from "./pages/Floormap2D";
 import EventHistoryPage from "./pages/EventHistoryPage";
 import Profile from "./pages/Profile";
+import ManageAccounts from "./pages/ManageAccounts";
 import CameraConfig from "./pages/CameraConfig";
 import { isAuthenticated } from "./utils/api";
 
@@ -75,6 +76,7 @@ function AppRoutes() {
 
         {/* Profile */}
         <Route path="/profile" element={<Profile />} />
+        <Route path="/admin/accounts" element={<ManageAccounts />} />
 
         {/* 2D Floorplan */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />

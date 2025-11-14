@@ -17,6 +17,7 @@ from domain.models import db
 from application.hls_handler import *
 import routes.authentication as auth2
 from flask_login import LoginManager, login_required, current_user
+from sqlalchemy import inspect, text
 
 
 from routes.video_routes import video_bp
@@ -100,15 +101,44 @@ os.makedirs(RECORDINGS_DIR, exist_ok=True)
 # Use variable from .env for port (default 5001)
 backend_port = int(os.getenv("BACKEND_PORT", 5001))
 
-# Configure SQLite database inside instance/
+# Configure database (prefer DATABASE_URL, fallback to SQLite file)
 db_path = os.path.join(app.instance_path, "database.db")
-#app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory"
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+database_url = os.getenv("DATABASE_URL", "").strip().strip("\"'")
+
+if database_url:
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.logger.info("Using DATABASE_URL for SQLAlchemy connection")
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    app.logger.warning("DATABASE_URL not set; falling back to SQLite file storage")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 migrate = Migrate(app, db, directory='infrastructure/migrations')
+
+
+def ensure_user_columns():
+    """Ensure new columns such as is_blocked exist on the users table."""
+    inspector = inspect(db.engine)
+    try:
+        columns = {col["name"] for col in inspector.get_columns("users")}
+    except Exception:
+        columns = set()
+
+    statements = []
+    dialect = db.engine.dialect.name
+
+    if "is_blocked" not in columns:
+        if dialect == "sqlite":
+            statements.append("ALTER TABLE users ADD COLUMN is_blocked BOOLEAN DEFAULT 0")
+        else:
+            statements.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE")
+
+    if statements:
+        with db.engine.begin() as conn:
+            for stmt in statements:
+                conn.execute(text(stmt))
 
 # db = SQLAlchemy(app)
 
@@ -118,6 +148,7 @@ with app.app_context():
     auth2.init_auth(app, db, User, InviteKey)  
     # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)
     db.create_all()
+    ensure_user_columns()
     #Remove below in prod
     raw_key, key_hash = InviteKey.generate_key()
     invite = InviteKey(key_hash=key_hash)
@@ -153,18 +184,8 @@ def events():
         return _build_cors_preflight_response()
     return jsonify(get_events())
 
-@app.route("/users", methods=["GET", "OPTIONS"])
-@login_required
-def get_users():
-    if request.method == "OPTIONS":
-        return _build_cors_preflight_response()
-
-    users = User.query.all()
-    return jsonify([u.to_dict() for u in users]), 200
-
-
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()  # creates tables if they don’t exist
     app.run(host="0.0.0.0", port=backend_port)
-
+    

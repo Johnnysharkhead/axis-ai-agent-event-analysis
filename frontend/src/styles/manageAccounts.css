@@ -1,0 +1,107 @@
+.manage-accounts__card {
+  overflow: hidden;
+}
+
+.manage-accounts__table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.manage-accounts__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.manage-accounts__table th,
+.manage-accounts__table td {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.95rem;
+}
+
+.manage-accounts__table thead th {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  background: var(--color-surface);
+}
+
+.manage-accounts__table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.manage-accounts__status {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-muted);
+}
+
+.manage-accounts__status--error {
+  color: #b91c1c;
+}
+
+.manage-accounts__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.25);
+  color: var(--color-text);
+}
+
+.manage-accounts__badge--admin {
+  background: rgba(59, 130, 246, 0.2);
+  color: #1d4ed8;
+}
+
+.manage-accounts__badge--active {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #f8fafc;
+  border: none;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.35);
+}
+
+.manage-accounts__badge--blocked {
+  background: rgba(248, 113, 113, 0.2);
+  color: #b91c1c;
+}
+
+.manage-accounts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.manage-accounts__action {
+  border-radius: 999px;
+  border: 1.5px solid rgba(100, 116, 139, 0.45);
+  background: transparent;
+  color: var(--color-text);
+  padding: 0.35rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.manage-accounts__action:hover:not(:disabled) {
+  border-color: rgba(15, 23, 42, 0.45);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.manage-accounts__action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.manage-accounts__action--danger {
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #b91c1c;
+}

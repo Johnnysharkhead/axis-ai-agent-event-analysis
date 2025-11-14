@@ -154,3 +154,76 @@ export async function testBackend() {
 
 
 }
+
+/**
+ * Fetch all users (admin only)
+ * @returns {Promise<object>} Response with ok status and users array
+ */
+export async function fetchAllUsers() {
+	const result = await safeFetch(`${BASE_URL}/users`, {
+		method: 'GET'
+	});
+
+	const errorMessage =
+		(!result.ok &&
+			!Array.isArray(result.body) &&
+			typeof result.body === 'object' &&
+			result.body !== null &&
+			(result.body.message || result.body.error)) ||
+		result.message;
+
+	return {
+		ok: result.ok,
+		message: errorMessage,
+		users: Array.isArray(result.body) ? result.body : []
+	};
+}
+
+/**
+ * Update a user's admin flag
+ * @param {number} userId
+ * @param {boolean} isAdmin
+ */
+export async function updateUserAdmin(userId, isAdmin) {
+	const result = await safeFetch(`${BASE_URL}/users/${userId}/admin`, {
+		method: 'PATCH',
+		body: JSON.stringify({ is_admin: isAdmin })
+	});
+
+	return {
+		ok: result.ok,
+		message: result.message,
+		user: result.body
+	};
+}
+
+/**
+ * Update user block status / reset failed logins
+ */
+export async function updateUserBlock(userId, { isBlocked, resetFailedAttempts } = {}) {
+	const payload = {};
+	if (typeof isBlocked === "boolean") {
+		payload.is_blocked = isBlocked;
+	}
+	if (resetFailedAttempts) {
+		payload.reset_failed_attempts = true;
+	}
+
+	if (Object.keys(payload).length === 0) {
+		return {
+			ok: false,
+			message: "No changes provided"
+		};
+	}
+
+	const result = await safeFetch(`${BASE_URL}/users/${userId}/block`, {
+		method: 'PATCH',
+		body: JSON.stringify(payload)
+	});
+
+	return {
+		ok: result.ok,
+		message: result.message,
+		user: result.body
+	};
+}
