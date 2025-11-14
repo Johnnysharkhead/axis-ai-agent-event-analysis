@@ -56,7 +56,7 @@ function Floormap2D() {
         const updated = { ...prev };
         Object.keys(updated).forEach(trackId => {
           // Remove track if not seen in last 30 seconds
-          if (now - updated[trackId].lastSeen > 30000) {
+          if (now - updated[trackId].lastSeen > 3000) {
             console.log(`Removing stale track: ${trackId}`);
             delete updated[trackId];
           }
