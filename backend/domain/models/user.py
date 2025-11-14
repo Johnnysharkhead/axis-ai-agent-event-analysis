@@ -28,6 +28,7 @@ class User(UserMixin, db.Model):
     failed_login_attempts = db.Column(db.Integer, default=0)
     last_failed_login = db.Column(db.DateTime, nullable=True)
     is_admin = db.Column(db.Boolean, default=False, nullable=True)
+    is_blocked = db.Column(db.Boolean, default=False, nullable=True)
         
     def set_password(self, password):
         """Hash and store password"""
@@ -44,6 +45,8 @@ class User(UserMixin, db.Model):
             'username': self.username,
             'email': self.email,
             'is_admin': self.is_admin,
+            'is_blocked': self.is_blocked,
+            'failed_login_attempts': self.failed_login_attempts,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
