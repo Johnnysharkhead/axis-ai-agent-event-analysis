@@ -206,6 +206,23 @@ function Floormap2D() {
   const handleRemoveCamera = (cameraId) => {
     const confirmRemove = window.confirm("Are you sure you want to remove this camera?");
     if (confirmRemove) {
+      console.log(cameraId)
+      console.log(selectedFloorplan)
+      fetch(`http://localhost:5001/floorplan/${selectedFloorplan.id}`, {
+        method: "PATCH",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify({
+          camera_id: cameraId
+        }),
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Camera successfully removed from floorplan in backend.");
+      })
+      .catch((err) => {
+        console.error("Failed to remove camera from floorplan in backend", err);
+      });
+      
       setCameras((prevCameras) =>
         prevCameras.map((camera) =>
           camera.id === cameraId ? { ...camera, x: null, y: null, placed: false } : camera
@@ -215,74 +232,70 @@ function Floormap2D() {
     }
   };
 
-  const handleSelectFloorplanChange = (e) => {
-    const floorplan = floorplans.find(fp => fp.id === parseInt(e.target.value));
-    setSelectedFloorplan(floorplan);
+const handleSelectFloorplanChange = (e) => {
+  const floorplanId = parseInt(e.target.value);
+  if (!floorplanId) return;
 
-    if (floorplan) {
-      setRoomConfig({
-        width: floorplan.width,
-        depth: floorplan.depth,
-        cameraHeight: floorplan.camera_height || 2,
-        name: floorplan.name,
-        new_floorplan_id: floorplan.id,
-      });
-      console.log("Floorplan selected");
-      console.log(floorplan);
+  fetch(`http://localhost:5001/floorplan/${floorplanId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      console.log(data)
+      if (data.floorplan) {
+        const floorplan = data.floorplan;
+        setSelectedFloorplan(floorplan);
+        setRoomConfig({
+          width: floorplan.width,
+          depth: floorplan.depth,
+          cameraHeight: floorplan.camera_height || 2,
+          name: floorplan.name,
+          new_floorplan_id: floorplan.id,
+        });
 
-      let prePlacedCamera = null;
-      if (floorplan.camera_floorplancoordinates && Array.isArray(floorplan.camera_floorplancoordinates)) {
-        prePlacedCamera = {
-          id: "virtual",
-          name: "Previously placed camera",
-          x: floorplan.camera_floorplancoordinates[0],
-          y: floorplan.camera_floorplancoordinates[1],
-          placed: true,
-        };
-        setCameras([prePlacedCamera]);
+        // Fetch all cameras and set their placed status and coordinates
+        fetch("http://localhost:5001/cameras")
+          .then((res) => res.json())
+          .then((camData) => {
+            console.log(camData)
+            let fetchedCameras = [];
+            if (camData.cameras) {
+              fetchedCameras = camData.cameras.map((camera) => {
+                let placed = false;
+                let x = null;
+                let y = null;
+                if (
+                  floorplan.camera_floorplancoordinates &&
+                  floorplan.camera_floorplancoordinates[String(camera.id)]
+                ) {
+                  placed = true;
+                  [x, y] = floorplan.camera_floorplancoordinates[String(camera.id)];
+                }
+                return {
+                  ...camera,
+                  x,
+                  y,
+                  placed,
+                };
+              });
+            }
+            setCameras(fetchedCameras);
+          })
+          .catch((err) => {
+            console.error("Failed to fetch cameras:", err);
+          });
       } else {
+        setSelectedFloorplan(null);
         setCameras([]);
       }
-
-      fetch("http://localhost:5001/cameras")
-        .then((res) => res.json())
-        .then((data) => {
-          console.log(data)
-          let fetchedCameras = [];
-          if (data.cameras) {
-            fetchedCameras = data.cameras.map((camera) => ({
-              ...camera,
-              x: camera.placed_coords ? camera.placed_coords[0] : null,
-              y: camera.placed_coords ? camera.placed_coords[1] : null,
-              placed: !!camera.placed_coords,
-            }));
-          }
-
-          const placedCameraIds = [];
-          if (prePlacedCamera && prePlacedCamera.id !== "virtual") {
-            placedCameraIds.push(prePlacedCamera.id);
-          }
-          if (floorplan.cameras && Array.isArray(floorplan.cameras)) {
-            floorplan.cameras.forEach(cam => {
-              if (cam.id !== undefined && cam.id !== null) placedCameraIds.push(cam.id);
-            });
-          }
-
-          const filteredCameras = fetchedCameras.filter(
-            (camera) => !placedCameraIds.includes(camera.id)
-          );
-
-          if (prePlacedCamera) {
-            setCameras([prePlacedCamera, ...filteredCameras]);
-          } else {
-            setCameras(filteredCameras);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to fetch cameras:", err);
-        });
-    }
-  };
+    })
+    .catch((err) => {
+      console.error("Failed to fetch floorplan:", err);
+      setSelectedFloorplan(null);
+      setCameras([]);
+    });
+};
 
   return (
     <section className="page">
@@ -393,8 +406,11 @@ function Floormap2D() {
                           ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleRemoveCamera(camera.id)}
+                      <button 
+                        onClick={() => {
+                          console.log(camera.id)
+                          handleRemoveCamera(camera.id)}
+                        }
                         className="placed-camera-remove-button"
                       >
                         Remove
@@ -405,28 +421,28 @@ function Floormap2D() {
             )}
           </div>
 
-          {/* Available Cameras Panel */}
-          <div className="page__section available-cameras">
-            <h3 className="page__section-title available-cameras-title">Available Cameras</h3>
-            <p className="available-cameras-subtitle">
-              Drag cameras to place them on the floormap edges or set coordinates
-            </p>
-            {cameras.filter((camera) => !camera.placed).length === 0 ? (
-              <p className="available-cameras-empty">All cameras placed</p>
-            ) : (
-              <div className="available-cameras-list">
-                {cameras
-                  .filter((camera) => !camera.placed)
-                  .sort((a, b) => a.id - b.id)
-                  .map((camera) => (
+          /* Available Cameras Panel */}
+                <div className="page__section available-cameras">
+                <h3 className="page__section-title available-cameras-title">Available Cameras</h3>
+                <p className="available-cameras-subtitle">
+                  Drag cameras to place them on the floormap edges or set coordinates
+                </p>
+                {cameras.filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined)).length === 0 ? (
+                  <p className="available-cameras-empty">All cameras placed</p>
+                ) : (
+                  <div className="available-cameras-list">
+                  {cameras
+                    .filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined))
+                    .sort((a, b) => a.id - b.id)
+                    .map((camera) => (
                     <div key={camera.id} className="available-camera-item">
                       <div className="available-camera-item-header">
-                        <div className="available-camera-item-title">
-                          {camera.name || `Camera ${camera.id}`}
-                        </div>
-                        <button
-                          draggable
-                          onDragStart={(e) => {
+                      <div className="available-camera-item-title">
+                        {camera.name || `Camera ${camera.id}`}
+                      </div>
+                      <button
+                        draggable
+                        onDragStart={(e) => {
                             console.log(`Dragging camera with ID: ${camera.id}`);
                             e.dataTransfer.setData("cameraId", camera.id);
                           }}
@@ -462,6 +478,22 @@ function Floormap2D() {
                               )
                             );
                             console.log(`Camera ${camera.id} placed at (${x}, ${y})`);
+
+                            fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                camera_id: camera.id,
+                                placed_coords: [x, y],
+                              }),
+                            })
+                              .then((res) => res.json())
+                              .then((data) => {
+                                console.log("Camera placement PUT response:", data);
+                              })
+                              .catch((err) => {
+                                console.error("Failed to update floorplan with camera:", err);
+                            });
                           } else {
                             alert("Coordinates must be within the room dimensions!");
                           }

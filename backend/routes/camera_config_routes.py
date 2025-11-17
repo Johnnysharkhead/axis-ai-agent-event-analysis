@@ -131,7 +131,8 @@ def cameras():
 
     if request.method == "GET":
         try:
-            cameras = Camera.query.filter(Camera.floorplan_id == None).all()
+            # cameras = Camera.query.filter(Camera.floorplan_id == None).all()
+            cameras = Camera.query.all()
 
             if cameras:
                 return jsonify({"cameras": [camera.serialize() for camera in cameras]})
