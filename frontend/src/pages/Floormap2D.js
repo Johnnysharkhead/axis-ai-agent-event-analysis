@@ -421,7 +421,7 @@ const handleSelectFloorplanChange = (e) => {
             )}
           </div>
 
-          /* Available Cameras Panel */}
+          {/* Available Cameras Panel */}
                 <div className="page__section available-cameras">
                 <h3 className="page__section-title available-cameras-title">Available Cameras</h3>
                 <p className="available-cameras-subtitle">
