@@ -36,9 +36,27 @@ function computeMeta(points) {
 }
 
 export default function ZoneConfiguration() {
-  const placeholderPlans = [{ id: "default", name: "Default 10×10 m", width: 10, depth: 10 }];
-  const [floorplans, setFloorplans] = useState(placeholderPlans);
-  const [selectedFloorplan, setSelectedFloorplan] = useState(placeholderPlans[0]);
+  // API base (fall back to localhost backend used by other pages)
+  const API_BASE = window.__API_URL__ || "http://localhost:5001";
+
+  // load list of floorplans from backend
+  async function loadFloorplans() {
+    try {
+      const res = await fetch(`${API_BASE}/floorplan`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      const list = data?.floorplans || data?.floorplans?.length ? data.floorplans : (Array.isArray(data) ? data : []);
+      setFloorplans(list);
+      if (!selectedFloorplan && list.length) setSelectedFloorplan(list[0]);
+    } catch (err) {
+      console.warn("Failed to load floorplans", err);
+      setFloorplans([]);
+    }
+  }
+  useEffect(() => { loadFloorplans(); }, []);
+
+  const [floorplans, setFloorplans] = useState([]);
+  const [selectedFloorplan, setSelectedFloorplan] = useState(null);
   const roomWidth = selectedFloorplan?.width || 10;
   const roomDepth = selectedFloorplan?.depth || 10;
   const planId = selectedFloorplan?.id ?? "default";
@@ -51,12 +69,6 @@ export default function ZoneConfiguration() {
   const [snapTarget, setSnapTarget] = useState(null);
   const [intrusionResult, setIntrusionResult] = useState(null);
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    fetch("/floorplan").then(r=>r.json()).then(data => {
-      if (data?.floorplans?.length) { setFloorplans(data.floorplans); setSelectedFloorplan(data.floorplans[0]); }
-    }).catch(()=>{});
-  }, []);
 
   useEffect(() => {
     try {
@@ -172,7 +184,30 @@ export default function ZoneConfiguration() {
   function polygonPointsAttr(points) { return (points || []).map(p => { const {xPct,yPct}=pointToPercent(p); return `${xPct},${yPct}`; }).join(" "); }
   function centroidOf(points) { const n = points.length; const sx = points.reduce((s,p)=>s+p.x,0)/n; const sy = points.reduce((s,p)=>s+p.y,0)/n; return {x:sx,y:sy}; }
 
-  function handleSelect(e) { const id = e.target.value; const fp = floorplans.find(f => String(f.id) === String(id)); setSelectedFloorplan(fp || null); }
+  async function handleSelect(e) {
+    const id = e.target.value;
+    const fp = floorplans.find(f => String(f.id) === String(id));
+    if (fp) { setSelectedFloorplan(fp); return; }
+    // fetch single floorplan as fallback
+    try {
+      const res = await fetch(`${API_BASE}/floorplan/${id}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      const single = data?.floorplan || data;
+      if (single) {
+        setFloorplans(prev => {
+          if (prev.find(p => String(p.id) === String(single.id))) return prev;
+          return [...prev, single];
+        });
+        setSelectedFloorplan(single);
+      } else {
+        setSelectedFloorplan(null);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch floorplan", err);
+      setSelectedFloorplan(null);
+    }
+  }
 
   return (
     <section className="page">
@@ -186,7 +221,8 @@ export default function ZoneConfiguration() {
           <div className="page__section">
             <h3 className="page__section-title">Floorplans</h3>
             <select value={selectedFloorplan?.id || ""} onChange={handleSelect} style={{ width:"100%", padding:"0.6rem", borderRadius:8 }}>
-              {floorplans.map(fp => <option key={fp.id} value={fp.id}>{fp.name || `Floorplan ${fp.id}`}</option>)}
+              <option value="">{floorplans.length ? "-- Select a Floorplan --" : "Loading floorplans..."}</option>
+              {floorplans.map(fp => <option key={fp.id} value={fp.id}>{fp.name || `Floorplan ${fp.id}`} — {fp.width}×{fp.depth}m</option>)}
             </select>
             <div style={{ marginTop:8, fontSize:13, color:"var(--color-muted)" }}>{floorplans.length} floorplans</div>
           </div>
@@ -201,7 +237,11 @@ export default function ZoneConfiguration() {
 
         <div className="page__section" style={{ padding:20 }}>
           <h3 className="page__section-title">Map</h3>
-          <p className="page__section-subtitle">10×10 m placeholder — map fits viewport proportionally</p>
+          <p className="page__section-subtitle">
+            {selectedFloorplan
+              ? `${roomWidth}×${roomDepth} m — map fits viewport proportionally`
+              : "No floorplan selected — choose one from the list on the left"}
+          </p>
 
           <div style={{ marginTop:12 }}>
             <div style={{ width:"90vw", maxWidth:900, margin:"0 auto" }}>
