@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "../styles/pages.css";
+import Gridmap from "../components/Gridmap";
+import ColorButton from "../components/ColorButton";
+import ChangeToolButton from "../components/ChangeToolButton";
+import ScheduleAlarms from "./ScheduleAlarms";
 import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
 
@@ -312,6 +316,11 @@ useEffect(() => {
         });
     }
   };
+
+  // If the view is schedule-alarms, render only the ScheduleAlarms component
+  if (view === "schedule-alarms") {
+    return <ScheduleAlarms embedded />;
+  }
 
   return (
     <section className="page">

@@ -86,11 +86,13 @@ function Navbar({ onToggleSidebar, isSidebarOpen }) {
             <div className="navbar-dropdowns">
               <div className="dropdown">
                 <button type="button" className="dropbtn">
-                  Accounts
+                  Admin
                 </button>
                 <div className="dropdown-content">
-                  <button type="button">Manage Accounts</button>
-                  <button type="button">Account Settings</button>
+                  <button type="button" onClick={() => navigate("/admin/accounts")}>
+                    Manage Accounts
+                  </button>
+        
                 </div>
               </div>
             </div>

@@ -12,8 +12,9 @@ from datetime import datetime, timedelta
 
 
 
-# Create Blueprint for authentication routes
+# Create blueprints for authentication and user-management routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
+user_bp = Blueprint('user_admin', __name__)
 
 # Global variables (will be set by init_auth)
 db = None
@@ -53,8 +54,9 @@ def init_auth(app, database, user_model, invite_model):
         """Flask-Login: Return JSON error for unauthorized access"""
         return jsonify({'ok': False, 'message': 'Authentication required'}), 401
     
-    # Register blueprint with app
+    # Register blueprints with app
     app.register_blueprint(auth_bp)
+    app.register_blueprint(user_bp)
     
     print("✓ Authentication initialized")
     return True
@@ -174,6 +176,8 @@ def login():
         
         # --- LOCKOUT LOGIC START ---
         if user:
+            if getattr(user, "is_blocked", False):
+                return jsonify({'ok': False, 'message': 'Account blocked. Contact an administrator.'}), 403
             # Check if user is locked out
             if user.failed_login_attempts is not None and user.failed_login_attempts >= 5:
                 if user.last_failed_login and datetime.utcnow() - user.last_failed_login < timedelta(minutes=1):
@@ -249,3 +253,74 @@ def get_current_user():
         'ok': True,
         'user': current_user.to_dict()
     }), 200
+
+
+# ==================== USER ROUTES ====================
+
+@user_bp.route("/users", methods=["GET", "OPTIONS"])
+@login_required
+def list_users():
+    """Admin-only list of all users."""
+    if request.method == "OPTIONS":
+        return cors_preflight()
+
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "Forbidden"}), 403
+
+    users = User.query.all()
+    return jsonify([u.to_dict() for u in users]), 200
+
+
+@user_bp.route("/users/<int:user_id>/admin", methods=["PATCH", "OPTIONS"])
+@login_required
+def update_user_admin(user_id):
+    """Toggle admin flag for a user."""
+    if request.method == "OPTIONS":
+        return cors_preflight()
+
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "Forbidden"}), 403
+
+    data = request.get_json(silent=True) or {}
+    is_admin = data.get("is_admin")
+
+    if not isinstance(is_admin, bool):
+        return jsonify({"error": "is_admin boolean required"}), 400
+
+    user = User.query.get_or_404(user_id)
+    user.is_admin = is_admin
+    db.session.commit()
+    return jsonify(user.to_dict()), 200
+
+
+@user_bp.route("/users/<int:user_id>/block", methods=["PATCH", "OPTIONS"])
+@login_required
+def update_user_block(user_id):
+    """Block/unblock a user or reset failed attempts."""
+    if request.method == "OPTIONS":
+        return cors_preflight()
+
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "Forbidden"}), 403
+
+    data = request.get_json(silent=True) or {}
+    has_is_blocked = "is_blocked" in data
+    reset_failed_attempts = bool(data.get("reset_failed_attempts", False))
+
+    if not has_is_blocked and not reset_failed_attempts:
+        return jsonify({"error": "No changes provided"}), 400
+
+    if has_is_blocked and not isinstance(data.get("is_blocked"), bool):
+        return jsonify({"error": "is_blocked boolean required"}), 400
+
+    user = User.query.get_or_404(user_id)
+
+    if has_is_blocked:
+        user.is_blocked = data["is_blocked"]
+
+    if reset_failed_attempts or (has_is_blocked and data["is_blocked"] is False):
+        user.failed_login_attempts = 0
+        user.last_failed_login = None
+
+    db.session.commit()
+    return jsonify(user.to_dict()), 200

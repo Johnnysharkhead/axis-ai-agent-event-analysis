@@ -13,8 +13,8 @@ services:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=${BACKEND_PORT}
       - FLASK_APP=main.py
-      - PYTHONUNBUFFERED=1      
-      - MQTT_BROKER_HOST=mosquitto 
+      - PYTHONUNBUFFERED=1
+      - MQTT_BROKER_HOST=mosquitto
 
   frontend:
     build: ./frontend
@@ -26,10 +26,13 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     command: sh -lc "npm install --no-audit --no-fund && npm start"
 
   mosquitto:
-    image: eclipse-mosquitto:2.0
+    build:
+      context: ./backend
+      dockerfile: mosquitto.Dockerfile
     container_name: mqtt_broker
     ports:
       - "${MQTT_BROKER_PORT:-1883}:1883"
