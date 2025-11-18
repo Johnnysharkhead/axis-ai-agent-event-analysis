@@ -4,13 +4,20 @@ import "../styles/scheduleAlarms.css";
 
 // --- new helpers for coloring / rendering zones (placed near top of file) ---
 function zoneColor(i) {
-  const h = (i * 57) % 360;
-  const border = `hsl(${h} 75% 35%)`;
-  const bg = `hsl(${h} 75% 50% / 0.12)`;
-  return { border, bg };
-}
+    const h = (i * 57) % 360;
+    const border = `hsl(${h} 75% 35%)`;
+    const bg = `hsl(${h} 75% 50% / 0.12)`;
+    return { border, bg };
+  }
 
 function ScheduleAlarms({ embedded = false }) {
+  // API base (reuse same convention as other pages)
+  const API_BASE = window.__API_URL__ || "http://localhost:5001";
+
+  // Floorplans + currently selected floorplan id (used to load zones for that plan)
+  const [floorplans, setFloorplans] = useState([]);
+  const [selectedFloorplanId, setSelectedFloorplanId] = useState(null);
+
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState("");
   const [schedules, setSchedules] = useState({});
@@ -42,27 +49,37 @@ function ScheduleAlarms({ embedded = false }) {
     } catch {}
   }, []);
 
-  // Load zones created in ZoneConfiguration (stored under key zones_floorplan_{id})
+  // load available floorplans once
   useEffect(() => {
-    function loadZones() {
+    fetch(`${API_BASE}/floorplan`)
+      .then(r => r.json())
+      .then(data => {
+        const list = data?.floorplans || (Array.isArray(data) ? data : []);
+        setFloorplans(list);
+        if (!selectedFloorplanId && list.length) setSelectedFloorplanId(list[0].id);
+      })
+      .catch(() => setFloorplans([]));
+  }, []); // run once
+
+  // Load zones for the selected floorplan from localStorage key zones_floorplan_{id}
+  useEffect(() => {
+    function loadZonesForPlan() {
       try {
-        const raw = localStorage.getItem("zones_floorplan_default");
-        if (!raw) { setZones([]); return; }
-        const arr = JSON.parse(raw);
-        // store full zone objects (expected shape { id, name, points: [{x,y}, ...] })
-        setZones(Array.isArray(arr) ? arr : []);
+        const planId = selectedFloorplanId ?? "default";
+        const raw = localStorage.getItem(`zones_floorplan_${planId}`);
+        setZones(raw ? JSON.parse(raw) : []);
       } catch {
         setZones([]);
       }
     }
-    loadZones();
+    loadZonesForPlan();
     const onStorage = (e) => {
       if (!e.key || !e.key.startsWith("zones_floorplan_")) return;
-      loadZones();
+      loadZonesForPlan();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [selectedFloorplanId]);
 
   // Auto-detect if end time is before start time (overnight alarm) for recurring
   useEffect(() => {
@@ -693,15 +710,28 @@ function ScheduleAlarms({ embedded = false }) {
             <label className="schedule-alarms__zone-label">
               Select Zone
             </label>
+            {/* Floorplan selector — choose which floorplan's zones to load */}
+            <div style={{ marginBottom: 8 }}>
+              <select
+                value={selectedFloorplanId ?? ""}
+                onChange={e => { setSelectedFloorplanId(e.target.value || null); setSelectedZone(""); setMessage(""); }}
+                className="schedule-alarms__zone-dropdown"
+                style={{ width: "100%", marginBottom: 6 }}
+              >
+                <option value="">-- Select Floorplan --</option>
+                {floorplans.map(fp => <option key={fp.id} value={fp.id}>{fp.name} — {fp.width}×{fp.depth}m</option>)}
+              </select>
+            </div>
+
             <select
               value={selectedZone}
               onChange={e => { setSelectedZone(e.target.value); setMessage(""); }}
               className="schedule-alarms__zone-dropdown"
             >
               <option value="">-- Select Zone --</option>
-              {zones.map(z => <option key={z.id} value={z.name}>Zone {z.name}</option>)}
+              {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
             </select>
-          </div>
+           </div>
 
           <div className="schedule-form">
             <h3 className="schedule-form__title">

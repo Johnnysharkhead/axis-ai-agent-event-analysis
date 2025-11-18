@@ -139,13 +139,18 @@ export default function ZoneConfiguration() {
   function onMapClick(e) {
     if (intrusionMode) {
       const p = pageToRoom(e.clientX, e.clientY);
-      const hit = zones.find(z => {
+      // find ALL zones that contain the point (support overlapping zones)
+      const hits = zones.filter(z => {
         if (!z.bbox) return false;
         const [minX,minY,maxX,maxY] = z.bbox;
         if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) return false;
         return pointInPolygon(p, z.points || []);
       });
-      setIntrusionResult({ point: p, zoneName: hit ? hit.name : null });
+      setIntrusionResult({
+        point: p,
+        zoneNames: hits.map(h => h.name),
+        zones: hits
+      });
       return;
     }
     if (!drawMode) return;
@@ -289,7 +294,16 @@ export default function ZoneConfiguration() {
                 {intrusionResult && (
                   <div style={{ position:"absolute", right:10, top:10, background:"white", border:"1px solid rgba(0,0,0,0.12)", padding:10, borderRadius:6, boxShadow:"0 6px 18px rgba(0,0,0,0.08)" }}>
                     <div style={{ fontWeight:700, marginBottom:6 }}>Intrusion test</div>
-                    {intrusionResult.zoneName ? <div>Point inside zone: <strong>{intrusionResult.zoneName}</strong></div> : <div>No zone at point</div>}
+                    {intrusionResult.zoneNames && intrusionResult.zoneNames.length > 0 ? (
+                      <div>
+                        Point inside zone{intrusionResult.zoneNames.length > 1 ? "s" : ""}:
+                        <div style={{ marginTop:6 }}>
+                          <strong>{intrusionResult.zoneNames.join(", ")}</strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>No zone at point</div>
+                    )}
                     <div style={{ marginTop:8, fontSize:12, color:"var(--color-muted)" }}>{intrusionResult.point.x.toFixed(2)}m, {intrusionResult.point.y.toFixed(2)}m</div>
                     <div style={{ marginTop:8, display:"flex", gap:8 }}><button className="page__control" onClick={() => setIntrusionResult(null)}>Close</button></div>
                   </div>
