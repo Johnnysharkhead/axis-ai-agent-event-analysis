@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "../styles/pages.css";
+import Gridmap from "../components/Gridmap";
+import ColorButton from "../components/ColorButton";
+import ChangeToolButton from "../components/ChangeToolButton";
+import ScheduleAlarms from "./ScheduleAlarms";
 import RoomConfiguration from "../components/RoomConfiguration";
 
-function Floormap2D() {
+function Floormap2D({ view = "configuration" }) {
   const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 10, cameraHeight: 2 });
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [cameras, setCameras] = useState([]);
@@ -278,10 +282,14 @@ function Floormap2D() {
           }
         })
         .catch((err) => {
-          console.error("Failed to fetch cameras:", err);
-        });
+      });
     }
   };
+
+  // If the view is schedule-alarms, render only the ScheduleAlarms component
+  if (view === "schedule-alarms") {
+    return <ScheduleAlarms embedded />;
+  }
 
   return (
     <section className="page">

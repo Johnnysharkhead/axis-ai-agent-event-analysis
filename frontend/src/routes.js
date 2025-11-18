@@ -25,6 +25,7 @@ import Profile from "./pages/Profile";
 import ManageAccounts from "./pages/ManageAccounts";
 import CameraConfig from "./pages/CameraConfig";
 import { isAuthenticated } from "./utils/api";
+import ScheduleAlarms from "./pages/ScheduleAlarms";
 
 
 function ProtectedRoute({ children }) {
@@ -53,15 +54,12 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes (no layout) */}
-     <Route path="/" element={<PublicRoute><Signup /></PublicRoute>} />
+      {/* Public routes */}
+      <Route path="/" element={<PublicRoute><Signup /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
-      {/* Private routes (with layout) */}
       <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
-
-        {/* Backward-compat redirect from old '/home' to '/dashboard' */}
         <Route path="/home" element={<Navigate to="/dashboard" replace />} />
 
         {/* Cameras */}
@@ -78,11 +76,13 @@ function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin/accounts" element={<ManageAccounts />} />
 
-        {/* 2D Floorplan */}
+        {/* 2D Floorplan views */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D view="heatmap" />} />
         <Route path="/2d-floorplan/zones" element={<Floormap2D view="zones" />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<Floormap2D view="schedule-alarms" />} />
+
+        {/* Removed standalone /scheduling route */}
       </Route>
     </Routes>
   );
