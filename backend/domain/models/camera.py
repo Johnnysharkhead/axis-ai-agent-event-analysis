@@ -1,10 +1,12 @@
 from . import db
 
+
 def fk_name(table, column) -> str:
     """
     Method for naming foreignkeys and other constraints to facilitate migration.
     """
     return f"fk_{table}_{column}"
+
 
 class Camera(db.Model):
     """
@@ -12,6 +14,7 @@ class Camera(db.Model):
     Not currently used. Unsure if it will be used in the future.
     May be beneficial if user wants to search for recordings from a specific camera.
     """
+
     __tablename__ = "cameras"
 
     id               = db.Column(db.Integer, primary_key = True)
@@ -27,6 +30,12 @@ class Camera(db.Model):
     
     floorplan        = db.relationship("Floorplan", back_populates = "cameras")
     # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
+    longitude = db.Column(db.Float)
+    latitude = db.Column(db.Float)
+    tilt_deg = db.Float(db.Float)  # -5
+    roll_deg = db.Float(db.Float)  # -180
+    heading_deg = db.Float(db.Float)
+    height_m = db.Float(db.Float)  # Axis said they use 3 m often
 
     def serialize(self):
         return {
