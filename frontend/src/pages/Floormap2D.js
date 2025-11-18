@@ -3,6 +3,8 @@ import "../styles/pages.css";
 import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
 
+
+
 function Floormap2D() {
   const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 10});
   const [isConfigVisible, setIsConfigVisible] = useState(false);
@@ -315,6 +317,7 @@ function Floormap2D() {
             prevFloorplans.filter((fp) => fp.id !== floorplanId)
           );
           setSelectedFloorplan(null); // Återställ vald floorplan
+          window.location.reload();
         })
         .catch((err) => {
           console.error("Failed to delete floorplan:", err);
