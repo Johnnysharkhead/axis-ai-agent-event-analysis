@@ -4,7 +4,7 @@ import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
 
 function Floormap2D() {
-  const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 10, cameraHeight: 2 });
+  const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 10});
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [cameras, setCameras] = useState([]);
   const [highlightEdges, setHighlightEdges] = useState(false);
@@ -127,7 +127,7 @@ function Floormap2D() {
       .then((data) => {
         if (data.floorplan) {
           const { width, depth, camera_height, cameras } = data.floorplan;
-          setRoomConfig({ width, depth, cameraHeight: camera_height });
+          setRoomConfig({ width, depth});
           setCameras(
             cameras.map((camera) => ({
               ...camera,
@@ -159,7 +159,6 @@ function Floormap2D() {
         floorplan_name: newConfig.name,
         floorplan_width: newConfig.width,
         floorplan_depth: newConfig.depth,
-        camera_height: newConfig.cameraHeight,
       }),
     })
       .then((res) => res.json())
@@ -249,7 +248,6 @@ function Floormap2D() {
           setRoomConfig({
             width: floorplan.width,
             depth: floorplan.depth,
-            cameraHeight: floorplan.camera_height || 2,
             name: floorplan.name,
             new_floorplan_id: floorplan.id,
           });
