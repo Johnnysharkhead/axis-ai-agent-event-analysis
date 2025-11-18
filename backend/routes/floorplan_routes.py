@@ -39,12 +39,10 @@ def floorplans():
             floorplan_name = json_data.get('floorplan_name')
             floorplan_width = json_data.get('floorplan_width')
             floorplan_depth = json_data.get('floorplan_depth')
-            camera_height = json_data.get('camera_height')
             floorplan = Floorplan(
                 name = floorplan_name,
                 width = floorplan_width,
                 depth = floorplan_depth,
-                camera_height = camera_height
             )
 
             db.session.add(floorplan)

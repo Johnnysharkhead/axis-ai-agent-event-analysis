@@ -61,21 +61,21 @@ class FloorplanManager:
         
         print(f"object_lat : {object_lat}")
         print(f"object_lon : {object_lon}")
-        print(f"bottom_lat: {bottom_lat}")
-        print(f"bottom_lon: {bottom_lon}")
+        print(f"bottom_lat : {bottom_lat}")
+        print(f"bottom_lon : {bottom_lon}")
 
 
         delta_lat = object_lat - bottom_lat
         delta_lon = object_lon - bottom_lon
 
-        print(f"delta_lat: {delta_lat}")
-        print(f"delta_lon: {delta_lon}")
+        print(f"delta_lat : {delta_lat}")
+        print(f"delta_lon : {delta_lon}")
 
 
         y_m = FloorplanManager.lat_to_meters(delta_lat)
         x_m = FloorplanManager.lon_to_meters(delta_lon, object_lat)
-        print(f"x_m: {x_m}")
-        print(f"y_m: {y_m}")
+        print(f"x_m : {x_m}")
+        print(f"y_m : {y_m}")
         
         return {"x_m": abs(x_m), "y_m": abs(y_m)}
 
