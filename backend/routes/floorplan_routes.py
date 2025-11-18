@@ -59,22 +59,32 @@ def floorplans():
             traceback.print_exc()
             return jsonify({'error' : 'failed to add floorplan to database'}), 400
             
-@floorplan_bp.route("/floorplan/<floorplan_id>", methods = ["GET", "PUT", "DELETE", "OPTIONS", "PATCh"])
+@floorplan_bp.route("/floorplan/<floorplan_id>", methods=["GET", "PUT", "DELETE", "OPTIONS", "PATCH"])
 def handle_floorplan(floorplan_id):
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
     
     try: 
-        floorplan = Floorplan.query.filter_by(id = floorplan_id).first()
+        floorplan = Floorplan.query.filter_by(id=floorplan_id).first()
     except Exception as e:
-        return jsonify({'error' : 'error when fetching floorplan'}), 400
-    
+        return jsonify({'error': 'Error when fetching floorplan'}), 400
+
     if request.method == "GET":
-        if floorplan:
-            return jsonify({'floorplan' : floorplan.serialize()}), 200
-        else:
-            return jsonify({'Message' : 'no floorplan found.'}), 200
-            
+        return jsonify({'floorplan': floorplan.serialize()}), 200
+    if request.method == "DELETE":
+        if not floorplan:
+            return jsonify({'error': 'Floorplan not found'}), 404
+
+        try:
+            db.session.delete(floorplan)
+            db.session.commit()
+            return jsonify({'message': 'Floorplan deleted successfully'}), 200
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': 'Failed to delete floorplan'}), 500
+
+    # Lägg till en fallback för metoder som inte hanteras
+    #return jsonify({'error': f'Method {request.method} not allowed for this route'}), 405
     # If want to add a camera to a specific room  
     elif request.method == "PUT":
         try:

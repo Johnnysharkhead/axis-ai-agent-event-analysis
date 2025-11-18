@@ -335,3 +335,20 @@
     font-size: 0.9rem;
     color: var(--color-text);
   }
+
+/* Delete Floorplan Button */
+.delete-floorplan-button {
+  padding: 0.5rem 1rem; /* Mindre padding för att göra knappen mindre */
+  background-color: #f87171; /* Ljusare röd för att göra den mindre framträdande */
+  color: white;
+  border: none;
+  border-radius: 6px; /* Mindre rundning */
+  cursor: pointer;
+  font-size: 0.8rem; /* Mindre textstorlek */
+  font-weight: 500; /* Mindre fetstil */
+  transition: all 0.2s ease;
+}
+
+.delete-floorplan-button:hover {
+  background-color: #dc2626; /* Lite mörkare röd vid hover */
+}
