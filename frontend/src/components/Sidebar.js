@@ -16,7 +16,7 @@ function getPath(id) {
   return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
 }
 
-export default function Sidebar({ onSelect }) {
+function Sidebar({ onSelect }) {
   const location = useLocation();
   const [activeId, setActiveId] = useState(() => inferIdFromPath(location.pathname));
   const navigate = useNavigate();
@@ -98,3 +98,5 @@ function inferIdFromPath(pathname) {
 
   return "Dashboard";
 }
+
+export default Sidebar;
