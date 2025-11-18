@@ -318,9 +318,9 @@ useEffect(() => {
   };
 
   // If the view is schedule-alarms, render only the ScheduleAlarms component
-  if (view === "schedule-alarms") {
-    return <ScheduleAlarms embedded />;
-  }
+  // if (view === "schedule-alarms") {
+  //   return <ScheduleAlarms embedded />;
+  // }
 
   return (
     <section className="page">
