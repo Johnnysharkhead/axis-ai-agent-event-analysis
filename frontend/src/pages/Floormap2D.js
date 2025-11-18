@@ -120,34 +120,8 @@ function Floormap2D() {
       });
   };
 
-  const handleSelectFloorplan = (floorplanId) => {
-    fetch(`http://localhost:5001/floorplan/${floorplanId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.floorplan) {
-          const { width, depth, camera_height, cameras } = data.floorplan;
-          setRoomConfig({ width, depth});
-          setCameras(
-            cameras.map((camera) => ({
-              ...camera,
-              placed: true,
-            }))
-          );
-          console.log(`Loaded floorplan: ${data.floorplan.name}`);
 
-        } else {
-          console.error("No floorplan found.");
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch floorplan:", err);
-      });
-  };
-
-  useEffect(() => {
+useEffect(() => {
     handleFetchFloorplans();
   }, []);
 
@@ -168,6 +142,20 @@ function Floormap2D() {
         console.log("Floorplan POST response:", data);
         newConfig.new_floorplan_id = data.new_floorplan_id;
         fetchCameras();
+
+        fetch(`http://localhost:5001/floorplan/${data.new_floorplan_id}`)
+          .then((res) => res.json())
+          .then((floorplanData) => {
+            if (floorplanData.floorplan) {
+              setSelectedFloorplan(floorplanData.floorplan);
+              setRoomConfig({
+                width: floorplanData.floorplan.width,
+                depth: floorplanData.floorplan.depth,
+                name: floorplanData.floorplan.name,
+                new_floorplan_id: floorplanData.floorplan.id,
+              });
+            }
+          });
       })
       .catch((err) => {
         console.error("Failed to add floorplan:", err);
@@ -175,34 +163,34 @@ function Floormap2D() {
     console.log("Room Configuration Saved:", newConfig);
   };
 
-  const handleDropCamera = (cameraId, normalizedX, normalizedY) => {
-    setCameras((prevCameras) =>
-      prevCameras.map((camera) =>
-        camera.id === cameraId
-          ? { ...camera, x: normalizedX, y: normalizedY, placed: true }
-          : camera
-      )
-    );
-    console.log(`Camera ${cameraId} placed at (${normalizedX}, ${normalizedY})`);
+  // const handleDropCamera = (cameraId, normalizedX, normalizedY) => {
+  //   setCameras((prevCameras) =>
+  //     prevCameras.map((camera) =>
+  //       camera.id === cameraId
+  //         ? { ...camera, x: normalizedX, y: normalizedY, placed: true }
+  //         : camera
+  //     )
+  //   );
+  //   console.log(`Camera ${cameraId} placed at (${normalizedX}, ${normalizedY})`);
 
-    if (!firstCameraPlaced) {
-      fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          camera_id: cameraId,
-          placed_coords: [normalizedX, normalizedY],
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("Camera placement PUT response:", data);
-        })
-        .catch((err) => {
-          console.error("Failed to update floorplan with camera:", err);
-        });
-    }
-  };
+  //   if (!firstCameraPlaced) {
+  //     fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
+  //       method: "PUT",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         camera_id: cameraId,
+  //         placed_coords: [normalizedX, normalizedY],
+  //       }),
+  //     })
+  //       .then((res) => res.json())
+  //       .then((data) => {
+  //         console.log("Camera placement PUT response:", data);
+  //       })
+  //       .catch((err) => {
+  //         console.error("Failed to update floorplan with camera:", err);
+  //       });
+  //   }
+  // };
 
   const handleRemoveCamera = (cameraId) => {
     const confirmRemove = window.confirm("Are you sure you want to remove this camera?");
@@ -567,10 +555,11 @@ function Floormap2D() {
         </aside>
 
         {/* Floormap */}
+        {selectedFloorplan && (
         <div className="page__section floormap-section">
           <div className="floormap-header">
             <div>
-              <h3 className="page__section-title floormap-title">Floormap View</h3>
+              <h3 className="page__section-title floormap-title">Floormap View - {roomConfig.name}</h3>
               <p className="page__section-subtitle floormap-subtitle">
                 {roomConfig.width}m × {roomConfig.depth}m
               </p>
@@ -713,6 +702,7 @@ function Floormap2D() {
             </div>
           </div>
         </div>
+        )}
 
       </div>
     </section>
