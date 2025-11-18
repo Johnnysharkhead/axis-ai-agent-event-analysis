@@ -2,8 +2,16 @@ import React, { useEffect, useState } from "react";
 import "../styles/pages.css";
 import "../styles/scheduleAlarms.css";
 
+// --- new helpers for coloring / rendering zones (placed near top of file) ---
+function zoneColor(i) {
+  const h = (i * 57) % 360;
+  const border = `hsl(${h} 75% 35%)`;
+  const bg = `hsl(${h} 75% 50% / 0.12)`;
+  return { border, bg };
+}
+
 function ScheduleAlarms({ embedded = false }) {
-  const zones = ["A", "B", "C", "D", "E"]; // TODO: fetch later
+  const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState("");
   const [schedules, setSchedules] = useState({});
   // Schedule type: "recurring" or "one-time"
@@ -32,6 +40,28 @@ function ScheduleAlarms({ embedded = false }) {
       const raw = localStorage.getItem("zoneSchedules");
       if (raw) setSchedules(JSON.parse(raw));
     } catch {}
+  }, []);
+
+  // Load zones created in ZoneConfiguration (stored under key zones_floorplan_{id})
+  useEffect(() => {
+    function loadZones() {
+      try {
+        const raw = localStorage.getItem("zones_floorplan_default");
+        if (!raw) { setZones([]); return; }
+        const arr = JSON.parse(raw);
+        // store full zone objects (expected shape { id, name, points: [{x,y}, ...] })
+        setZones(Array.isArray(arr) ? arr : []);
+      } catch {
+        setZones([]);
+      }
+    }
+    loadZones();
+    const onStorage = (e) => {
+      if (!e.key || !e.key.startsWith("zones_floorplan_")) return;
+      loadZones();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Auto-detect if end time is before start time (overnight alarm) for recurring
@@ -490,22 +520,46 @@ function ScheduleAlarms({ embedded = false }) {
   // Simple sketch map placeholder
   function SketchMap() {
     const hl = id => (selectedZone === id ? { stroke:"#000", strokeWidth:3 } : {});
+    if (!zones || zones.length === 0) {
+      // fallback to original hardcoded sketch when no zones defined
+      return (
+        <div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
+          <svg width="100%" height="300" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
+            <rect x="0" y="0" width="600" height="300" fill="#eef6ff" rx="8" />
+            <rect x="40" y="25" width="520" height="250" fill="#ffffff" stroke="#3b82f6" strokeWidth="4" rx="10" />
+            <text x="50" y="20" fontSize="12" fill="#374151">Zone sketch (placeholder)</text>
+          </svg>
+        </div>
+      );
+    }
+
+    // Render stored polygon zones scaled to a small SVG
     return (
       <div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
-        <svg width="100%" height="300" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
-          <rect x="0" y="0" width="600" height="300" fill="#eef6ff" rx="8" />
-          <rect x="40" y="25" width="520" height="250" fill="#ffffff" stroke="#3b82f6" strokeWidth="4" rx="10" />
-          <rect x="60" y="45" width="220" height="105" fill="#fff1f0" stroke="#ff7b7b" rx="6" style={{ opacity:0.9, ...hl("A") }} />
-          <text x="170" y="105" textAnchor="middle" fontSize="26" fontWeight="600" fill="#7a1b1b">A</text>
-          <rect x="320" y="45" width="220" height="105" fill="#e9fff2" stroke="#6be27a" rx="6" style={{ opacity:0.9, ...hl("B") }} />
-          <text x="430" y="105" textAnchor="middle" fontSize="26" fontWeight="600" fill="#0b6b34">B</text>
-          <rect x="200" y="100" width="200" height="120" fill="#fffbe6" stroke="#ffbf47" rx="6" style={{ opacity:0.85, ...hl("C") }} />
-          <text x="300" y="160" textAnchor="middle" fontSize="26" fontWeight="600" fill="#7a4b00">C</text>
-          <rect x="60" y="175" width="220" height="105" fill="#fff4e6" stroke="#ffb86b" rx="6" style={{ opacity:0.9, ...hl("D") }} />
-          <text x="170" y="235" textAnchor="middle" fontSize="26" fontWeight="600" fill="#6b3f00">D</text>
-          <rect x="320" y="175" width="220" height="105" fill="#eef2ff" stroke="#94a8ff" rx="6" style={{ opacity:0.9, ...hl("E") }} />
-          <text x="430" y="235" textAnchor="middle" fontSize="26" fontWeight="600" fill="#2b3f7a">E</text>
-          <text x="50" y="20" fontSize="12" fill="#374151">Zone sketch (placeholder)</text>
+        <svg width="100%" height="300" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+          <rect x="0" y="0" width="100" height="100" fill="#eef6ff" rx="2" />
+          {zones.map((z, i) => {
+            if (!z || !Array.isArray(z.points) || z.points.length === 0) return null;
+            // convert room coords to 0..100 percent. Assume room W/H = 10x10 or stored in zone (normalized)
+            const pts = z.points.map(p => {
+              const xPct = (p.x / Math.max(1, 10)) * 100; // using 10m placeholder scale
+              const yPct = 100 - (p.y / Math.max(1, 10)) * 100;
+              return `${xPct},${yPct}`;
+            }).join(" ");
+            const { border, bg } = zoneColor(i);
+            const cx = z.points.reduce((s,p)=>s+p.x,0)/z.points.length;
+            const cy = z.points.reduce((s,p)=>s+p.y,0)/z.points.length;
+            const labelX = (cx / Math.max(1,10)) * 100;
+            const labelY = 100 - (cy / Math.max(1,10)) * 100;
+            return (
+              <g key={z.id || i}>
+                <polygon points={pts} fill={bg} stroke={border} strokeWidth="0.6" style={hl(z.name)} />
+                <text x={labelX} y={labelY} fontSize="6" textAnchor="middle" fill={border} style={{ fontWeight: 600 }}>
+                  {z.name}
+                </text>
+              </g>
+            );
+          })}
         </svg>
       </div>
     );
@@ -645,7 +699,7 @@ function ScheduleAlarms({ embedded = false }) {
               className="schedule-alarms__zone-dropdown"
             >
               <option value="">-- Select Zone --</option>
-              {zones.map(z => <option key={z} value={z}>Zone {z}</option>)}
+              {zones.map(z => <option key={z.id} value={z.name}>Zone {z.name}</option>)}
             </select>
           </div>
 
