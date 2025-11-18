@@ -1,17 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../styles/pages.css";
 
-/**
- * ZoneConfiguration page
- * - Left sidebar: choose a floorplan (placeholder) + "Save Zone Configuration" button
- * - Right: proportional 10×10 map that fits viewport and supports drawing rectangles
- * - Zones persisted in localStorage under key `zones_floorplan_{id}`
- * - Zones are named A, B, C, ... AA, AB, ... and renumber when deleted
- * - Each zone gets a distinct color
- */
-
 function indexToLetters(idx) {
-  // 0 -> A, 25 -> Z, 26 -> AA (Excel-style)
   let n = idx + 1;
   let s = "";
   while (n > 0) {
@@ -23,7 +13,7 @@ function indexToLetters(idx) {
 }
 
 function zoneColor(i) {
-  const h = (i * 57) % 360; // spread hues
+  const h = (i * 57) % 360;
   const border = `hsl(${h} 75% 35%)`;
   const bg = `hsl(${h} 75% 50% / 0.12)`;
   return { border, bg };
@@ -38,15 +28,14 @@ export default function ZoneConfiguration() {
   const roomDepth = selectedFloorplan?.depth || 10;
   const planId = selectedFloorplan?.id ?? "default";
 
+  // Zones are polygons: { id, points: [{x,y}, ...], name }
   const [zones, setZones] = useState([]);
   const [drawMode, setDrawMode] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const startRef = useRef(null);
+  const [currentVerts, setCurrentVerts] = useState([]); // building polygon
+  const [previewPoint, setPreviewPoint] = useState(null); // live mouse pos while drawing
   const containerRef = useRef(null);
 
   useEffect(() => {
-    // try load real floorplans, fall back to placeholder
     fetch("/floorplan")
       .then((r) => r.json())
       .then((data) => {
@@ -61,14 +50,14 @@ export default function ZoneConfiguration() {
   useEffect(() => {
     const raw = localStorage.getItem(`zones_floorplan_${planId}`);
     try {
-      setZones(raw ? JSON.parse(raw) : []);
+      const loaded = raw ? JSON.parse(raw) : [];
+      setZones(loaded);
     } catch {
       setZones([]);
     }
   }, [planId]);
 
-  function saveZones(next) {
-    // ensure names are sequential A, B, ...
+  function persistAndRename(next) {
     const renamed = (next || []).map((z, i) => ({ ...z, name: indexToLetters(i) }));
     setZones(renamed);
     try {
@@ -77,59 +66,52 @@ export default function ZoneConfiguration() {
   }
 
   function pageToRoom(clientX, clientY) {
-    if (!containerRef.current) return { normalizedX: 0, normalizedY: 0 };
+    if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
     const px = clientX - rect.left;
     const py = clientY - rect.top;
-    const normalizedX = Math.max(0, Math.min(roomWidth, (px / rect.width) * roomWidth));
-    const normalizedY = Math.max(0, Math.min(roomDepth, roomDepth - (py / rect.height) * roomDepth));
-    return { normalizedX, normalizedY };
+    const x = Math.max(0, Math.min(roomWidth, (px / rect.width) * roomWidth));
+    const y = Math.max(0, Math.min(roomDepth, roomDepth - (py / rect.height) * roomDepth));
+    return { x, y };
   }
 
-  function pointerStart(clientX, clientY) {
+  // add vertex on click
+  function onMapClick(e) {
     if (!drawMode) return;
-    startRef.current = pageToRoom(clientX, clientY);
-    setIsDrawing(true);
-    setPreview(null);
-  }
-  function pointerMove(clientX, clientY) {
-    if (!isDrawing || !startRef.current) return;
-    const start = startRef.current;
-    const cur = pageToRoom(clientX, clientY);
-    const left = Math.min(start.normalizedX, cur.normalizedX);
-    const right = Math.max(start.normalizedX, cur.normalizedX);
-    const bottom = Math.min(start.normalizedY, cur.normalizedY);
-    const top = Math.max(start.normalizedY, cur.normalizedY);
-    setPreview({ x: left, y: bottom, w: right - left, h: top - bottom });
-  }
-  function pointerEnd(clientX, clientY) {
-    if (!isDrawing || !startRef.current) return;
-    const start = startRef.current;
-    const cur = pageToRoom(clientX, clientY);
-    const left = Math.min(start.normalizedX, cur.normalizedX);
-    const right = Math.max(start.normalizedX, cur.normalizedX);
-    const bottom = Math.min(start.normalizedY, cur.normalizedY);
-    const top = Math.max(start.normalizedY, cur.normalizedY);
-    const w = right - left;
-    const h = top - bottom;
-    setIsDrawing(false);
-    setPreview(null);
-    startRef.current = null;
-    if (w < 0.01 || h < 0.01) return;
-    const newZone = { id: Date.now(), x: left, y: bottom, w, h };
-    saveZones([...zones, newZone]);
+    // ignore if clicking toolbar etc.
+    const p = pageToRoom(e.clientX, e.clientY);
+    setCurrentVerts((v) => [...v, p]);
+    setPreviewPoint(null);
   }
 
-  // pointer handlers
-  function onMouseDown(e) { pointerStart(e.clientX, e.clientY); }
-  function onMouseMove(e) { pointerMove(e.clientX, e.clientY); }
-  function onMouseUp(e) { pointerEnd(e.clientX, e.clientY); }
-  function onTouchStart(e) { if (e.touches?.[0]) pointerStart(e.touches[0].clientX, e.touches[0].clientY); }
-  function onTouchMove(e) { if (e.touches?.[0]) pointerMove(e.touches[0].clientX, e.touches[0].clientY); }
-  function onTouchEnd(e) { const t = e.changedTouches?.[0]; if (t) pointerEnd(t.clientX, t.clientY); }
+  // live preview line while moving mouse
+  function onMapMouseMove(e) {
+    if (!drawMode) return;
+    if (currentVerts.length === 0) return;
+    const p = pageToRoom(e.clientX, e.clientY);
+    setPreviewPoint(p);
+  }
+
+  function onMapMouseLeave() {
+    setPreviewPoint(null);
+  }
+
+  // finish polygon (close) — require >=3 vertices
+  function finishPolygon() {
+    if (currentVerts.length < 3) return;
+    const newZone = { id: Date.now(), points: currentVerts.slice() };
+    persistAndRename([...zones, newZone]);
+    setCurrentVerts([]);
+    setPreviewPoint(null);
+    setDrawMode(false);
+  }
+
+  function undoVertex() {
+    setCurrentVerts((v) => v.slice(0, -1));
+  }
 
   function clearZones() {
-    saveZones([]);
+    persistAndRename([]);
   }
 
   function exportSave() {
@@ -141,35 +123,33 @@ export default function ZoneConfiguration() {
     }
   }
 
-  function zoneStyle(z, i) {
-    const { border, bg } = zoneColor(i);
-    const leftPct = (z.x / Math.max(1, roomWidth)) * 100;
-    const bottomPct = (z.y / Math.max(1, roomDepth)) * 100;
-    const wPct = (z.w / Math.max(1, roomWidth)) * 100;
-    const hPct = (z.h / Math.max(1, roomDepth)) * 100;
-    return {
-      position: "absolute",
-      left: `${leftPct}%`,
-      bottom: `${bottomPct}%`,
-      width: `${wPct}%`,
-      height: `${hPct}%`,
-      border: `2px solid ${border}`,
-      backgroundColor: bg,
-      boxSizing: "border-box",
-      pointerEvents: "none",
-    };
+  function deleteZone(id) {
+    persistAndRename(zones.filter((z) => z.id !== id));
   }
 
-  const wrapperStyle = { width: "90vw", maxWidth: 900, margin: "0 auto" };
-  const containerStyle = {
-    position: "relative",
-    width: "100%",
-    paddingBottom: `${(roomDepth / Math.max(1, roomWidth)) * 100}%`,
-    border: "2px solid var(--color-border)",
-    borderRadius: 12,
-    background: "var(--color-surface)",
-    touchAction: "none",
-  };
+  // convert point in room coords to percent coordinates for SVG (0..100)
+  function pointToPercent(p) {
+    const xPct = (p.x / Math.max(1, roomWidth)) * 100;
+    const yPct = 100 - (p.y / Math.max(1, roomDepth)) * 100; // flip Y for SVG (top=0)
+    return { xPct, yPct };
+  }
+
+  function polygonPointsAttr(points) {
+    return points
+      .map((p) => {
+        const { xPct, yPct } = pointToPercent(p);
+        return `${xPct},${yPct}`;
+      })
+      .join(" ");
+  }
+
+  function centroidOf(points) {
+    // simple centroid of vertices (not necessarily geometric centroid, ok for label)
+    const n = points.length;
+    const sx = points.reduce((s, p) => s + p.x, 0) / n;
+    const sy = points.reduce((s, p) => s + p.y, 0) / n;
+    return { x: sx, y: sy };
+  }
 
   function handleSelect(e) {
     const id = e.target.value;
@@ -181,7 +161,7 @@ export default function ZoneConfiguration() {
     <section className="page">
       <header className="header">
         <h1 className="title">Zone Configuration</h1>
-        <p className="subtitle">Draw rectangles on the map and press "Save Zone Configuration"</p>
+        <p className="subtitle">Draw polygons on the map and press "Save Zone Configuration"</p>
       </header>
 
       <div className="page__split page__split--sidebar">
@@ -213,48 +193,85 @@ export default function ZoneConfiguration() {
           <p className="page__section-subtitle">10×10 m placeholder — map fits viewport proportionally</p>
 
           <div style={{ marginTop: 12 }}>
-            <div style={wrapperStyle}>
-              {/* toolbar placed above the floorplan (inside wrapper) */}
+            <div style={{ width: "90vw", maxWidth: 900, margin: "0 auto" }}>
+              {/* toolbar above the map */}
               <div style={{ display: "flex", gap: 8, marginBottom: 8, justifyContent: "flex-start" }}>
                 <button className="page__control" onClick={() => setDrawMode((d) => !d)}>
-                  {drawMode ? "Exit draw" : "Draw rectangle"}
+                  {drawMode ? "Exit draw" : "Draw polygon"}
+                </button>
+                <button className="page__control" onClick={undoVertex} disabled={!drawMode || currentVerts.length === 0}>
+                  Undo vertex
+                </button>
+                <button className="page__control" onClick={finishPolygon} disabled={!drawMode || currentVerts.length < 3}>
+                  Finish polygon
                 </button>
                 <button className="page__control" onClick={clearZones} style={{ background: "#ef4444", color: "white" }}>
                   Clear zones
                 </button>
               </div>
 
+              {/* proportional container */}
               <div
                 ref={containerRef}
-                style={containerStyle}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  paddingBottom: `${(roomDepth / Math.max(1, roomWidth)) * 100}%`,
+                  border: "2px solid var(--color-border)",
+                  borderRadius: 12,
+                  background: "var(--color-surface)",
+                  touchAction: "none",
+                }}
+                onClick={onMapClick}
+                onMouseMove={onMapMouseMove}
+                onMouseLeave={onMapMouseLeave}
+                onTouchStart={(e) => {
+                  // map touch to click for adding vertices
+                  if (!drawMode) return;
+                  const t = e.touches?.[0];
+                  if (t) {
+                    onMapClick({ clientX: t.clientX, clientY: t.clientY, preventDefault: () => {} });
+                  }
+                }}
               >
-                <div style={{ position: "absolute", inset: 0 }}>
-                  {zones.map((z, i) => (
-                    <div key={z.id} style={zoneStyle(z, i)} title={z.name} />
-                  ))}
+                {/* SVG overlay for polygons and preview */}
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+                  {/* existing zones */}
+                  {zones.map((z, i) => {
+                    const pts = polygonPointsAttr(z.points);
+                    const { border, bg } = zoneColor(i);
+                    const c = centroidOf(z.points);
+                    const cPct = pointToPercent(c);
+                    return (
+                      <g key={z.id}>
+                        <polygon points={pts} fill={bg} stroke={border} strokeWidth="0.8" />
+                        <text x={cPct.xPct} y={cPct.yPct} fontSize="6" textAnchor="middle" fill={border} style={{ pointerEvents: "none", fontWeight: 600 }}>
+                          {z.name}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-                  {preview && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: `${(preview.x / Math.max(1, roomWidth)) * 100}%`,
-                        bottom: `${(preview.y / Math.max(1, roomDepth)) * 100}%`,
-                        width: `${(preview.w / Math.max(1, roomWidth)) * 100}%`,
-                        height: `${(preview.h / Math.max(1, roomDepth)) * 100}%`,
-                        backgroundColor: "rgba(37,99,235,0.12)",
-                        border: "2px solid rgba(37,99,235,0.9)",
-                        boxSizing: "border-box",
-                        pointerEvents: "none",
-                      }}
-                    />
+                  {/* current polygon (filled) */}
+                  {currentVerts.length > 0 && (
+                    <>
+                      <polygon
+                        points={
+                          polygonPointsAttr(currentVerts) + (previewPoint ? " " + `${pointToPercent(previewPoint).xPct},${pointToPercent(previewPoint).yPct}` : "")
+                        }
+                        fill="rgba(37,99,235,0.06)"
+                        stroke="rgba(37,99,235,0.6)"
+                        strokeWidth="0.6"
+                      />
+                      {/* draw small circles for vertices */}
+                      {currentVerts.map((p, idx) => {
+                        const { xPct, yPct } = pointToPercent(p);
+                        return <circle key={idx} cx={xPct} cy={yPct} r="1.2" fill="white" stroke="rgba(37,99,235,0.9)" strokeWidth="0.6" />;
+                      })}
+                      {previewPoint && <circle cx={pointToPercent(previewPoint).xPct} cy={pointToPercent(previewPoint).yPct} r="1.0" fill="rgba(37,99,235,0.9)" />}
+                    </>
                   )}
-                </div>
+                </svg>
               </div>
             </div>
 
@@ -271,11 +288,11 @@ export default function ZoneConfiguration() {
                         <div>
                           <strong>{z.name}</strong>
                           <div style={{ fontSize: 12, color: "var(--color-muted)" }}>
-                            {z.x.toFixed(2)}m, {z.y.toFixed(2)}m — {z.w.toFixed(2)}m × {z.h.toFixed(2)}m
+                            {z.points.length} points
                           </div>
                         </div>
                       </div>
-                      <button onClick={() => saveZones(zones.filter((s) => s.id !== z.id))} style={{ background: "#ff4d4d", color: "white", border: "none", padding: "6px 8px", borderRadius: 6 }}>
+                      <button onClick={() => deleteZone(z.id)} style={{ background: "#ff4d4d", color: "white", border: "none", padding: "6px 8px", borderRadius: 6 }}>
                         Delete
                       </button>
                     </div>
