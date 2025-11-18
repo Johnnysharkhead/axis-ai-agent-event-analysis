@@ -24,6 +24,7 @@ import EventHistoryPage from "./pages/EventHistoryPage";
 import Profile from "./pages/Profile";
 import ManageAccounts from "./pages/ManageAccounts";
 import CameraConfig from "./pages/CameraConfig";
+import ZoneConfiguration from "./pages/ZoneConfiguration";
 import { isAuthenticated } from "./utils/api";
 
 
@@ -81,7 +82,7 @@ function AppRoutes() {
         {/* 2D Floorplan */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D view="configuration" />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D view="heatmap" />} />
-        <Route path="/2d-floorplan/zones" element={<Floormap2D view="zones" />} />
+        <Route path="/2d-floorplan/zones" element={<ZoneConfiguration />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<Floormap2D view="schedule-alarms" />} />
       </Route>
     </Routes>
