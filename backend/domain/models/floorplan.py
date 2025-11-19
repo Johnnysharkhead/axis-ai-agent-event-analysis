@@ -12,7 +12,7 @@ class Floorplan(db.Model):
     name                        = db.Column(db.String(30), nullable = False)
     width                       = db.Column(db.Float, nullable = False)
     depth                       = db.Column(db.Float, nullable = False)
-    camera_height               = db.Column(db.Float, nullable = True)
+    #camera_height               = db.Column(db.Float, nullable = True)
     corner_geocoordinates       = db.Column(db.JSON, nullable = True)
     camera_floorplancoordinates = db.Column(db.JSON, nullable = True)
 

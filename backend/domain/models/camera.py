@@ -30,8 +30,8 @@ class Camera(db.Model):
     
     floorplan        = db.relationship("Floorplan", back_populates = "cameras")
     # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
-    longitude = db.Column(db.Float)
-    latitude = db.Column(db.Float)
+    #longitude = db.Column(db.Float)
+    #latitude = db.Column(db.Float)
     tilt_deg = db.Float(db.Float)  # -5
     roll_deg = db.Float(db.Float)  # -180
     heading_deg = db.Float(db.Float)
