@@ -53,11 +53,13 @@ class FloorplanManager:
         
         # [58.39775780178047, 15.576700990688561]
         
-        # bottom_lat = 58.395905940369715
-        # bottom_lon = 15.577995083109268
+        # KY25:
+        bottom_lat = 58.39590610056573
+        bottom_lon = 15.577997451724473
 
-        bottom_lat = 58.39775780178047
-        bottom_lon = 15.576700990688561
+        # KAMERARUMMET:
+        # bottom_lat = 58.39775780178047
+        # bottom_lon = 15.576700990688561
         
         print(f"object_lat : {object_lat}")
         print(f"object_lon : {object_lon}")

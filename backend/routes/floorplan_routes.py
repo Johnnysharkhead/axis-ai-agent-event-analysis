@@ -23,7 +23,6 @@ def floorplans():
 
     if request.method == "GET":
         try:
-            print()
             floorplans = Floorplan.query.all()
 
             if floorplans:
