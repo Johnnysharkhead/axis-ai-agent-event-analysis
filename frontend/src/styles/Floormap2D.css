@@ -46,14 +46,14 @@
 
   /* Room Configuration Button */
 .room-config-toggle {
-    width: 100%; /* Gör knappen lika bred som sektionen */
-    display: flex; /* Gör att justify-content fungerar */
-    justify-content: center; /* Centrera innehållet horisontellt */
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
   }
 
   /* Active People Panel */
 .active-people {
-    margin-bottom: 1.5rem; /* Mellanrum under sektionen */
+    margin-bottom: 1.5rem; 
   }
   
   .active-people-title {
@@ -94,7 +94,7 @@
 
   /* Placed Cameras Panel */
 .placed-cameras {
-    margin-bottom: 1.5rem; /* Mellanrum under sektionen */
+    margin-bottom: 1.5rem;
   }
   
   .placed-cameras-title {
@@ -147,7 +147,7 @@
 
 /* Available Cameras Panel */
 .available-cameras {
-    margin-bottom: 1.5rem; /* Mellanrum under sektionen */
+    margin-bottom: 1.5rem; 
   }
   
   .available-cameras-title {
@@ -251,17 +251,20 @@
 
 /* Floormap Container */
 .floormap-container {
-    position: relative;
-    width: 100%;
-    padding-bottom: var(--floormap-padding-bottom); /* Dynamisk höjd */
-    max-width: 100%;
-    border: 2px solid var(--color-border);
-    background-color: var(--color-surface);
-    border-radius: 12px;
-    box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.05);
-    transition: all 0.3s ease;
-    overflow: hidden;
-  }
+  position: relative;
+  width: 100%; 
+  max-width: 800px; 
+  padding-bottom: var(--floormap-padding-bottom); 
+  border: 2px solid var(--color-border);
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+
+  /* Skala ner kartan */
+  transform: scale(0.8); 
+  transform-origin: top left; 
+}
   
   .floormap-container.highlight {
     border: 3px solid #007bff;
@@ -324,11 +327,11 @@
   }
   
   .legend-circle.cameras {
-    background-color: #2563eb; /* Blå för kameror */
+    background-color: #2563eb; /* Blue for camera */
   }
   
   .legend-circle.people {
-    background-color: #ef4444; /* Röd för personer */
+    background-color: #ef4444; /* Red for person */
   }
   
   .legend-text {
@@ -338,17 +341,17 @@
 
 /* Delete Floorplan Button */
 .delete-floorplan-button {
-  padding: 0.5rem 1rem; /* Mindre padding för att göra knappen mindre */
-  background-color: #f87171; /* Ljusare röd för att göra den mindre framträdande */
+  padding: 0.5rem 1rem; 
+  background-color: #f87171; 
   color: white;
   border: none;
-  border-radius: 6px; /* Mindre rundning */
+  border-radius: 6px; 
   cursor: pointer;
-  font-size: 0.8rem; /* Mindre textstorlek */
-  font-weight: 500; /* Mindre fetstil */
+  font-size: 0.8rem; 
+  font-weight: 500; 
   transition: all 0.2s ease;
 }
 
 .delete-floorplan-button:hover {
-  background-color: #dc2626; /* Lite mörkare röd vid hover */
+  background-color: #dc2626; 
 }
