@@ -3,7 +3,7 @@ import "../styles/pages.css";
 import Gridmap from "../components/Gridmap";
 import ColorButton from "../components/ColorButton";
 import ChangeToolButton from "../components/ChangeToolButton";
-// import ScheduleAlarms from "./ScheduleAlarms";
+import ScheduleAlarms from "./ScheduleAlarms";
 import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
 
@@ -167,35 +167,6 @@ useEffect(() => {
     console.log("Room Configuration Saved:", newConfig);
   };
 
-  // const handleDropCamera = (cameraId, normalizedX, normalizedY) => {
-  //   setCameras((prevCameras) =>
-  //     prevCameras.map((camera) =>
-  //       camera.id === cameraId
-  //         ? { ...camera, x: normalizedX, y: normalizedY, placed: true }
-  //         : camera
-  //     )
-  //   );
-  //   console.log(`Camera ${cameraId} placed at (${normalizedX}, ${normalizedY})`);
-
-  //   if (!firstCameraPlaced) {
-  //     fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
-  //       method: "PUT",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         camera_id: cameraId,
-  //         placed_coords: [normalizedX, normalizedY],
-  //       }),
-  //     })
-  //       .then((res) => res.json())
-  //       .then((data) => {
-  //         console.log("Camera placement PUT response:", data);
-  //       })
-  //       .catch((err) => {
-  //         console.error("Failed to update floorplan with camera:", err);
-  //       });
-  //   }
-  // };
-
   const handleRemoveCamera = (cameraId) => {
     const confirmRemove = window.confirm("Are you sure you want to remove this camera?");
     if (confirmRemove) {
@@ -318,9 +289,9 @@ useEffect(() => {
   };
 
   // If the view is schedule-alarms, render only the ScheduleAlarms component
-  // if (view === "schedule-alarms") {
-  //   return <ScheduleAlarms embedded />;
-  // }
+  if (view === "schedule-alarms") {
+    return <ScheduleAlarms embedded />;
+  }
 
   return (
     <section className="page">
