@@ -14,6 +14,105 @@
   gap: 1.5rem;
 }
 
+.dashboard__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.dashboard__top .header {
+  flex: 1 1 320px;
+}
+
+.dashboard__alarm-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: flex-end;
+  min-width: 260px;
+}
+
+.dashboard__alarm-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  min-width: 240px;
+}
+
+.dashboard__alarm-indicator-image {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.dashboard__alarm-indicator-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.2;
+}
+
+.dashboard__alarm-indicator-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard__alarm-indicator-subtext {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.dashboard__alarm-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dashboard__alarm-button {
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.dashboard__alarm-button:hover:not(:disabled) {
+  background: var(--color-control-hover-bg);
+}
+
+.dashboard__alarm-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dashboard__alarm-button--trigger {
+  background: linear-gradient(120deg, #f97316, #ea580c);
+  border-color: transparent;
+  color: #fff;
+}
+
+.dashboard__alarm-button--trigger:hover:not(:disabled) {
+  background: linear-gradient(120deg, #ea580c, #c2410c);
+}
+
 .header {
   display: flex;
   flex-direction: column;
@@ -157,6 +256,19 @@ body.theme-dark .page__control--primary:hover {
   min-height: 100%;
 }
 
+.page__placeholder-card--link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.page__placeholder-card--link:hover,
+.page__placeholder-card--link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+  outline: none;
+}
+
 .page__placeholder-card--wide {
   grid-column: span 2;
 }
@@ -182,6 +294,20 @@ body.theme-dark .page__control--primary:hover {
   letter-spacing: 0.08em;
   text-align: center;
   padding: 2rem;
+}
+
+.page__placeholder--has-media {
+  display: block;
+  padding: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.page__placeholder-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .page__placeholder-icon {
