@@ -220,6 +220,7 @@ def on_message(client, userdata, msg):
     event = {"topic": msg.topic, "payload": payload}
     events.append(event)
 
+#------------------------START: Can be removed /Victor --------------------------
     # Process scene metadata
     if isinstance(payload, dict):
         if "frame" in payload and "observations" in payload.get("frame", {}):
@@ -233,11 +234,14 @@ def on_message(client, userdata, msg):
                 if obj_type in ["Human", "Person", "person", "human"]:
                     process_person_detection(obs, msg.topic)
 
+#------------------------END: Can be removed /Victor --------------------------
+
+
     # Limit event history
     if len(events) > 200:
         events.pop(0)
 
-
+#------------------------START: Can be removed /Victor --------------------------
 def process_person_detection(obs, topic):
     """Process and print person detection."""
     track_id = obs.get("track_id", "unknown")
@@ -271,7 +275,7 @@ def process_person_detection(obs, topic):
     # Get spherical coordinates (from camera's built-in radar)
     spherical = obs.get("spherical_coordinate", {})
 
-  
+#------------------------END: Can be removed /Victor --------------------------
 
 def start_mqtt(flask_app=None, debug=True):
     _set_flask_app(flask_app)
