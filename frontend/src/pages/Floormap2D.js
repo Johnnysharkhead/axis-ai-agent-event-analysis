@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
 import "../styles/pages.css";
-import Gridmap from "../components/Gridmap";
-import ColorButton from "../components/ColorButton";
-import ChangeToolButton from "../components/ChangeToolButton";
-import ScheduleAlarms from "./ScheduleAlarms";
 import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
 
