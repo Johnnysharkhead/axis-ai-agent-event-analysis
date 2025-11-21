@@ -33,12 +33,13 @@ class Recording(db.Model):
 
     snapshots = db.relationship("Snapshot", back_populates="recording", cascade="all, delete-orphan")
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
-        
-    # ForeignKey to EventLog
-    event_id = db.Column(db.Integer, db.ForeignKey("event_logs.id"), nullable=True)
 
-    # Relationship with EventLog
-    event = db.relationship("EventLog", back_populates="recordings")
+     # MANY-TO-MANY relation to EventLog
+    events = db.relationship(
+        "EventLog",
+        secondary="event_recordings",
+        back_populates="recordings"
+    )
 
     # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
         
@@ -119,11 +120,28 @@ class EventLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Relationship with recordings
-    recordings = db.relationship("Recording", back_populates="event", cascade="all, delete-orphan")
+    #FK to Zone
+    zone_id = db.Column(
+        db.Integer,
+        db.ForeignKey("zones.id", name=fk_name("event_logs", "zone_id")),
+        nullable=True,
+    )
+
+    #Relationship with zones
+    zone = db.relationship("Zone", back_populates="event_logs")
+
+    # MANY-TO-MANY relation to Recordings
+    recordings = db.relationship(
+        "Recording",
+        secondary="event_recordings",
+        back_populates="events",
+        cascade="all"
+    )
 
     def serialize(self):
         """Convert the event log to a dictionary."""
         return {
             "id": self.id,
+            "zone_id": self.zone_id,
+            "recording_ids": [r.recording_id for r in self.recordings],
         }

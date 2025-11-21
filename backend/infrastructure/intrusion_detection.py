@@ -3,6 +3,7 @@
 Intrusion Detection module.
 This version DOES NOT depend on the database or main.py camera registration.
 Camera URLs are hard-coded below and always available.
+Now ALSO saves events, recordings, snapshots and metadata to the database.
 """
 
 import os
@@ -11,6 +12,11 @@ import time
 import threading
 import datetime
 import subprocess
+
+# ========== IMPORTS ==========
+from . import db
+from backend.domain.models.recording import Recording, Snapshot, Metadata, EventLog
+from backend.domain.models.zone import Zone
 
 # ========== CONFIG ==========
 EVENT_DIR = os.getenv("EVENT_DIR", "events")
@@ -42,6 +48,11 @@ last_trigger_time = {}
 # ========== LOGGING ==========
 def log(msg):
     print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+# ================================
+# Find intrusion zone
+# to be used when saving EventLog to DB later on
+# ================================
 
 
 # ================================
@@ -143,8 +154,21 @@ def trigger_intrusion(topic, payload):
 
         last_trigger_time[camera_id] = now
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
+        # Find the zone for this intrusion "zone_id = getZone()" something like that
+        # TO DO: This requires that we have a way to link intrusion to zones.
+    
+
+        # Snapshot + clip in parallel
+        threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
+        threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
+        
+        recording_id_int = int(f"{camera_id}{timestamp}")
+        
+        # Paths for clip & snapshot
+        clip_path = f"{EVENT_DIR}/clip_{camera_id}_{timestamp}.mp4"
+        snapshot_path = f"{EVENT_DIR}/snap_{camera_id}_{timestamp}.jpg"
         event_data = {
             "camera_id": camera_id,
             "serial": serial,
@@ -154,14 +178,30 @@ def trigger_intrusion(topic, payload):
         }
 
         save_event_json(camera_id, timestamp, event_data)
+        
+        # --- Save to db ---
+        recording = Recording(
+            recording_id=recording_id_int,
+            url=clip_path, )
+        db.session.add(recording)
 
-        # Snapshot + clip in parallel
-        threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
-        threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
+        snapshot_row = Snapshot(
+            recording=recording,
+            url=snapshot_path, )
+        db.session.add(snapshot_row)
+
+         # TO DO: set correct zone_id when available
+        event_log = EventLog(zone_id=None) 
+        db.session.add(event_log)
+
+        event_log.recordings.append(recording)
+
+        db.session.commit()
 
         log(f"[Intrusion] Triggered → camera {camera_id}")
         return True
 
     except Exception as e:
         log(f"[Intrusion] Error: {e}")
+        db.session.rollback()
         return False
