@@ -1,58 +1,50 @@
 from . import db
 from datetime import datetime
-import json
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import func
 
 class Zone(db.Model):
-    """
-    Zone model stores polygon coordinates (GeoJSON-like array of points)
-    and computed bbox/centroid for fast checks. Provides contains_point().
-    """
+    """Zone model storing polygon coordinates; bbox stored as PostgreSQL float8[]"""
     __tablename__ = "zones"
 
-    id = db.Column(db.Integer, primary_key=True)
-    floorplan_id = db.Column(db.Integer, nullable=True)
-    name = db.Column(db.String(64), nullable=True)
-    coordinates = db.Column(db.JSON, nullable=False)  # list of {x:..., y:...}
-    bbox = db.Column(db.JSON, nullable=True)           # [minX, minY, maxX, maxY]
-    centroid = db.Column(db.JSON, nullable=True)       # {x, y}
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id = db.Column(db.BigInteger, primary_key=True)
+    floorplan_id = db.Column(db.BigInteger, nullable=False)
+    name = db.Column(db.String(128), nullable=False)
+    coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
+    bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
+    centroid = db.Column(db.JSON, nullable=True)            # jsonb
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def serialize(self):
         return {
-            "id": self.id,
-            "floorplan_id": self.floorplan_id,
+            "id": int(self.id) if self.id is not None else None,
+            "floorplan_id": int(self.floorplan_id) if self.floorplan_id is not None else None,
             "name": self.name,
             "points": self.coordinates,
-            "bbox": self.bbox,
+            "bbox": list(self.bbox) if self.bbox is not None else None,
             "centroid": self.centroid,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
 
-    # --- geometry helpers ---
     @staticmethod
     def compute_meta(points):
         if not points:
-            return {"bbox": [0, 0, 0, 0], "centroid": {"x": 0, "y": 0}}
-        min_x = min(p["x"] for p in points)
-        min_y = min(p["y"] for p in points)
-        max_x = max(p["x"] for p in points)
-        max_y = max(p["y"] for p in points)
-        sx = sum(p["x"] for p in points)
-        sy = sum(p["y"] for p in points)
+            return {"bbox": [0.0, 0.0, 0.0, 0.0], "centroid": {"x": 0.0, "y": 0.0}}
+        min_x = min(float(p["x"]) for p in points)
+        min_y = min(float(p["y"]) for p in points)
+        max_x = max(float(p["x"]) for p in points)
+        max_y = max(float(p["y"]) for p in points)
+        sx = sum(float(p["x"]) for p in points)
+        sy = sum(float(p["y"]) for p in points)
         centroid = {"x": sx / len(points), "y": sy / len(points)}
         return {"bbox": [min_x, min_y, max_x, max_y], "centroid": centroid}
 
     def contains_point(self, x, y):
-        """
-        Ray-casting point-in-polygon (even-odd rule).
-        Expects polygon as list of dicts [{x, y}, ...].
-        """
         pts = self.coordinates or []
         if not pts:
             return False
-        # quick bbox check
         if self.bbox:
             minX, minY, maxX, maxY = self.bbox
             if x < minX or x > maxX or y < minY or y > maxY:
@@ -60,20 +52,20 @@ class Zone(db.Model):
         inside = False
         j = len(pts) - 1
         for i in range(len(pts)):
-            xi, yi = pts[i]["x"], pts[i]["y"]
-            xj, yj = pts[j]["x"], pts[j]["y"]
+            xi, yi = float(pts[i]["x"]), float(pts[i]["y"])
+            xj, yj = float(pts[j]["x"]), float(pts[j]["y"])
             intersect = ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi)
             if intersect:
                 inside = not inside
             j = i
         return inside
 
-# CRUD helpers (use these from your controllers/views)
+# CRUD helpers
 def create_zone(points, floorplan_id=None, name=None):
     meta = Zone.compute_meta(points)
     z = Zone(
         floorplan_id=floorplan_id,
-        name=name,
+        name=name or "Zone",
         coordinates=points,
         bbox=meta["bbox"],
         centroid=meta["centroid"]
