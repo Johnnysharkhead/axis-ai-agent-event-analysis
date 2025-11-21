@@ -64,7 +64,7 @@ function AppRoutes() {
 
         {/* Cameras */}
         <Route path="/video-feed/camera" element={<LiveCameraPage />} />
-        <Route path="/video-feed/live-camera" element={<LiveCameraPage />} />
+        <Route path="/video-feed/live-feed" element={<LiveCameraPage />} />
         <Route path="/video-feed/video-recording" element={<VideoRecordingPage />} />
         <Route path="/video-feed/recording-library" element={<RecordingLibraryPage />} />
         <Route path="/cameras/configure" element={<CameraConfig />} />

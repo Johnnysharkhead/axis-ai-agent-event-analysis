@@ -34,6 +34,19 @@
   transition: background 0.15s ease;
 }
 
+.sidebar-dashboard-icon {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.sidebar-dashboard-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .sidebar-dashboard.active {
   background: #e6ecff;
 }

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axisTriangle from "../assets/axis-triangle.png";
 import "../styles/Sidebar.css"; 
 
 const SECTIONS = [
-  { title: "Video Feed", items: ["Live Camera", "Video Recording","Recording Library"] },
+  { title: "Video Feed", items: ["Live Feed", "Video Recording","Recording Library"] },
   { title: "2D Floorplan", items: ["Configuration", "Heatmap", "Zones", "Schedule Alarms", "Camera Configure"] },
   { title: "AI Features", items: ["Intrusion Summary"] },
   { title: "Alarms", items: ["Alarm History"] },
@@ -42,7 +43,10 @@ function Sidebar({ onSelect }) {
         onClick={() => select("Dashboard", "Dashboard")}
         className={`sidebar-dashboard ${isActive("Dashboard") ? "active" : ""}`}
       >
-        <span aria-hidden>📊</span> Dashboard
+        <span aria-hidden className="sidebar-dashboard-icon">
+          <img src={axisTriangle} alt="" />
+        </span>
+        Dashboard
       </button>
 
       {SECTIONS.map((section) => (
