@@ -15,6 +15,8 @@ from functools import wraps
 from domain.models import Camera
 import traceback
 from infrastructure.floorplan_handler import FloorplanManager
+from infrastructure.track_fusion import TrackFusion
+from infrastructure.position_processor import PositionProcessor
 
 camera_config_bp = Blueprint('camera_config', __name__)
 CORS(camera_config_bp, origins=["http://localhost:3000"], supports_credentials=True)
@@ -27,6 +29,16 @@ CAMERA_IPS = {
 }
 CAMERA_USER = os.getenv("camera_login", "root")
 CAMERA_PASS = os.getenv("camera_password", "pass")
+
+# Initialize track fusion manager for multi-camera tracking
+track_fusion = TrackFusion(fusion_distance=0.5, track_timeout=3.0)
+
+# Initialize position processor service
+position_processor = PositionProcessor(
+    track_fusion=track_fusion,
+    floorplan_manager=FloorplanManager,
+    bottom_left_coord=[58.395908306412494, 15.577992051878446]
+)
 
 
 def camera_request(url, timeout=10):
@@ -311,39 +323,36 @@ def get_camera_orientation(camera_id):
 
     return make_camera_response(response, error)
 
-#Stream object geopostion 
+#Stream object geoposition with multi-camera fusion
 @camera_config_bp.route('/stream/positions')
 def stream_positions():
+    # Stream real-time position data to frontend
+    # Processes MQTT events and applies track fusion.
+ 
     def generate():
-
-        tmp_bottom_left_coord = [58.395908306412494, 15.577992051878446]
         last_sent = {}
-        while True: # O^3
+        while True:
+            #Get events from MQTT client
             for event in get_events():
-                payload = event.get('payload', {})
-                if isinstance(payload, dict) and 'frame' in payload:
-                    obs_list = payload['frame'].get('observations', [])
-                    for obs in obs_list:
-                        track_id = obs.get('track_id')
-                        geo = obs.get('geoposition', {})
-                        if track_id and geo:
-                            lat = geo.get('latitude')
-                            lon = geo.get('longitude')
-                            if lat is not None and lon is not None:
-                                pos_on_floorplan = FloorplanManager.calculate_position_on_floorplan( #Converts geo cords to meters
-                                    float(lat), float(lon), tmp_bottom_left_coord
-                                )
-                                data = {
-                                    'track_id': track_id,
-                                    'x_m': pos_on_floorplan['x_m'],
-                                    'y_m': pos_on_floorplan['y_m'],
-                                }
-                                if last_sent.get(track_id) != data:
-                                    yield f"data: {json.dumps(data)}\n\n"
-                                    last_sent[track_id] = data
+                # Process event into fused positions
+                positions = position_processor.process_mqtt_event(event)
+
+                #Stream each position update
+                for position in positions:
+                    track_id = position['track_id']
+
+                    #Only send if position changed, deduplicate
+                    if last_sent.get(track_id) != position:
+                        yield f"data: {json.dumps(position)}\n\n"
+                        last_sent[track_id] = position
+
             time.sleep(0.5)
+
     return Response(stream_with_context(generate()),
                     mimetype='text/event-stream')
+
+
+#-------------------------Test--------------------------------
 
 #testing endpoint for when we dont have acces to cameras
 @camera_config_bp.route('/test/mock-stream')
