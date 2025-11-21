@@ -1,4 +1,5 @@
 from . import db
+from sqlalchemy.ext.mutable import MutableDict
 
 class Floorplan(db.Model):
     """
@@ -13,14 +14,15 @@ class Floorplan(db.Model):
     width                       = db.Column(db.Float, nullable = False)
     depth                       = db.Column(db.Float, nullable = False)
     corner_geocoordinates       = db.Column(db.JSON, nullable = True)
-    camera_floorplancoordinates = db.Column(db.JSON, nullable = True)
+    # camera_floorplancoordinates = db.Column(db.JSON, nullable = True)
+    camera_floorplancoordinates = db.Column(MutableDict.as_mutable(db.JSON), nullable=True)
 
     cameras = db.relationship("Camera", back_populates = "floorplan")
 
     def serialize(self):
         def tuple_to_list_dict(d):
-            if not d:
-                return None
+            if not d or not isinstance(d, dict):
+                return {}
             return {k: list(v) for k, v in d.items()}
         
         def coords_to_list(coords):
@@ -34,5 +36,5 @@ class Floorplan(db.Model):
             "depth": self.depth,
             "corner_geocoordinates": tuple_to_list_dict(self.corner_geocoordinates),
             "cameras" : [camera.serialize() for camera in self.cameras] if self.cameras else None,
-            "camera_floorplancoordinates" : coords_to_list(self.camera_floorplancoordinates),
+            "camera_floorplancoordinates" : tuple_to_list_dict(self.camera_floorplancoordinates),
         }

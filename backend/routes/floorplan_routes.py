@@ -30,6 +30,7 @@ def floorplans():
             return jsonify({"message": "no floorplans in database"}), 200
         
         except Exception as e:
+            traceback.print_exc()
             return jsonify({"error": "failed fetching floorplans from db"}), 404
         
     elif request.method == "POST":
@@ -38,12 +39,10 @@ def floorplans():
             floorplan_name = json_data.get('floorplan_name')
             floorplan_width = json_data.get('floorplan_width')
             floorplan_depth = json_data.get('floorplan_depth')
-            camera_height = json_data.get('camera_height')
             floorplan = Floorplan(
                 name = floorplan_name,
                 width = floorplan_width,
                 depth = floorplan_depth,
-                camera_height = camera_height
             )
 
             db.session.add(floorplan)
@@ -58,22 +57,32 @@ def floorplans():
             traceback.print_exc()
             return jsonify({'error' : 'failed to add floorplan to database'}), 400
             
-@floorplan_bp.route("/floorplan/<floorplan_id>", methods = ["GET", "PUT", "DELETE", "OPTIONS"])
+@floorplan_bp.route("/floorplan/<floorplan_id>", methods=["GET", "PUT", "DELETE", "OPTIONS", "PATCH"])
 def handle_floorplan(floorplan_id):
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
     
     try: 
-        floorplan = Floorplan.query.filter_by(id = floorplan_id).first()
+        floorplan = Floorplan.query.filter_by(id=floorplan_id).first()
     except Exception as e:
-        return jsonify({'error' : 'error when fetching floorplan'}), 400
-    
+        return jsonify({'error': 'Error when fetching floorplan'}), 400
+
     if request.method == "GET":
-        if floorplan:
-            return jsonify({'floorplan' : floorplan.serialize()}), 200
-        else:
-            return jsonify({'Message' : 'no floorplan found.'}), 200
-            
+        return jsonify({'floorplan': floorplan.serialize()}), 200
+    if request.method == "DELETE":
+        if not floorplan:
+            return jsonify({'error': 'Floorplan not found'}), 404
+
+        try:
+            db.session.delete(floorplan)
+            db.session.commit()
+            return jsonify({'message': 'Floorplan deleted successfully'}), 200
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': 'Failed to delete floorplan'}), 500
+
+    # Lägg till en fallback för metoder som inte hanteras
+    #return jsonify({'error': f'Method {request.method} not allowed for this route'}), 405
     # If want to add a camera to a specific room  
     elif request.method == "PUT":
         try:
@@ -87,8 +96,22 @@ def handle_floorplan(floorplan_id):
 
             floorplan_dimensions = (floorplan.width, floorplan.depth)
 
-            floorplan.camera_floorplancoordinates = placed_coords
-            floorplan.corner_geocoordinates = FloorplanManager.get_floorplan_coordinates(floorplan_dimensions, camera, placed_coords)
+            if floorplan.camera_floorplancoordinates is None:
+                floorplan.camera_floorplancoordinates = {}
+
+            if not isinstance(floorplan.camera_floorplancoordinates, dict):
+                floorplan.camera_floorplancoordinates = {}
+
+            print(f"camera_id: {camera_id}")
+            print(f"placed_coords: {placed_coords}")
+
+            floorplan.camera_floorplancoordinates[str(camera_id)] = placed_coords
+            print(f"floorplan.camera_floorplancoordinates: {floorplan.camera_floorplancoordinates}")
+
+            if isinstance(floorplan.camera_floorplancoordinates, dict) and len(floorplan.camera_floorplancoordinates) == 1:
+                floorplan.corner_geocoordinates = FloorplanManager.get_floorplan_coordinates(
+                    floorplan_dimensions, camera, placed_coords
+                )
             
             db.session.commit()
 
@@ -96,4 +119,28 @@ def handle_floorplan(floorplan_id):
         except Exception as e:
             traceback.print_exc()
             return jsonify({'error' : 'error while adding camera to floorplan {floorplan_id}'}), 400
+        
+        #Method for removing camera from floorplan
+    elif request.method == "PATCH":
+        
+        try:
+            data = request.get_json()
+            camera_id = data.get("camera_id")
+            print(f"camera_id: {camera_id}")
+            if not camera_id:
+                return jsonify({'error' : "camera ID is required"})
+            
+            camera = Camera.query.filter_by(id=camera_id, floorplan_id=floorplan_id).first()
+            if not camera:
+                return jsonify({'error' : "no camera found."})
+            
+            camera.floorplan_id = None
+
+            if floorplan.camera_floorplancoordinates and str(camera_id) in floorplan.camera_floorplancoordinates:
+                del floorplan.camera_floorplancoordinates[str(camera_id)]
+            db.session.commit()
+            return jsonify({'message' : 'camera removed from floorplan successfully'})
+        except Exception as e:
+            return jsonify({'error' : 'failed to remove floorplan from floorplan {floorplan_id}'})
+        
 
