@@ -66,22 +66,6 @@ function RoomConfiguration({ onSave }) {
           }}
         />
       </label>
-      <label>
-        Camera Height (meters):
-        <input
-          type="number"
-          value={cameraHeight}
-          onChange={(e) => setCameraHeight(e.target.value)}
-          placeholder="Enter camera height"
-          required
-          style={{
-            padding: "0.3rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            fontSize: "0.9rem",
-          }}
-        />
-      </label>
       <button
         type="submit"
         style={{

@@ -50,28 +50,36 @@ class FloorplanManager:
     def calculate_position_on_floorplan(object_lat, object_lon, bottom_left_coords):
         # bottom_lat, bottom_lon = bottom_left_coords
         # [58.395905940369715, 15.577995083109268]
-        bottom_lat = 58.395905940369715
-        bottom_lon = 15.577995083109268
         
-        # print(f"object_lat : {object_lat}")
-        # print(f"object_lon : {object_lon}")
-        # print(f"bottom_lat: {bottom_lat}")
-        # print(f"bottom_lon: {bottom_lon}")
+        # [58.39775780178047, 15.576700990688561]
+        
+        # KY25:
+        bottom_lat = 58.39590610056573
+        bottom_lon = 15.577997451724473
+
+        # KAMERARUMMET:
+        # bottom_lat = 58.39775780178047
+        # bottom_lon = 15.576700990688561
+        
+        print(f"object_lat : {object_lat}")
+        print(f"object_lon : {object_lon}")
+        print(f"bottom_lat : {bottom_lat}")
+        print(f"bottom_lon : {bottom_lon}")
 
 
-        delta_lat = abs(object_lat - bottom_lat)
-        delta_lon = abs(object_lon - bottom_lon)
+        delta_lat = object_lat - bottom_lat
+        delta_lon = object_lon - bottom_lon
 
-        # print(f"delta_lat: {delta_lat}")
-        # print(f"delta_lon: {delta_lon}")
+        print(f"delta_lat : {delta_lat}")
+        print(f"delta_lon : {delta_lon}")
 
 
         y_m = FloorplanManager.lat_to_meters(delta_lat)
         x_m = FloorplanManager.lon_to_meters(delta_lon, object_lat)
-        # print(f"x_m: {x_m}")
-        # print(f"y_m: {y_m}")
+        print(f"x_m : {x_m}")
+        print(f"y_m : {y_m}")
         
-        return {"x_m": x_m, "y_m": y_m}
+        return {"x_m": abs(x_m), "y_m": abs(y_m)}
 
         
 
