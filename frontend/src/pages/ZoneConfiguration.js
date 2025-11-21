@@ -70,6 +70,11 @@ export default function ZoneConfiguration() {
   const [intrusionResult, setIntrusionResult] = useState(null);
   const containerRef = useRef(null);
 
+  // Modal / pending polygon state for naming and inline-editing
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [modalName, setModalName] = useState("");
+  const [pendingPolygon, setPendingPolygon] = useState(null);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`zones_floorplan_${planId}`);
@@ -78,10 +83,17 @@ export default function ZoneConfiguration() {
   }, [planId]);
 
   function persistAndRename(next) {
+    // Prevent persisting when no floorplan is selected
+    if (!selectedFloorplan || !selectedFloorplan.id) {
+      alert("Please select a floorplan before creating or modifying zones.");
+      return;
+    }
     const renamed = (next || []).map((z,i)=> {
       const points = z.points || [];
       const meta = computeMeta(points);
-      return { id: z.id ?? Date.now() + i, points, name: indexToLetters(i), bbox: meta.bbox, centroid: meta.centroid };
+      // preserve an explicit name if provided, otherwise fall back to letter index
+      const name = (z.name && String(z.name).trim()) ? z.name.trim() : indexToLetters(i);
+      return { id: z.id ?? Date.now() + i, points, name, bbox: meta.bbox, centroid: meta.centroid };
     });
     setZones(renamed);
     try { localStorage.setItem(`zones_floorplan_${planId}`, JSON.stringify(renamed)); } catch {}
@@ -177,13 +189,54 @@ export default function ZoneConfiguration() {
       const lastPx = roomToPixel(currentVerts[currentVerts.length - 1], rect);
       if (Math.hypot(firstPx.x-lastPx.x, firstPx.y-lastPx.y) < 10) currentVerts[currentVerts.length - 1] = { ...currentVerts[0] };
     }
-    persistAndRename([...zones, { id: Date.now(), points: currentVerts.slice() }]);
-    setCurrentVerts([]); setPreviewPoint(null); setDrawMode(false); setSnapTarget(null);
+    if (!selectedFloorplan || !selectedFloorplan.id) {
+      alert("Please select a floorplan before finishing a polygon.");
+      return;
+    }
+    // show modal to give the new zone a name
+    setPendingPolygon(currentVerts.slice());
+    setModalName("");
+    setShowNameModal(true);
   }
   function undoVertex() { setCurrentVerts(v => v.slice(0,-1)); }
-  function clearZones() { persistAndRename([]); }
-  function exportSave() { try { localStorage.setItem(`zones_floorplan_${planId}`, JSON.stringify(zones)); alert("Zones saved"); } catch { alert("Save failed"); } }
-  function deleteZone(id) { persistAndRename(zones.filter(z => z.id !== id)); }
+  function clearZones() {
+    if (!selectedFloorplan || !selectedFloorplan.id) {
+      alert("Please select a floorplan before clearing zones.");
+      return;
+    }
+    persistAndRename([]);
+  }
+  function exportSave() {
+    if (!selectedFloorplan || !selectedFloorplan.id) {
+      alert("Please select a floorplan before saving zones.");
+      return;
+    }
+    try { localStorage.setItem(`zones_floorplan_${planId}`, JSON.stringify(zones)); alert("Zones saved"); } catch { alert("Save failed"); }
+  }
+  function deleteZone(id) {
+    if (!selectedFloorplan || !selectedFloorplan.id) {
+      alert("Please select a floorplan before deleting zones.");
+      return;
+    }
+    persistAndRename(zones.filter(z => z.id !== id));
+  }
+
+  // save modal name (create zone)
+  function saveModalName() {
+    if (!pendingPolygon) { cancelModal(); return; }
+    const finalName = modalName && String(modalName).trim() ? modalName.trim() : `Zone ${zones.length + 1}`;
+    const newZone = { id: Date.now(), points: pendingPolygon, name: finalName };
+    persistAndRename([...zones, newZone]);
+    setPendingPolygon(null);
+    setShowNameModal(false);
+    setModalName("");
+    setCurrentVerts([]); setPreviewPoint(null); setDrawMode(false); setSnapTarget(null);
+  }
+  function cancelModal() {
+    setPendingPolygon(null);
+    setShowNameModal(false);
+    setModalName("");
+  }
 
   function pointToPercent(p) { const xPct = (p.x / Math.max(1, roomWidth)) * 100; const yPct = 100 - (p.y / Math.max(1, roomDepth)) * 100; return { xPct, yPct }; }
   function polygonPointsAttr(points) { return (points || []).map(p => { const {xPct,yPct}=pointToPercent(p); return `${xPct},${yPct}`; }).join(" "); }
@@ -251,15 +304,15 @@ export default function ZoneConfiguration() {
           <div style={{ marginTop:12 }}>
             <div style={{ width:"90vw", maxWidth:900, margin:"0 auto" }}>
               <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                <button className="page__control" onClick={() => { setIntrusionMode(false); setDrawMode(d => !d); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); }}>
+                <button className="page__control" onClick={() => { setIntrusionMode(false); setDrawMode(d => !d); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); }} disabled={!selectedFloorplan}>
                   {drawMode ? "Exit draw" : "Draw polygon"}
                 </button>
                 <button className="page__control" onClick={() => { setDrawMode(false); setIntrusionMode(s => !s); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); setIntrusionResult(null); }} style={intrusionMode ? { background:"#fde68a" } : {}}>
                   {intrusionMode ? "Exit intrusion" : "Intrusion test"}
                 </button>
                 <button className="page__control" onClick={undoVertex} disabled={!drawMode || currentVerts.length===0}>Undo vertex</button>
-                <button className="page__control" onClick={finishPolygon} disabled={!drawMode || currentVerts.length<3}>Finish polygon</button>
-                <button className="page__control" onClick={clearZones} style={{ background:"#ef4444", color:"white" }}>Clear zones</button>
+                <button className="page__control" onClick={finishPolygon} disabled={!selectedFloorplan || !drawMode || currentVerts.length<3}>Finish polygon</button>
+                <button className="page__control" onClick={clearZones} style={{ background:"#ef4444", color:"white" }} disabled={!selectedFloorplan || zones.length===0}>Clear zones</button>
               </div>
 
               <div
@@ -308,6 +361,21 @@ export default function ZoneConfiguration() {
                     <div style={{ marginTop:8, display:"flex", gap:8 }}><button className="page__control" onClick={() => setIntrusionResult(null)}>Close</button></div>
                   </div>
                 )}
+
+                {/* Name modal */}
+                {showNameModal && (
+                  <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.4)", zIndex:50 }}>
+                    <div style={{ width:360, background:"white", padding:20, borderRadius:8, boxShadow:"0 10px 30px rgba(0,0,0,0.3)" }}>
+                      <h3 style={{ margin:0, marginBottom:8 }}>Name new zone</h3>
+                      <p style={{ marginTop:0, marginBottom:12, color:"var(--color-muted)", fontSize:13 }}>Enter a descriptive name for the zone.</p>
+                      <input autoFocus value={modalName} onChange={(e)=>setModalName(e.target.value)} placeholder="e.g. Front Desk" style={{ width:"100%", padding:"8px 10px", fontSize:14, borderRadius:6, border:"1px solid var(--color-border)", marginBottom:12 }} />
+                      <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+                        <button className="page__control" onClick={cancelModal}>Cancel</button>
+                        <button className="page__control page__control--primary" onClick={saveModalName}>Save Zone</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -319,11 +387,21 @@ export default function ZoneConfiguration() {
                     <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                       <div style={{ width:14, height:14, borderRadius:3, border:`2px solid ${border}` }} />
                       <div>
-                        <strong>{z.name}</strong>
+                        {/* inline editable name */}
+                        <input
+                          value={z.name || ""}
+                          onChange={(e) => {
+                            const newName = e.target.value;
+                            setZones(prev => prev.map(z2 => z2.id === z.id ? { ...z2, name: newName } : z2));
+                          }}
+                          onBlur={() => persistAndRename(zones)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+                          style={{ fontSize:14, fontWeight:700, border:"none", background:"transparent", outline:"none", width:160 }}
+                        />
                         <div style={{ fontSize:12, color:"var(--color-muted)" }}>{(z.points||[]).length} points</div>
                       </div>
                     </div>
-                    <button onClick={() => deleteZone(z.id)} style={{ background:"#ff4d4d", color:"white", border:"none", padding:"6px 8px", borderRadius:6 }}>Delete</button>
+                    <button onClick={() => deleteZone(z.id)} style={{ background:"#ff4d4d", color:"white", border:"none", padding:"6px 8px", borderRadius:6 }} disabled={!selectedFloorplan}>Delete</button>
                   </div>
                 );
               })}
