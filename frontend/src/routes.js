@@ -80,7 +80,7 @@ function AppRoutes() {
         {/* 2D Floorplan views */}
         <Route path="/2d-floorplan/configuration" element={<Floormap2D />} />
         <Route path="/2d-floorplan/heatmap" element={<Floormap2D />} />
-        <Route path="/2d-floorplan/zones" element={<Floormap2D />} />
+        <Route path="/2d-floorplan/zones" element={<ZoneConfiguration />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<ScheduleAlarms />} />
       </Route>
     </Routes>
