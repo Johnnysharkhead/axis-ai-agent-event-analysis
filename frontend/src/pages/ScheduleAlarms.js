@@ -63,7 +63,22 @@ function ScheduleAlarms({ embedded = false }) {
 
   // Load zones for the selected floorplan from localStorage key zones_floorplan_{id}
   useEffect(() => {
-    function loadZonesForPlan() {
+    // Load zones from backend for the selected floorplan (fallback to localStorage)
+    async function loadZonesForPlan() {
+      try {
+        const planId = selectedFloorplanId ?? null;
+        if (!planId) { setZones([]); return; }
+        const res = await fetch(`${API_BASE}/floorplan/${planId}/zones`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.zones || []);
+          setZones(list);
+          return;
+        }
+      } catch (err) {
+        // ignore and fallback
+      }
+      // fallback to localStorage (legacy)
       try {
         const planId = selectedFloorplanId ?? "default";
         const raw = localStorage.getItem(`zones_floorplan_${planId}`);
@@ -80,6 +95,13 @@ function ScheduleAlarms({ embedded = false }) {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [selectedFloorplanId]);
+
+  // Helper to resolve zone name from id (used in UI labels)
+  function getZoneName(id) {
+    if (!id) return "";
+    const z = zones.find(z => String(z.id) === String(id));
+    return z ? z.name : String(id);
+  }
 
   // Auto-detect if end time is before start time (overnight alarm) for recurring
   useEffect(() => {
@@ -436,22 +458,24 @@ function ScheduleAlarms({ embedded = false }) {
 
     // No conflicts or superseded alarms - proceed normally
     setSchedules(prev => {
-      const next = { ...prev, [selectedZone]: [...(prev[selectedZone] || []), newAlarm] };
+      const key = selectedZone;
+      const next = { ...prev, [key]: [...(prev[key] || []), newAlarm] };
       localStorage.setItem("zoneSchedules", JSON.stringify(next));
       return next;
     });
-    setMessage(`Alarm successfully added to Zone ${selectedZone}`);
+    setMessage(`Alarm successfully added to Zone ${getZoneName(selectedZone)}`);
     setMessageType("success");
     resetForm();
   }
 
   function removeRule(zone,id){
-    setSchedules(prev=>{
-      const next={...prev,[zone]:(prev[zone]||[]).filter(r=>r.id!==id)};
+    setSchedules(prev => {
+      const key = zone;
+      const next = { ...prev, [key]: (prev[key] || []).filter(r => r.id !== id) };
       localStorage.setItem("zoneSchedules", JSON.stringify(next));
       return next;
     });
-    setMessage("Alarm removed successfully");
+    setMessage(`Alarm removed from Zone ${getZoneName(zone)}`);
     setMessageType("info");
   }
 
@@ -724,12 +748,12 @@ function ScheduleAlarms({ embedded = false }) {
             </div>
 
             <select
-              value={selectedZone}
-              onChange={e => { setSelectedZone(e.target.value); setMessage(""); }}
+              value={selectedZone ?? ""}
+              onChange={e => { setSelectedZone(e.target.value ? Number(e.target.value) : ""); setMessage(""); }}
               className="schedule-alarms__zone-dropdown"
             >
               <option value="">-- Select Zone --</option>
-              {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
             </select>
            </div>
 
@@ -1055,7 +1079,7 @@ function ScheduleAlarms({ embedded = false }) {
             <div className="alarm-list__header-actions">
               {selectedZone && (schedules[selectedZone] || []).length > 0 && (
                 <div className="alarm-list__counter">
-                  Zone {selectedZone} · {(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length} alarm{(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length !== 1 ? 's' : ''}
+                  Zone {getZoneName(selectedZone)} · {(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length} alarm{(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length !== 1 ? 's' : ''}
                 </div>
               )}
               {selectedZone && (schedules[selectedZone] || []).some(a => !getAlarmStatus(a).active) && (
@@ -1080,7 +1104,7 @@ function ScheduleAlarms({ embedded = false }) {
             {selectedZone && (schedules[selectedZone] || []).length === 0 && (
               <div className="alarm-list__empty">
                 <div className="alarm-list__empty-icon">🔔</div>
-                No scheduled alarms for Zone {selectedZone}
+                No scheduled alarms for Zone {getZoneName(selectedZone)}
               </div>
             )}
             {selectedZone && sortAlarms(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).map(r => {
@@ -1236,19 +1260,8 @@ function ScheduleAlarms({ embedded = false }) {
     </div>
   );
 
-  if (embedded) return Inner;
-
-  return (
-    <section className="page">
-      <div className="page__top-bar">
-        <header className="header">
-          <h1 className="title">Zone Alarm Management</h1>
-          <p className="subtitle">Schedule recurring or one-time alarms for different zones with flexible time ranges</p>
-        </header>
-      </div>
-      {Inner}
-    </section>
-  );
-}
-
-export default ScheduleAlarms;
+  // Render the prepared JSX
+  return Inner;
+ }
+ 
+ export default ScheduleAlarms;
