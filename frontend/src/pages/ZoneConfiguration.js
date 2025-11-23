@@ -43,9 +43,18 @@ export default function ZoneConfiguration() {
   async function loadFloorplans() {
     try {
       const res = await fetch(`${API_BASE}/floorplan`);
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      const data = await res.json();
-      const list = data?.floorplans || data?.floorplans?.length ? data.floorplans : (Array.isArray(data) ? data : []);
+      if (!res.ok) {
+        console.warn("floorplan endpoint returned", res.status);
+        setFloorplans([]);
+        return;
+      }
+      const data = await res.json().catch(() => null);
+      if (!data) { setFloorplans([]); return; }
+      let list = [];
+      if (Array.isArray(data)) list = data;
+      else if (Array.isArray(data.floorplans)) list = data.floorplans;
+      else if (Array.isArray(data.results)) list = data.results;
+      else if (data.floorplan) list = [data.floorplan];
       setFloorplans(list);
       if (!selectedFloorplan && list.length) setSelectedFloorplan(list[0]);
     } catch (err) {

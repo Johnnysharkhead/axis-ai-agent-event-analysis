@@ -1,6 +1,9 @@
 from flask import Blueprint, jsonify, request
 from domain.models import db
-from domain.models.zone import create_zone, delete_zone, get_zones_for_floorplan, Zone
+from domain.models.zone import (
+    create_zone, delete_zone, get_zones_for_floorplan, Zone,
+    create_schedule, update_schedule, delete_schedule, get_schedules_for_zone
+)
 import traceback
 
 zone_bp = Blueprint('zone', __name__)
@@ -102,3 +105,45 @@ def handle_zone(zone_id):
     except Exception:
         traceback.print_exc()
         return jsonify({"error": "failed to delete zone"}), 500
+
+# schedule endpoints
+@zone_bp.route("/zones/<int:zone_id>/schedules", methods=["OPTIONS", "GET", "POST"])
+def zone_schedules(zone_id):
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    if request.method == "GET":
+        try:
+            return jsonify({"schedules": get_schedules_for_zone(zone_id)}), 200
+        except Exception:
+            traceback.print_exc()
+            return jsonify({"error": "failed fetching schedules"}), 500
+    if request.method == "POST":
+        payload = request.get_json() or {}
+        try:
+            s = create_schedule(zone_id, payload)
+            return jsonify(s), 201
+        except Exception:
+            traceback.print_exc()
+            return jsonify({"error": "failed creating schedule"}), 500
+
+@zone_bp.route("/zones/<int:zone_id>/schedules/<int:schedule_id>", methods=["OPTIONS", "PUT", "DELETE"])
+def zone_schedule_item(zone_id, schedule_id):
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    if request.method == "PUT":
+        payload = request.get_json() or {}
+        try:
+            s = update_schedule(schedule_id, payload)
+            if not s:
+                return jsonify({"error": "not found"}), 404
+            return jsonify(s), 200
+        except Exception:
+            traceback.print_exc()
+            return jsonify({"error": "failed updating schedule"}), 500
+    if request.method == "DELETE":
+        try:
+            ok = delete_schedule(schedule_id)
+            return jsonify({"deleted": ok}), (200 if ok else 404)
+        except Exception:
+            traceback.print_exc()
+            return jsonify({"error": "failed deleting schedule"}), 500
