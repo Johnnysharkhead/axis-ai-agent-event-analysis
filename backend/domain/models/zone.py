@@ -13,8 +13,7 @@ class Zone(db.Model):
     coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
     bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
     centroid = db.Column(db.JSON, nullable=True)            # jsonb
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # timestamps removed per schema — handled elsewhere if needed
 
     def serialize(self):
         return {
@@ -24,8 +23,7 @@ class Zone(db.Model):
             "points": self.coordinates,
             "bbox": list(self.bbox) if self.bbox is not None else None,
             "centroid": self.centroid,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+            # timestamps intentionally omitted
         }
 
     @staticmethod

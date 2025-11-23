@@ -83,8 +83,18 @@ export default function ZoneConfiguration() {
         const res = await fetch(`${API_BASE}/floorplan/${planId}/zones`);
         if (res.ok) {
           const data = await res.json();
-          // accept either { zones: [...] } or array directly
-          setZones(Array.isArray(data) ? data : (data.zones || []));
+          const list = Array.isArray(data) ? data : (data.zones || []);
+          // normalize backend shape to the frontend shape expected by this component
+          const normalized = list.map(z => ({
+            id: z.id,
+            name: z.name || "",
+            // backend serialize uses "points" for coordinates; accept both to be safe
+            points: z.points || z.coordinates || [],
+            // ensure bbox is an array (backend uses float8[])
+            bbox: Array.isArray(z.bbox) ? z.bbox : (z.bbox ? JSON.parse(z.bbox) : null),
+            centroid: z.centroid || null
+          }));
+          setZones(normalized);
           return;
         }
       } catch (err) {
@@ -231,31 +241,40 @@ export default function ZoneConfiguration() {
       alert("Please select a floorplan before saving zones.");
       return;
     }
+    const payload = { zones: zones.map(z => ({ name: z.name, points: z.points })) };
+    console.debug("Saving zones payload:", payload);
     try {
-      // send minimal, DB-compatible payload: each zone => { name, points }
-      const payload = { zones: zones.map(z => ({ name: z.name, points: z.points })) };
       const res = await fetch(`${API_BASE}/floorplan/${planId}/zones`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
-      const data = await res.json();
-      const updated = Array.isArray(data) ? data : (data.zones || []);
-      // backend returns serialized zones with 'points' etc. Use that to refresh UI.
+      const body = await res.json().catch(()=>({}));
+      if (!res.ok) {
+        console.error("Save failed (server):", res.status, body);
+        alert(`Save failed: ${body.error || JSON.stringify(body)}`);
+        return;
+      }
+      // If server returns an error object inside 200, treat as failure
+      if (body && body.error) {
+        console.error("Server returned error:", body);
+        alert(`Save failed: ${body.error} ${body.message || ""}`);
+        return;
+      }
+      const updated = Array.isArray(body) ? body : (body.zones || []);
       if (updated && updated.length) {
-        // normalize backend shape -> frontend expects { id, points, name, bbox, centroid }
         setZones(updated.map(z => ({
           id: z.id,
-          points: z.points || z.coordinates || [],
           name: z.name || "",
-          bbox: z.bbox || z.bbox,
-          centroid: z.centroid || z.centroid
+          points: z.points || z.coordinates || [],
+          bbox: Array.isArray(z.bbox) ? z.bbox : (z.bbox ? JSON.parse(z.bbox) : null),
+          centroid: z.centroid || null
         })));
         alert("Zones saved to database");
         return;
       }
-      alert("Zones saved to database");
+      // success but empty response
+      alert("Zones saved to database (no zones returned)");
     } catch (err) {
       console.warn("Failed to save zones to backend, falling back to localStorage:", err);
       try {

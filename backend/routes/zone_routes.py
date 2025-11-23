@@ -31,37 +31,61 @@ def floorplan_zones(floorplan_id):
         Replace zones for a floorplan.
         Expected payload: { "zones": [ { "name": "...", "points": [{x,y}, ...] }, ... ] }
         The handler will delete existing zones for the floorplan and create new ones.
+        This implementation uses a single DB transaction so failures roll back.
         """
         try:
             data = request.get_json() or {}
             incoming = data.get("zones") if isinstance(data, dict) else data
             if incoming is None:
                 return jsonify({"error": "missing zones payload"}), 400
+            if not isinstance(incoming, list):
+                return jsonify({"error": "zones must be an array"}), 400
 
-            # delete existing zones for floorplan
+            # run replace inside a transaction so partial writes don't persist
             try:
-                Zone.query.filter_by(floorplan_id=floorplan_id).delete()
-                db.session.commit()
+                # begin a transactional scope
+                with db.session.begin():
+                    # delete existing zones for floorplan
+                    Zone.query.filter_by(floorplan_id=floorplan_id).delete(synchronize_session=False)
+
+                    created_objs = []
+                    for z in incoming:
+                        raw_pts = z.get("points") or z.get("coordinates") or []
+                        pts = []
+                        if isinstance(raw_pts, list):
+                            for p in raw_pts:
+                                if isinstance(p, dict) and "x" in p and "y" in p:
+                                    try:
+                                        x = float(p["x"]); y = float(p["y"])
+                                    except Exception:
+                                        raise ValueError("point coordinates must be numbers")
+                                    pts.append({"x": x, "y": y})
+                                else:
+                                    raise ValueError("point must be object with x and y")
+                        name = (z.get("name") or "").strip() or None
+                        if not pts:
+                            raise ValueError("each zone must have at least 3 points")
+                        meta = Zone.compute_meta(pts)
+                        new_zone = Zone(
+                            floorplan_id=floorplan_id,
+                            name=name or "Zone",
+                            coordinates=pts,
+                            bbox=meta["bbox"],
+                            centroid=meta["centroid"]
+                        )
+                        db.session.add(new_zone)
+                        created_objs.append(new_zone)
+                    # commit happens automatically at the end of `with db.session.begin()`
+                # after commit, load serialized zones
+                saved = get_zones_for_floorplan(floorplan_id)
+                return jsonify({"zones": saved}), 200
+            except ValueError as ve:
+                db.session.rollback()
+                return jsonify({"error": "invalid payload", "message": str(ve)}), 400
             except Exception:
                 db.session.rollback()
-                # continue anyway
-
-            saved = []
-            for z in incoming:
-                pts = z.get("points") or z.get("coordinates") or []
-                name = z.get("name") or None
-                # validate minimal shape
-                if not isinstance(pts, list) or len(pts) == 0:
-                    continue
-                try:
-                    created = create_zone(pts, floorplan_id=floorplan_id, name=name)
-                    saved.append(created)
-                except Exception:
-                    db.session.rollback()
-                    traceback.print_exc()
-                    # skip failing zone
-
-            return jsonify({"zones": saved}), 200
+                traceback.print_exc()
+                return jsonify({"error": "failed to save zones"}), 500
         except Exception:
             traceback.print_exc()
             return jsonify({"error": "failed to save zones"}), 500
