@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../styles/pages.css";
 import RoomConfiguration from "../components/RoomConfiguration";
 import "../styles/Floormap2D.css";
@@ -16,6 +16,13 @@ function Floormap2D() {
   const [people, setPeople] = useState({});
   const [useMockStream, setUseMockStream] = useState(false);
   const [newCamera, setNewCamera] = useState({ x: "", y: "" });
+  const [mapHeight, setMapHeight] = useState(400);
+
+useEffect(() => {
+  const containerWidth = Math.min(window.innerWidth * 0.6, 800); // exempel på maxbredd
+  const height = (roomConfig.depth / roomConfig.width) * containerWidth;
+  setMapHeight(height);
+}, [roomConfig]);
 
   useEffect(() => {
 
@@ -550,9 +557,7 @@ useEffect(() => {
           {/* The Floormap Container */}
           <div
             className={`floormap-container ${highlightEdges ? "highlight" : ""}`}
-            style={{
-              "--floormap-padding-bottom": `${(roomConfig.depth / roomConfig.width) * 100}%`,
-            }}
+            style={{ width: "100%", height: `${mapHeight}px`, position: "relative" }}
 
             onDragOver={(e) => {
               e.preventDefault();
