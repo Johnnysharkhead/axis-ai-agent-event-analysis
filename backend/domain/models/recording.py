@@ -8,6 +8,12 @@ def fk_name(table, column) -> str:
 
 from datetime import datetime
 
+event_recordings = db.Table(
+    "event_recordings",
+    db.Column("event_id", db.Integer, db.ForeignKey("event_logs.id"), primary_key=True),
+    db.Column("recording_id", db.Integer, db.ForeignKey("recordings.recording_id"), primary_key=True),
+)
+
 class Recording(db.Model):
     """
     Class for storing Recording data in the database.

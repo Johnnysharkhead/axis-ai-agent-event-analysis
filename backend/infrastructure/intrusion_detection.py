@@ -12,11 +12,8 @@ import time
 import threading
 import datetime
 import subprocess
-
-# ========== IMPORTS ==========
-from . import db
-from backend.domain.models.recording import Recording, Snapshot, Metadata, EventLog
-from backend.domain.models.zone import Zone
+from domain.models import db
+from domain.models.recording import Recording, Snapshot, EventLog
 
 # ========== CONFIG ==========
 EVENT_DIR = os.getenv("EVENT_DIR", "events")
