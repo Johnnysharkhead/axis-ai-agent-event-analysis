@@ -134,6 +134,17 @@ function Floormap2D() {
   }, []);
 
 
+  const handleAutoScroll = (e) => {
+    const scrollMargin = 50; 
+    const scrollSpeed = 10; 
+  
+    if (e.clientY < scrollMargin) {
+      window.scrollBy(0, -scrollSpeed);
+    } else if (e.clientY > window.innerHeight - scrollMargin) {
+      window.scrollBy(0, scrollSpeed);
+    }
+  };
+
   const handleSaveConfig = (newConfig) => {
     setRoomConfig(newConfig);
     fetch("http://localhost:5001/floorplan", {
@@ -575,46 +586,47 @@ function Floormap2D() {
 
               onDragOver={(e) => {
                 e.preventDefault();
+                handleAutoScroll(e); // Lägg till automatisk scrollning
+            
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-
+            
                 const isOnEdge =
                   x <= 15 ||
                   x >= rect.width - 15 ||
                   y <= 15 ||
                   y >= rect.height - 15;
-
+            
                 setHighlightEdges(isOnEdge);
               }}
               onDragLeave={() => setHighlightEdges(false)}
               onDrop={(e) => {
                 e.preventDefault();
                 setHighlightEdges(false);
-              
+            
                 const cameraId = parseInt(e.dataTransfer.getData("cameraId"), 10);
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-              
+            
                 const isOnEdge =
                   x <= 15 ||
                   x >= rect.width - 15 ||
                   y <= 15 ||
                   y >= rect.height - 15;
-              
+            
                 if (isOnEdge) {
                   let normalizedX = (x / rect.width) * roomConfig.width;
                   let normalizedY = roomConfig.depth - (y / rect.height) * roomConfig.depth;
-              
+            
                   if (x <= 15) normalizedX = 0;
                   if (x >= rect.width - 15) normalizedX = roomConfig.width;
                   if (y <= 15) normalizedY = roomConfig.depth;
                   if (y >= rect.height - 15) normalizedY = 0;
-              
+            
                   console.log(`Placing camera ${cameraId} at (${normalizedX}, ${normalizedY})`);
-              
-                  // Skicka uppdaterad position till servern med PUT
+            
                   fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -631,7 +643,6 @@ function Floormap2D() {
                     })
                     .then((data) => {
                       console.log("Camera updated successfully:", data);
-                      // Uppdatera kamerans position i klienten
                       setCameras((prevCameras) =>
                         prevCameras.map((camera) =>
                           camera.id === cameraId
