@@ -19,6 +19,8 @@ class Floorplan(db.Model):
 
     cameras = db.relationship("Camera", back_populates = "floorplan")
 
+    zones = db.relationship("Zone", back_populates="floorplan", cascade="all, delete-orphan")
+    
     def serialize(self):
         def tuple_to_list_dict(d):
             if not d or not isinstance(d, dict):
@@ -37,4 +39,5 @@ class Floorplan(db.Model):
             "corner_geocoordinates": tuple_to_list_dict(self.corner_geocoordinates),
             "cameras" : [camera.serialize() for camera in self.cameras] if self.cameras else None,
             "camera_floorplancoordinates" : tuple_to_list_dict(self.camera_floorplancoordinates),
+            "zones" : [zone.serialize() for zone in self.zones] if self.zones else None
         }
