@@ -15,6 +15,14 @@ function timeToMinutes(t) {
   const [hh, mm] = String(t).split(":");
   return Number(hh || 0) * 60 + Number(mm || 0);
 }
+// normalize "HH:MM" or "HH:MM:SS" -> "HH:MM"
+function normalizeTime(t) {
+  if (!t) return null;
+  const parts = String(t).split(":");
+  const hh = String(parts[0] || "0").padStart(2, "0");
+  const mm = String(parts[1] || "0").padStart(2, "0");
+  return `${hh}:${mm}`;
+}
 function localDateTimeString(date, hour = 22, minute = 0) {
   const pad = (n) => String(n).padStart(2, "0");
   const y = date.getFullYear();
@@ -37,15 +45,23 @@ function formatDateTimeDuration(a, b) {
     return "";
   }
 }
-function formatDuration(start, end, spansNextDay, multiplier = 1) {
+function formatDuration(start, end, spansNextDay, totalDays = 1) {
   const s = timeToMinutes(start);
   const e = timeToMinutes(end);
   let diff = e - s;
+  // if end is earlier or equal to start and the alarm spans next day, treat as overnight single-day span
   if (diff <= 0 && spansNextDay) diff += 24 * 60;
   if (diff < 0) diff = Math.abs(diff);
+
+  // For continuous multi-day alarms, total duration is the span from the first start to the final end:
+  // add full 24h days for the days in-between (totalDays includes the first day)
+  if (totalDays && totalDays > 1) {
+    diff = diff + (totalDays - 1) * 24 * 60;
+  }
+
   const h = Math.floor(diff / 60);
   const m = diff % 60;
-  return `${h}h ${m}m${multiplier !== 1 ? ` × ${multiplier}` : ""}`;
+  return `${h}h ${m}m`;
 }
 
 function ScheduleAlarms({ embedded = false }) {
@@ -191,15 +207,21 @@ function ScheduleAlarms({ embedded = false }) {
   }
   function isDuplicateAlarm(zoneId, newAlarm) {
     const list = schedules[zoneId] || [];
-    return list.some(a => {
-      if (a.type !== newAlarm.type) return false;
-      if (a.type === "recurring") {
-        return JSON.stringify(a.days || []) === JSON.stringify(newAlarm.days || []) &&
-               a.start === newAlarm.start && a.end === newAlarm.end;
-      } else {
-        return a.startDateTime === newAlarm.startDateTime && a.endDateTime === newAlarm.endDateTime;
-      }
-    });
+    if (!list.length) return false;
+    if (newAlarm.type === "recurring") {
+      const newDaysKey = JSON.stringify((newAlarm.days || []).slice().sort());
+      const newStart = timeToMinutes(newAlarm.start);
+      const newEnd = timeToMinutes(newAlarm.end);
+      return list.some(a => {
+        if (a.type !== "recurring") return false;
+        const aDaysKey = JSON.stringify((a.days || []).slice().sort());
+        const aStart = timeToMinutes(a.start);
+        const aEnd = timeToMinutes(a.end);
+        return aDaysKey === newDaysKey && aStart === newStart && aEnd === newEnd;
+      });
+    } else {
+      return list.some(a => a.type === "one-time" && a.startDateTime === newAlarm.startDateTime && a.endDateTime === newAlarm.endDateTime);
+    }
   }
   // lightweight conflict detection: returns empty conflicts/superseded by default
   function findConflicts(zoneId, newAlarm) { return { conflicts: [], superseded: [] }; }
@@ -240,13 +262,19 @@ function ScheduleAlarms({ embedded = false }) {
         setMessageType("error");
         return;
       }
+      // compute spansNextDay automatically:
+      // - continuous mode always spans next day
+      // - daily repeat spans next day when end <= start (overnight)
+      const normStart = normalizeTime(start);
+      const normEnd = normalizeTime(end);
+      const spans = (alarmMode === "continuous") || (timeToMinutes(normEnd) <= timeToMinutes(normStart));
       newAlarm = {
         type: "recurring",
         days: activeDays,
-        start: start,
-        end: end,
-        spansNextDay: spansNextDay,
-        alarmMode: alarmMode,
+        start: normStart,
+        end: normEnd,
+        spansNextDay: !!spans,
+        alarmMode: alarmMode === "continuous" ? "continuous" : "daily",
         enabled: true
       };
     } else {
@@ -272,7 +300,11 @@ function ScheduleAlarms({ embedded = false }) {
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
       const created = await res.json();
-      setSchedules(prev => ({ ...prev, [selectedZone]: [...(prev[selectedZone] || []), created] }));
+      // normalize returned times to "HH:MM" for frontend logic (backend may return "HH:MM:SS")
+      const normalized = { ...created };
+      if (normalized.start) normalized.start = normalizeTime(normalized.start);
+      if (normalized.end) normalized.end = normalizeTime(normalized.end);
+      setSchedules(prev => ({ ...prev, [selectedZone]: [...(prev[selectedZone] || []), normalized] }));
       setMessage(`Alarm successfully added to Zone ${getZoneName(selectedZone)}`);
       setMessageType("success");
       resetForm();

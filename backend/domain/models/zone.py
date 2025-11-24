@@ -79,7 +79,8 @@ class ZoneSchedule(db.Model):
     days = db.Column(db.JSON, nullable=True)                  # JSON array of day codes, e.g. ["Mon","Tue"]
     start_time = db.Column(Time, nullable=True)               # for recurring: "HH:MM:SS"
     end_time = db.Column(Time, nullable=True)
-    spans_next_day = db.Column(Boolean, default=False)
+    # allow NULL for one-time schedules (null means "not applicable")
+    spans_next_day = db.Column(Boolean, nullable=True, default=None)
     start_dt = db.Column(db.DateTime(timezone=True), nullable=True)  # for one-time
     end_dt = db.Column(db.DateTime(timezone=True), nullable=True)
     enabled = db.Column(Boolean, default=True)
@@ -94,7 +95,8 @@ class ZoneSchedule(db.Model):
             # time fields returned as strings that the frontend expects ("HH:MM" for time, ISO for datetimes)
             "start": self.start_time.isoformat() if self.start_time else None,
             "end": self.end_time.isoformat() if self.end_time else None,
-            "spansNextDay": bool(self.spans_next_day),
+            # preserve NULL for one-time schedules; otherwise boolean
+            "spansNextDay": None if self.spans_next_day is None else bool(self.spans_next_day),
             "startDateTime": self.start_dt.isoformat() if self.start_dt else None,
             "endDateTime": self.end_dt.isoformat() if self.end_dt else None,
             "enabled": bool(self.enabled),
@@ -146,18 +148,22 @@ def get_zones_for_floorplan(floorplan_id):
 
 # Schedule helpers
 def create_schedule(zone_id, payload):
+    # determine spans_next_day only for recurring schedules; one-time -> None
+    schedule_type = payload.get("type", "recurring")
+    spans_val = None
+    if schedule_type == "recurring":
+        spans_val = bool(payload.get("spansNextDay", False))
     s = ZoneSchedule(
         zone_id=zone_id,
-        type=payload.get("type", "recurring"),
+        type=schedule_type,
         days=payload.get("days"),
         start_time=payload.get("start"),
         end_time=payload.get("end"),
-        spans_next_day=bool(payload.get("spansNextDay", False)),
+        spans_next_day=spans_val,
         start_dt=payload.get("startDateTime"),
         end_dt=payload.get("endDateTime"),
         enabled=payload.get("enabled", True),
         alarm_mode=payload.get("alarmMode"),
-        # meta removed
     )
     db.session.add(s)
     db.session.commit()
@@ -171,7 +177,12 @@ def update_schedule(schedule_id, payload):
     if "days" in payload: s.days = payload["days"]
     if "start" in payload: s.start_time = payload["start"]
     if "end" in payload: s.end_time = payload["end"]
-    if "spansNextDay" in payload: s.spans_next_day = bool(payload["spansNextDay"])
+    # if client supplies spansNextDay explicitly -> set accordingly;
+    # if schedule type is changed to one-time and client didn't supply spansNextDay -> set to NULL
+    if "spansNextDay" in payload:
+        s.spans_next_day = bool(payload["spansNextDay"])
+    elif "type" in payload and payload["type"] == "one-time":
+        s.spans_next_day = None
     if "startDateTime" in payload: s.start_dt = payload["startDateTime"]
     if "endDateTime" in payload: s.end_dt = payload["endDateTime"]
     if "enabled" in payload: s.enabled = bool(payload["enabled"])
