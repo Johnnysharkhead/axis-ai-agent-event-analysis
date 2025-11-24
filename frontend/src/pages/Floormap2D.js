@@ -422,14 +422,14 @@ useEffect(() => {
   <h3
     className="page__section-title available-cameras-title"
     onClick={() => setIsAvailableCamerasVisible(!isAvailableCamerasVisible)}
-    style={{ cursor: "pointer" }} // Gör rubriken klickbar
+    style={{ cursor: "pointer" }} 
   >
     Available Cameras
     <span style={{ marginLeft: "10px" }}>
-      {isAvailableCamerasVisible ? "▼" : "▲"} {/* Pil för att indikera expandering */}
+      {isAvailableCamerasVisible ? "▼" : "▲"} 
     </span>
   </h3>
-  {isAvailableCamerasVisible && ( // Visa innehållet endast om sektionen är expanderad
+  {isAvailableCamerasVisible && ( 
     <>
       <p className="available-cameras-subtitle">
         Drag cameras to place them on the floormap edges or set coordinates
