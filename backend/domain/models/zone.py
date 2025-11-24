@@ -9,7 +9,12 @@ class Zone(db.Model):
     __tablename__ = "zones"
 
     id = db.Column(db.BigInteger, primary_key=True)
-    floorplan_id = db.Column(db.BigInteger, nullable=False)
+    #floorplan_id = db.Column(db.BigInteger, nullable=False)
+    floorplan_id = db.Column(
+    db.Integer,
+    db.ForeignKey("floorplans.id", ondelete="CASCADE"),
+    nullable=False
+    )
     name = db.Column(db.String(128), nullable=False)
     coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
     bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
@@ -23,6 +28,8 @@ class Zone(db.Model):
         cascade="all, delete-orphan",
         lazy="select"
     )
+
+    floorplan = db.relationship("Floorplan", back_populates="zones")
 
     def serialize(self):
         return {
