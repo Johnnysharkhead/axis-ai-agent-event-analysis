@@ -467,17 +467,17 @@ useEffect(() => {
                     const x = parseFloat(camera.newX);
                     const y = parseFloat(camera.newY);
 
-                    // Validera att koordinaterna är på rummets kanter
+                    // Make sure camera is placed on the edge
                     const isOnEdge =
-                      (x === 0 || x === roomConfig.width) || // Vänster eller höger kant
-                      (y === 0 || y === roomConfig.depth);   // Nedre eller övre kant
+                      (x === 0 || x === roomConfig.width) || // Left or right edge
+                      (y === 0 || y === roomConfig.depth);   // Top or bottom edge
 
                     if (!isOnEdge) {
                       alert("Cameras can only be placed on the edges of the room!");
                       return;
                     }
 
-                    // Uppdatera kamerans position
+                    // Update camera position if within room dimensions
                     if (x >= 0 && x <= roomConfig.width && y >= 0 && y <= roomConfig.depth) {
                       setCameras((prevCameras) =>
                         prevCameras.map((cam) =>
