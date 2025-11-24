@@ -174,11 +174,8 @@ def trigger_intrusion(topic, payload):
         
         # --- Save to db via Internal Route ---
         try:
-            # NOTE: Ensure this URL matches where you register the blueprint in main.py
-            # If you register with app.register_blueprint(event_bp, url_prefix='/events')
-            # then the URL is http://127.0.0.1:5000/events/internal/create
-            #api_url = os.getenv("EVENT_API_URL", "http://127.0.0.1:5000/events/internal/create")
-            api_url = "http://localhost:5001/event/internal/create"
+            # Fixed: Use /internal/create since blueprint has no url_prefix
+            api_url = "http://localhost:5001/internal/create"
             
             payload_data = {
                 "camera_id": camera_id,

@@ -12,7 +12,7 @@ class Zone(db.Model):
     coordinates = db.Column(db.String(255), nullable=False)  # Store coordinates as a string (e.g., JSON or WKT)
 
     #Relationship to EventLog
-    event_logs = db.relationship("EventLog", back_populates="zone", cascade="all, delete-orphan")
+    #event_logs = db.relationship("EventLog", back_populates="zone", cascade="all, delete-orphan")
 
     def serialize(self):
         """

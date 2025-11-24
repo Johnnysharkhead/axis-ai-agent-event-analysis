@@ -11,6 +11,7 @@ def create_event_internal():
     """
     Internal route called by the intrusion detection background thread.
     Receives event data and saves it to the database.
+    Creates both Recording and EventLog entries.
     """
     try:
         data = request.json
@@ -26,29 +27,41 @@ def create_event_internal():
         dt = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
 
         # Generate a unique ID (integer)
-        # Ensure this fits your DB schema for recording_id
         rec_id = int(f"{camera_id}{timestamp_str}")
 
-        # Create Recording entry
-        # Note: Using 'start_time' based on your previous error logs
+        # 1. Create Recording entry (only has recording_id and url)
         recording = Recording(
             recording_id=rec_id,
-            url=clip_path,
-            start_time=dt,
-            end_time=dt + datetime.timedelta(seconds=10) # Default 10s duration
+            url=clip_path
         )
-        
         db.session.add(recording)
         
-        # Optional: Create Snapshot entry if you have a separate table
-        # snapshot = Snapshot(recording_id=rec_id, url=snapshot_path)
-        # db.session.add(snapshot)
+        # 2. Create Snapshot entry if snapshot_path exists
+        if snapshot_path:
+            snapshot = Snapshot(
+                recording_id=rec_id,
+                url=snapshot_path,
+                timestamp=dt
+            )
+            db.session.add(snapshot)
 
+        # 3. Create EventLog entry WITHOUT zone_id (to avoid the missing column error)
+        event_log = EventLog()
+        
+        # 4. Link the recording to the event via the many-to-many relationship
+        event_log.recordings.append(recording)
+        
+        db.session.add(event_log)
         db.session.commit()
         
-        return jsonify({"message": "Event saved successfully", "id": rec_id}), 201
+        return jsonify({
+            "message": "Event saved successfully",
+            "recording_id": rec_id,
+            "event_id": event_log.id
+        }), 201
 
     except Exception as e:
+        db.session.rollback()
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
