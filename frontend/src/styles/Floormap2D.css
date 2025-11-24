@@ -151,9 +151,15 @@
   }
   
   .available-cameras-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .available-cameras-title span {
+    font-size: 0.8rem;
+    color: #666;
   }
   
   .available-cameras-subtitle {

@@ -17,6 +17,7 @@ function Floormap2D() {
   const [useMockStream, setUseMockStream] = useState(false);
   const [newCamera, setNewCamera] = useState({ x: "", y: "" });
   const [mapHeight, setMapHeight] = useState(400);
+  const [isAvailableCamerasVisible, setIsAvailableCamerasVisible] = useState(true);
 
 useEffect(() => {
   const containerWidth = Math.min(window.innerWidth * 0.6, 800); // exempel på maxbredd
@@ -417,119 +418,132 @@ useEffect(() => {
           </div>
 
           {/* Available Cameras Panel */}
-          <div className="page__section available-cameras">
-            <h3 className="page__section-title available-cameras-title">Available Cameras</h3>
-            <p className="available-cameras-subtitle">
-              Drag cameras to place them on the floormap edges or set coordinates
-            </p>
-            {cameras.filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined)).length === 0 ? (
-              <p className="available-cameras-empty">All cameras placed</p>
-            ) : (
-              <div className="available-cameras-list">
-                {cameras
-                  .filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined))
-                  .sort((a, b) => a.id - b.id)
-                  .map((camera) => (
-                    <div key={camera.id} className="available-camera-item">
-                      <div className="available-camera-item-header">
-                        <div className="available-camera-item-title">
-                          {camera.name || `Camera ${camera.id}`}
-                        </div>
-                        <button
-                          draggable
-                          onDragStart={(e) => {
-                            console.log(`Dragging camera with ID: ${camera.id}`);
-                            e.dataTransfer.setData("cameraId", camera.id);
-                          }}
-                          className="available-camera-drag-button"
-                        >
-                          Drag
-                        </button>
-                      </div>
+<div className="page__section available-cameras">
+  <h3
+    className="page__section-title available-cameras-title"
+    onClick={() => setIsAvailableCamerasVisible(!isAvailableCamerasVisible)}
+    style={{ cursor: "pointer" }} // Gör rubriken klickbar
+  >
+    Available Cameras
+    <span style={{ marginLeft: "10px" }}>
+      {isAvailableCamerasVisible ? "▼" : "▲"} {/* Pil för att indikera expandering */}
+    </span>
+  </h3>
+  {isAvailableCamerasVisible && ( // Visa innehållet endast om sektionen är expanderad
+    <>
+      <p className="available-cameras-subtitle">
+        Drag cameras to place them on the floormap edges or set coordinates
+      </p>
+      {cameras.filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined)).length === 0 ? (
+        <p className="available-cameras-empty">All cameras placed</p>
+      ) : (
+        <div className="available-cameras-list">
+          {cameras
+            .filter((camera) => !camera.placed && (camera.floorplan_id === null || camera.floorplan_id === undefined))
+            .sort((a, b) => a.id - b.id)
+            .map((camera) => (
+              <div key={camera.id} className="available-camera-item">
+                <div className="available-camera-item-header">
+                  <div className="available-camera-item-title">
+                    {camera.name || `Camera ${camera.id}`}
+                  </div>
+                  <button
+                    draggable
+                    onDragStart={(e) => {
+                      console.log(`Dragging camera with ID: ${camera.id}`);
+                      e.dataTransfer.setData("cameraId", camera.id);
+                    }}
+                    className="available-camera-drag-button"
+                  >
+                    Drag
+                  </button>
+                </div>
 
-                      {/* Form for setting coordinates */}
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
+                {/* Form for setting coordinates */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
 
-                          const x = parseFloat(camera.newX);
-                          const y = parseFloat(camera.newY);
+                    const x = parseFloat(camera.newX);
+                    const y = parseFloat(camera.newY);
 
-                          // Validera att koordinaterna är på rummets kanter
-                          const isOnEdge =
-                            (x === 0 || x === roomConfig.width) || // Vänster eller höger kant
-                            (y === 0 || y === roomConfig.depth);   // Nedre eller övre kant
+                    // Validera att koordinaterna är på rummets kanter
+                    const isOnEdge =
+                      (x === 0 || x === roomConfig.width) || // Vänster eller höger kant
+                      (y === 0 || y === roomConfig.depth);   // Nedre eller övre kant
 
-                          if (!isOnEdge) {
-                            alert("Cameras can only be placed on the edges of the room!");
-                            return;
-                          }
+                    if (!isOnEdge) {
+                      alert("Cameras can only be placed on the edges of the room!");
+                      return;
+                    }
 
-                          // Uppdatera kamerans position
-                          if (x >= 0 && x <= roomConfig.width && y >= 0 && y <= roomConfig.depth) {
-                            setCameras((prevCameras) =>
-                              prevCameras.map((cam) =>
-                                cam.id === camera.id ? { ...cam, x, y, placed: true } : cam
-                              )
-                            );
-                            console.log(`Camera ${camera.id} placed at (${x}, ${y})`);
+                    // Uppdatera kamerans position
+                    if (x >= 0 && x <= roomConfig.width && y >= 0 && y <= roomConfig.depth) {
+                      setCameras((prevCameras) =>
+                        prevCameras.map((cam) =>
+                          cam.id === camera.id ? { ...cam, x, y, placed: true } : cam
+                        )
+                      );
+                      console.log(`Camera ${camera.id} placed at (${x}, ${y})`);
 
-                            fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
-                              method: "PUT",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                camera_id: camera.id,
-                                placed_coords: [x, y],
-                              }),
-                            })
-                              .then((res) => res.json())
-                              .then((data) => {
-                                console.log("Camera placement PUT response:", data);
-                              })
-                              .catch((err) => {
-                                console.error("Failed to update floorplan with camera:", err);
-                              });
-                          } else {
-                            alert("Coordinates must be within the room dimensions!");
-                          }
-                        }}
-                        className="camera-coordinate-form"
-                      >
-                        <input
-                          type="number"
-                          placeholder="X"
-                          value={camera.newX || ""}
-                          onChange={(e) =>
-                            setCameras((prevCameras) =>
-                              prevCameras.map((cam) =>
-                                cam.id === camera.id ? { ...cam, newX: e.target.value } : cam
-                              )
-                            )
-                          }
-                          className="camera-coordinate-input"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Y"
-                          value={camera.newY || ""}
-                          onChange={(e) =>
-                            setCameras((prevCameras) =>
-                              prevCameras.map((cam) =>
-                                cam.id === camera.id ? { ...cam, newY: e.target.value } : cam
-                              )
-                            )
-                          }
-                          className="camera-coordinate-input"
-                        />
-                        <button type="submit" className="camera-coordinate-submit">
-                          Set
-                        </button>
-                      </form>
-                    </div>
-                  ))}
+                      fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          camera_id: camera.id,
+                          placed_coords: [x, y],
+                        }),
+                      })
+                        .then((res) => res.json())
+                        .then((data) => {
+                          console.log("Camera placement PUT response:", data);
+                        })
+                        .catch((err) => {
+                          console.error("Failed to update floorplan with camera:", err);
+                        });
+                    } else {
+                      alert("Coordinates must be within the room dimensions!");
+                    }
+                  }}
+                  className="camera-coordinate-form"
+                >
+                  <input
+                    type="number"
+                    placeholder="X"
+                    value={camera.newX || ""}
+                    onChange={(e) =>
+                      setCameras((prevCameras) =>
+                        prevCameras.map((cam) =>
+                          cam.id === camera.id ? { ...cam, newX: e.target.value } : cam
+                        )
+                      )
+                    }
+                    className="camera-coordinate-input"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Y"
+                    value={camera.newY || ""}
+                    onChange={(e) =>
+                      setCameras((prevCameras) =>
+                        prevCameras.map((cam) =>
+                          cam.id === camera.id ? { ...cam, newY: e.target.value } : cam
+                        )
+                      )
+                    }
+                    className="camera-coordinate-input"
+                  />
+                  <button type="submit" className="camera-coordinate-submit">
+                    Set
+                  </button>
+                </form>
               </div>
-            )}
-          </div>
+            ))}
+        </div>
+      )}
+    </>
+  )}
+</div>
         </aside>
 
         {/* Floormap */}
