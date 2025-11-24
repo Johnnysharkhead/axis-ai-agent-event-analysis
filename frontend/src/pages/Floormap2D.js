@@ -18,6 +18,7 @@ function Floormap2D() {
   const [newCamera, setNewCamera] = useState({ x: "", y: "" });
   const [mapHeight, setMapHeight] = useState(400);
   const [isAvailableCamerasVisible, setIsAvailableCamerasVisible] = useState(true);
+  const [zones, setZones] = useState([]);
 
   useEffect(() => {
     const containerWidth = Math.min(window.innerWidth * 0.6, 800); // exempel på maxbredd
@@ -161,6 +162,7 @@ function Floormap2D() {
         console.log("Floorplan POST response:", data);
         newConfig.new_floorplan_id = data.new_floorplan_id;
         fetchCameras();
+        setZones([])
 
         fetch(`http://localhost:5001/floorplan/${data.new_floorplan_id}`)
           .then((res) => res.json())
@@ -231,6 +233,14 @@ function Floormap2D() {
             name: floorplan.name,
             new_floorplan_id: floorplan.id,
           });
+          console.log(floorplan.zones)
+          if (floorplan.zones) {
+            const zoneData = floorplan.zones;
+            const zoneList = Array.isArray(zoneData) ? zoneData : zoneData.zones || [];
+            setZones(zoneList);
+          } else {
+            setZones([])
+          }
 
           // Fetch all cameras and set their placed status and coordinates
           fetch("http://localhost:5001/cameras")
@@ -660,35 +670,80 @@ function Floormap2D() {
               }}
             >
               {/* Absolute positioned content */}
-              <div className="floormap-content">
-                {/* Render cameras as blue circles */}
-                {cameras
-                  .filter((camera) => camera.placed)
-                  .map((camera) => (
-                    <div
-                      key={camera.id}
-                      className="camera-circle"
-                      style={{
-                        left: `${(camera.x / roomConfig.width) * 100}%`,
-                        bottom: `${(camera.y / roomConfig.depth) * 100}%`,
-                      }}
-                      title={`Camera ${camera.id}`}
-                    />
-                  ))}
+            <div className="floormap-content">
+            <svg
+              viewBox={`0 0 ${roomConfig.width} ${roomConfig.depth}`}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                zIndex: 1,
+              }}
+              preserveAspectRatio="none"
+            >
+              {/* Render zones as polygons */}
+              {zones.map((zone, i) => (
+                <polygon
+                  key={zone.id}
+                  points={
+                    (zone.points || [])
+                      .map((p) => `${p.x},${roomConfig.depth - p.y}`)
+                      .join(" ")
+                  }
+                  fill={`hsl(${(i * 57) % 360} 75% 50% / 0.12)`}
+                  stroke={`hsl(${(i * 57) % 360} 75% 35%)`}
+                  strokeWidth={0.01 * roomConfig.width} // much thinner lines
+                />
+              ))}
 
-                {/* Render people as red circles */}
-                {Object.entries(people).map(([trackId, person]) => (
-                  <div
-                    key={trackId}
-                    className="person-circle"
-                    style={{
-                      left: `${(person.x_m / roomConfig.width) * 100}%`,
-                      bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
-                    }}
-                    title={`Track ID: ${trackId}`}
-                  />
-                ))}
-              </div>
+              {/* Render zone names at centroid */}
+              {zones.map((zone, i) =>
+                zone.centroid ? (
+                  <text
+                    key={zone.id + "_label"}
+                    x={zone.centroid?.x}
+                    y={zone.centroid ? roomConfig.depth - zone.centroid.y : 0}
+                    fontSize={0.18 * roomConfig.width}
+                    textAnchor="middle"
+                    fill={`hsl(${(i * 57) % 360} 75% 35%)`}
+                    style={{ fontWeight: 700 }}
+                  >
+                    {zone.name}
+                  </text>
+                ) : null
+              )}
+            </svg>
+
+            {/* Render cameras as blue circles */}
+            {cameras
+              .filter((camera) => camera.placed)
+              .map((camera) => (
+                <div
+                  key={camera.id}
+                  className="camera-circle"
+                  style={{
+                    left: `${(camera.x / roomConfig.width) * 100}%`,
+                    bottom: `${(camera.y / roomConfig.depth) * 100}%`,
+                  }}
+                  title={`Camera ${camera.id}`}
+                />
+              ))}
+
+            {/* Render people as red circles */}
+            {Object.entries(people).map(([trackId, person]) => (
+              <div
+                key={trackId}
+                className="person-circle"
+                style={{
+                  left: `${(person.x_m / roomConfig.width) * 100}%`,
+                  bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
+                }}
+                title={`Track ID: ${trackId}`}
+              />
+            ))}
+          </div>
             </div>
 
 
