@@ -6,14 +6,18 @@ Camera URLs are hard-coded below and always available.
 Now ALSO saves events, recordings, snapshots and metadata to the database.
 """
 
+# ========== IMPORTS ==========
+# Corrected imports for Docker environment (where /app is root)
 import os
 import json
 import time
 import threading
 import datetime
 import subprocess
-from domain.models import db
-from domain.models.recording import Recording, Snapshot, EventLog
+import requests  # <--- Ensure requests is imported
+
+# REMOVED: Database imports to avoid context errors
+# from domain.models import db...
 
 # ========== CONFIG ==========
 EVENT_DIR = os.getenv("EVENT_DIR", "events")
@@ -45,11 +49,6 @@ last_trigger_time = {}
 # ========== LOGGING ==========
 def log(msg):
     print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
-
-# ================================
-# Find intrusion zone
-# to be used when saving EventLog to DB later on
-# ================================
 
 
 # ================================
@@ -138,7 +137,6 @@ def save_event_json(camera_id, timestamp, event_data):
 def trigger_intrusion(topic, payload):
     """
     Called by mqtt_client when intrusion should occur.
-    Hard-coded camera URLs ensure we always find the camera.
     """
     try:
         serial = topic.split("/")[1]           # extract Axis serial number
@@ -153,14 +151,12 @@ def trigger_intrusion(topic, payload):
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
-        # Find the zone for this intrusion "zone_id = getZone()" something like that
-        # TO DO: This requires that we have a way to link intrusion to zones.
-    
-
         # Snapshot + clip in parallel
         threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
         threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
         
+        # Use a simpler integer ID if possible, or ensure schema supports BigInt
+        # Truncating or hashing might be safer if this ID is too large for standard SQL Integer
         recording_id_int = int(f"{camera_id}{timestamp}")
         
         # Paths for clip & snapshot
@@ -176,29 +172,35 @@ def trigger_intrusion(topic, payload):
 
         save_event_json(camera_id, timestamp, event_data)
         
-        # --- Save to db ---
-        recording = Recording(
-            recording_id=recording_id_int,
-            url=clip_path, )
-        db.session.add(recording)
+        # --- Save to db via Internal Route ---
+        try:
+            # NOTE: Ensure this URL matches where you register the blueprint in main.py
+            # If you register with app.register_blueprint(event_bp, url_prefix='/events')
+            # then the URL is http://127.0.0.1:5000/events/internal/create
+            #api_url = os.getenv("EVENT_API_URL", "http://127.0.0.1:5000/events/internal/create")
+            api_url = "http://localhost:5001/event/internal/create"
+            
+            payload_data = {
+                "camera_id": camera_id,
+                "timestamp": timestamp,
+                "clip_path": clip_path,
+                "snapshot_path": snapshot_path
+            }
+            
+            # Send with timeout so we don't block the intrusion logic
+            requests.post(api_url, json=payload_data, timeout=2)
+            log(f"[API] Sent event to DB: {api_url}")
 
-        snapshot_row = Snapshot(
-            recording=recording,
-            url=snapshot_path, )
-        db.session.add(snapshot_row)
+        except Exception as api_e:
+            log(f"[API] Warning: Failed to send event to DB: {api_e}")
 
-         # TO DO: set correct zone_id when available
-        event_log = EventLog(zone_id=None) 
-        db.session.add(event_log)
-
-        event_log.recordings.append(recording)
-
-        db.session.commit()
+        # Snapshot + clip in parallel
+        threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
+        threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
 
         log(f"[Intrusion] Triggered → camera {camera_id}")
         return True
 
     except Exception as e:
         log(f"[Intrusion] Error: {e}")
-        db.session.rollback()
         return False

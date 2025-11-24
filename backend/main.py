@@ -28,6 +28,7 @@ from routes.recording_routes import recording_bp
 from routes.snapshot_routes import snapshot_bp
 from routes.floorplan_routes import floorplan_bp
 from routes.camera_config_routes import camera_config_bp
+from routes.event_routes import event_bp
 
 
 app = Flask(__name__)
@@ -53,6 +54,7 @@ app.register_blueprint(recording_bp)
 app.register_blueprint(snapshot_bp)
 app.register_blueprint(floorplan_bp)
 app.register_blueprint(camera_config_bp)
+app.register_blueprint(event_bp)
 
 
 cameras = {
