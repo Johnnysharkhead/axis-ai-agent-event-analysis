@@ -30,10 +30,10 @@ class Camera(db.Model):
     
     floorplan        = db.relationship("Floorplan", back_populates = "cameras")
     # recordings  = db.relationship("Recording", back_populates = "camera", cascade = "all, delete-orphan")
-    tilt_deg = db.Float(db.Float)  # -5
-    roll_deg = db.Float(db.Float)  # -180
-    heading_deg = db.Float(db.Float)
-    height_m = db.Float(db.Float)  # Axis said they use 3 m often
+    tilt_deg = db.Column(db.Float)  # -5
+    roll_deg = db.Column(db.Float)  # -180
+    heading_deg = db.Column(db.Float)
+    height_m = db.Column(db.Float)  # Axis said they use 3 m often
 
     def serialize(self):
         return {

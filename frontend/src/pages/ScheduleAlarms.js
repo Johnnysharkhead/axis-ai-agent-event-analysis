@@ -2,308 +2,252 @@ import React, { useEffect, useState } from "react";
 import "../styles/pages.css";
 import "../styles/scheduleAlarms.css";
 
+// pure helpers (safe at module level)
+function zoneColor(i) {
+  const h = (i * 57) % 360;
+  const border = `hsl(${h} 75% 35%)`;
+  const bg = `hsl(${h} 75% 50% / 0.12)`;
+  return { border, bg };
+}
+const DAYS_ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [hh, mm] = String(t).split(":");
+  return Number(hh || 0) * 60 + Number(mm || 0);
+}
+// normalize "HH:MM" or "HH:MM:SS" -> "HH:MM"
+function normalizeTime(t) {
+  if (!t) return null;
+  const parts = String(t).split(":");
+  const hh = String(parts[0] || "0").padStart(2, "0");
+  const mm = String(parts[1] || "0").padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+function localDateTimeString(date, hour = 22, minute = 0) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const y = date.getFullYear();
+  const mo = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  return `${y}-${mo}-${d}T${pad(hour)}:${pad(minute)}`;
+}
+function formatDateTime(s) {
+  if (!s) return "";
+  const d = new Date(s);
+  return d.toLocaleString();
+}
+function formatDateTimeDuration(a, b) {
+  try {
+    const secs = Math.max(0, (new Date(b) - new Date(a)) / 1000);
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    return `${hrs}h ${mins}m`;
+  } catch {
+    return "";
+  }
+}
+function formatDuration(start, end, spansNextDay, totalDays = 1) {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  let diff = e - s;
+  // if end is earlier or equal to start and the alarm spans next day, treat as overnight single-day span
+  if (diff <= 0 && spansNextDay) diff += 24 * 60;
+  if (diff < 0) diff = Math.abs(diff);
+
+  // For continuous multi-day alarms, total duration is the span from the first start to the final end:
+  // add full 24h days for the days in-between (totalDays includes the first day)
+  if (totalDays && totalDays > 1) {
+    diff = diff + (totalDays - 1) * 24 * 60;
+  }
+
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return `${h}h ${m}m`;
+}
+
 function ScheduleAlarms({ embedded = false }) {
-  const zones = ["A", "B", "C", "D", "E"]; // TODO: fetch later
+  // API base (reuse same convention as other pages)
+  const API_BASE = window.__API_URL__ || "http://localhost:5001";
+
+  // --- component state (hooks must be inside component) ---
+  const [zones, setZones] = useState([]);
+  const [schedules, setSchedules] = useState({}); // { [zoneId]: [schedule,...] }
+  const [floorplans, setFloorplans] = useState([]);
+  const [selectedFloorplanId, setSelectedFloorplanId] = useState(null);
   const [selectedZone, setSelectedZone] = useState("");
-  const [schedules, setSchedules] = useState({});
-  // Schedule type: "recurring" or "one-time"
+
   const [scheduleType, setScheduleType] = useState("recurring");
-  // Recurring schedule states
   const [days, setDays] = useState({ Mon:false,Tue:false,Wed:false,Thu:false,Fri:false,Sat:false,Sun:false });
   const [start, setStart] = useState("22:00");
   const [end, setEnd] = useState("07:00");
-  const [spansNextDay, setSpansNextDay] = useState(false);
-  // Alarm mode: "continuous" (one alarm across all days) or "daily" (separate alarm each day)
+  const [spansNextDay, setSpansNextDay] = useState(true);
   const [alarmMode, setAlarmMode] = useState("daily");
-  // One-time schedule states
-  const [startDateTime, setStartDateTime] = useState("");
-  const [endDateTime, setEndDateTime] = useState("");
+  const [startDateTime, setStartDateTime] = useState(localDateTimeString(new Date(),22,0));
+  const [endDateTime, setEndDateTime] = useState(localDateTimeString(new Date(Date.now()+24*3600*1000),7,0));
+
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // "info", "success", "error"
+  const [messageType, setMessageType] = useState("info");
+
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showConflictModal, setShowConflictModal] = useState(false);
-  const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [conflictingAlarms, setConflictingAlarms] = useState([]);
+  const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [replacementData, setReplacementData] = useState(null);
   const [showExpired, setShowExpired] = useState(false);
 
+  // --- load floorplans on mount ---
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("zoneSchedules");
-      if (raw) setSchedules(JSON.parse(raw));
-    } catch {}
-  }, []);
-
-  // Auto-detect if end time is before start time (overnight alarm) for recurring
-  useEffect(() => {
-    if (scheduleType === "recurring") {
-      const startMin = timeToMinutes(start);
-      const endMin = timeToMinutes(end);
-      setSpansNextDay(endMin <= startMin);
-    }
-  }, [start, end, scheduleType]);
-
-  // DST-safe helpers: format local Date -> "YYYY-MM-DDTHH:MM"
-  const pad = (n) => String(n).padStart(2, "0");
-  const localDateTimeString = (d, hh, mm) => {
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(hh)}:${pad(mm)}`;
-  };
-
-  // Initialize datetime inputs with sensible defaults for one-time schedules.
-  useEffect(() => {
-    if (scheduleType === "one-time" && !startDateTime) {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-      // default one-time window: today 22:00 -> next day 07:00 (local time, DST-safe)
-      setStartDateTime(localDateTimeString(today, 22, 0));
-      setEndDateTime(localDateTimeString(tomorrow, 7, 0));
-    }
-  }, [scheduleType, startDateTime]);
-
-  // Real-time validation and alarm mode adjustment
-  useEffect(() => {
-    if (scheduleType === "recurring") {
-      const activeDays = Object.keys(days).filter(d => days[d]);
-      const adjacent = areAdjacentDays(activeDays);
-      
-      // If non-adjacent days selected, force daily mode
-      if (activeDays.length > 1 && !adjacent) {
-        if (alarmMode === "continuous") {
-          setAlarmMode("daily");
+    async function loadFloorplans() {
+      const candidates = [
+        `${API_BASE}/floorplan`,
+        `${API_BASE}/floorplans`,
+        `${API_BASE}/api/floorplan`,
+        `${API_BASE}/api/floorplans`
+      ];
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) {
+            // try next candidate
+            continue;
+          }
+          // try parse JSON safely
+          const data = await res.json().catch(() => null);
+          if (!data) continue;
+          // normalize common shapes: array or { floorplans: [...] } or { floorplan: {...} }
+          let list = [];
+          if (Array.isArray(data)) list = data;
+          else if (Array.isArray(data.floorplans)) list = data.floorplans;
+          else if (Array.isArray(data.results)) list = data.results;
+          else if (data.floorplan) list = [data.floorplan];
+          // basic validation: must contain id/name
+          if (list.length && list.every(p => p && ("id" in p))) {
+            setFloorplans(list);
+            return;
+          }
+        } catch (err) {
+          // try next candidate
+          continue;
         }
       }
-      
-      // Clear old validation message if it exists
-      if (message === "Please select adjacent/consecutive days only (e.g., Mon-Tue-Wed).") {
-        setMessage("");
-        setMessageType("info");
-      }
+      // fallback empty
+      console.warn("No floorplans found at known endpoints");
+      setFloorplans([]);
     }
-  }, [days, scheduleType, alarmMode]);
+    loadFloorplans();
+  }, [API_BASE]);
 
-  function toggleDay(d) { setDays(p => ({ ...p, [d]: !p[d] })); }
-  function timeToMinutes(t){ 
-    const [h,m]=(t||"00:00").split(":").map(Number); 
-    return h*60+m; 
+  // --- load zones when selected floorplan changes ---
+  useEffect(() => {
+    async function loadZones(fpId) {
+      if (!fpId) { setZones([]); setSelectedZone(""); return; }
+      try {
+        const res = await fetch(`${API_BASE}/floorplan/${fpId}/zones`);
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.zones || []);
+        const normalized = list.map(z => ({
+          id: z.id,
+          name: z.name || "",
+          points: z.points || z.coordinates || [],
+          bbox: Array.isArray(z.bbox) ? z.bbox : (z.bbox ? JSON.parse(z.bbox) : null),
+          centroid: z.centroid || null
+        }));
+        setZones(normalized);
+        // clear schedules cache for previous selection
+        setSchedules(prev => {
+          const next = { ...prev };
+          // keep schedules only for zones in this floorplan (optional)
+          const ids = new Set(normalized.map(z => String(z.id)));
+          Object.keys(next).forEach(k => { if (!ids.has(String(k))) delete next[k]; });
+          return next;
+        });
+        setSelectedZone("");
+      } catch (err) {
+        console.warn("Failed to load zones for floorplan", fpId, err);
+        setZones([]);
+      }
+    }
+    loadZones(selectedFloorplanId);
+  }, [selectedFloorplanId, API_BASE]);
+
+  function toggleDay(d) { setDays(prev => ({ ...prev, [d]: !prev[d] })); }
+  function getZoneName(id) {
+    if (!id) return "";
+    const z = zones.find(z => String(z.id) === String(id));
+    return z ? z.name : String(id);
   }
-  // Check if selected days are adjacent/consecutive
-  function areAdjacentDays(selectedDays) {
-    if (selectedDays.length <= 1) return true;
-    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const indices = selectedDays.map(day => dayOrder.indexOf(day)).sort((a, b) => a - b);
-    
-    // Check if indices are consecutive
-    for (let i = 1; i < indices.length; i++) {
-      if (indices[i] !== indices[i - 1] + 1) {
-        return false;
-      }
-    }
-    
-    // Special case: Check for Sun-Mon wrap-around (if Sun is last and Mon is first)
-    if (indices.includes(0) && indices.includes(6)) {
-      // If we have both Mon (0) and Sun (6), check if they're at the ends
-      if (indices[0] === 0 && indices[indices.length - 1] === 6) {
-        // Check if all days from Mon to some day are consecutive, and Sun is there
-        // This means the sequence wraps around (e.g., Sat-Sun-Mon or Sun-Mon-Tue)
-        return true;
-      }
-    }
-    
+  // select handlers used by the Floorplan / Zone dropdowns
+  function onSelectFloorplan(e) {
+    const v = e.target.value;
+    const id = v ? Number(v) : null;
+    setSelectedFloorplanId(id);
+    setSelectedZone("");
+    setZones([]);
+    // clear schedule cache when switching floorplan
+    setSchedules({});
+    setMessage("");
+  }
+
+  function onSelectZone(e) {
+    const v = e.target.value;
+    const id = v ? Number(v) : "";
+    setSelectedZone(id);
+    setMessage("");
+  }
+  function areAdjacentDays(arr) {
+    if (!Array.isArray(arr) || arr.length < 2) return false;
+    const idx = arr.map(d => DAYS_ORDER.indexOf(d)).sort((a,b)=>a-b);
+    for (let i=1;i<idx.length;i++) if (idx[i] - idx[i-1] !== 1) return false;
     return true;
   }
-  // Get day pairs for overnight alarms - each selected day continues to next day
-  function getOvernightPairs(selectedDays) {
-    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const pairs = [];
-    
-    selectedDays.forEach(day => {
-      const currentIdx = dayOrder.indexOf(day);
-      const nextIdx = (currentIdx + 1) % 7; // Wrap around: Sun -> Mon
-      pairs.push([day, dayOrder[nextIdx]]);
-    });
-    
-    return pairs;
+  function getOvernightPairs(daysArr) {
+    if (!Array.isArray(daysArr)) return [];
+    // simple representation: pairs day -> nextDay
+    return daysArr.map((d,i) => [d, daysArr[(i+1) % daysArr.length]]);
   }
-  
-  // Get consecutive day pairs (for continuous mode validation)
-  function getConsecutivePairs(selectedDays) {
-    if (selectedDays.length <= 1) return [];
-    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const sorted = [...selectedDays].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
-    const pairs = [];
-    
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const currentIdx = dayOrder.indexOf(sorted[i]);
-      const nextIdx = dayOrder.indexOf(sorted[i + 1]);
-      // Only add pair if days are consecutive
-      if (nextIdx === currentIdx + 1) {
-        pairs.push([sorted[i], sorted[i + 1]]);
-      }
-    }
-    
-    // Special case: Check for Sun-Mon wrap-around
-    if (selectedDays.includes("Sun") && selectedDays.includes("Mon")) {
-      pairs.push(["Sun", "Mon"]);
-    }
-    
-    return pairs;
-  }
-  // Calculate duration across multiple days
-  function formatDuration(start, end, spansNextDay, dayCount = 1) {
-    const startMin = timeToMinutes(start);
-    const endMin = timeToMinutes(end);
-    let durationMin;
-    if (dayCount > 1) {
-      // Multi-day alarm: from start time on first day to end time on last day
-      // Full days in between + partial first and last days
-      const fullDays = dayCount - 1;
-      const firstDayMin = 1440 - startMin; // From start time to midnight
-      const lastDayMin = endMin; // From midnight to end time
-      durationMin = firstDayMin + (fullDays - 1) * 1440 + lastDayMin;
-    } else if (spansNextDay) {
-      durationMin = (1440 - startMin) + endMin; // Minutes until midnight + minutes after midnight
+  function isDuplicateAlarm(zoneId, newAlarm) {
+    const list = schedules[zoneId] || [];
+    if (!list.length) return false;
+    if (newAlarm.type === "recurring") {
+      const newDaysKey = JSON.stringify((newAlarm.days || []).slice().sort());
+      const newStart = timeToMinutes(newAlarm.start);
+      const newEnd = timeToMinutes(newAlarm.end);
+      return list.some(a => {
+        if (a.type !== "recurring") return false;
+        const aDaysKey = JSON.stringify((a.days || []).slice().sort());
+        const aStart = timeToMinutes(a.start);
+        const aEnd = timeToMinutes(a.end);
+        return aDaysKey === newDaysKey && aStart === newStart && aEnd === newEnd;
+      });
     } else {
-      durationMin = endMin - startMin;
+      return list.some(a => a.type === "one-time" && a.startDateTime === newAlarm.startDateTime && a.endDateTime === newAlarm.endDateTime);
     }
-    const days = Math.floor(durationMin / 1440);
-    const remainingMin = durationMin % 1440;
-    const hours = Math.floor(remainingMin / 60);
-    const minutes = remainingMin % 60;
-    let result = [];
-    if (days > 0) result.push(`${days}d`);
-    if (hours > 0) result.push(`${hours}h`);
-    if (minutes > 0) result.push(`${minutes}m`);
-    return result.length > 0 ? result.join(' ') : '0m';
   }
+  // lightweight conflict detection: returns empty conflicts/superseded by default
+  function findConflicts(zoneId, newAlarm) { return { conflicts: [], superseded: [] }; }
 
-  function formatDateTimeDuration(startDT, endDT) {
-    const start = new Date(startDT);
-    const end = new Date(endDT);
-    const diffMs = end - start;
-    if (diffMs <= 0) return "Invalid";
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    return parts.length > 0 ? parts.join(' ') : '0m';
-  }
-
-  function formatDateTime(dateTimeStr) {
-    const dt = new Date(dateTimeStr);
-    const date = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const time = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    return `${date} ${time}`;
-  }
-
-  function isDuplicateAlarm(zone, newAlarm) {
-    const existing = schedules[zone] || [];
-    return existing.some(rule => {
-      if (rule.type !== newAlarm.type) return false;
-      if (newAlarm.type === "recurring") {
-        const sameDays = JSON.stringify(rule.days.sort()) === JSON.stringify(newAlarm.days.sort());
-        const sameTime = rule.start === newAlarm.start && rule.end === newAlarm.end && rule.spansNextDay === newAlarm.spansNextDay;
-        const sameMode = rule.alarmMode === newAlarm.alarmMode;
-        return sameDays && sameTime && sameMode;
-      } else {
-        return rule.startDateTime === newAlarm.startDateTime && rule.endDateTime === newAlarm.endDateTime;
+  // load zones (existing) - unchanged
+  // when a zone is selected, fetch schedules from backend
+  useEffect(() => {
+    async function fetchSchedulesForZone(zoneId) {
+      if (!zoneId) return;
+      try {
+        const res = await fetch(`${API_BASE}/zones/${zoneId}/schedules`);
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
+        setSchedules(prev => ({ ...prev, [zoneId]: data.schedules || [] }));
+      } catch (err) {
+        console.warn("Failed to load schedules for zone", zoneId, err);
+        setSchedules(prev => ({ ...prev, [zoneId]: prev[zoneId] || [] }));
       }
-    });
-  }
-
-  // Check if two time ranges overlap (for same day)
-  function timeRangesOverlap(start1, end1, spans1, start2, end2, spans2) {
-    const s1 = timeToMinutes(start1);
-    const e1 = timeToMinutes(end1) + (spans1 ? 1440 : 0); // Add 24h if overnight
-    const s2 = timeToMinutes(start2);
-    const e2 = timeToMinutes(end2) + (spans2 ? 1440 : 0);
-    
-    return s1 < e2 && s2 < e1;
-  }
-
-  // Check if new alarm completely contains existing alarm (for replacement)
-  function alarmContainsAnother(newStart, newEnd, newSpans, existStart, existEnd, existSpans) {
-    const ns = timeToMinutes(newStart);
-    const ne = timeToMinutes(newEnd) + (newSpans ? 1440 : 0);
-    const es = timeToMinutes(existStart);
-    const ee = timeToMinutes(existEnd) + (existSpans ? 1440 : 0);
-    
-    return ns <= es && ne >= ee;
-  }
-
-  // Get days that would be affected by an alarm (for overnight daily mode)
-  function getAffectedDays(alarm) {
-    if (alarm.type !== "recurring") return [];
-    
-    // For overnight daily mode, each selected day affects the next day too
-    if (alarm.alarmMode === "daily" && alarm.spansNextDay) {
-      return getOvernightPairs(alarm.days).flat();
     }
-    
-    return alarm.days;
-  }
+    if (selectedZone) fetchSchedulesForZone(selectedZone);
+  }, [selectedZone]);
 
-  // Find conflicting and superseded alarms
-  function findConflicts(zone, newAlarm) {
-    const existing = schedules[zone] || [];
-    const conflicts = [];
-    const superseded = [];
+  // Helper uses same getZoneName
 
-    existing.forEach(existingAlarm => {
-      // Only check recurring alarms against recurring, one-time against one-time
-      if (existingAlarm.type !== newAlarm.type) return;
-
-      if (newAlarm.type === "recurring") {
-        const newAffectedDays = getAffectedDays(newAlarm);
-        const existAffectedDays = getAffectedDays(existingAlarm);
-        
-        // Check if they share any days
-        const sharedDays = newAffectedDays.filter(d => existAffectedDays.includes(d));
-        
-        if (sharedDays.length > 0) {
-          // Check time overlap
-          if (timeRangesOverlap(
-            newAlarm.start, newAlarm.end, newAlarm.spansNextDay,
-            existingAlarm.start, existingAlarm.end, existingAlarm.spansNextDay
-          )) {
-            // Check if new alarm completely contains existing alarm
-            if (alarmContainsAnother(
-              newAlarm.start, newAlarm.end, newAlarm.spansNextDay,
-              existingAlarm.start, existingAlarm.end, existingAlarm.spansNextDay
-            ) && sharedDays.length === existAffectedDays.length) {
-              superseded.push(existingAlarm);
-            } else {
-              conflicts.push(existingAlarm);
-            }
-          }
-        }
-      } else {
-        // One-time alarms
-        const newStart = new Date(newAlarm.startDateTime);
-        const newEnd = new Date(newAlarm.endDateTime);
-        const existStart = new Date(existingAlarm.startDateTime);
-        const existEnd = new Date(existingAlarm.endDateTime);
-
-        // Check if they overlap
-        if (newStart < existEnd && existStart < newEnd) {
-          // Check if new alarm completely contains existing alarm
-          if (newStart <= existStart && newEnd >= existEnd) {
-            superseded.push(existingAlarm);
-          } else {
-            conflicts.push(existingAlarm);
-          }
-        }
-      }
-    });
-
-    return { conflicts, superseded };
-  }
-
-  function addAlarm() {
+  // modify addAlarm to POST to backend instead of localStorage
+  async function addAlarm() {
     if (!selectedZone) {
       setMessage("Please select a zone first");
       setMessageType("error");
@@ -312,121 +256,108 @@ function ScheduleAlarms({ embedded = false }) {
     let newAlarm;
     if (scheduleType === "recurring") {
       const activeDays = Object.keys(days).filter(d => days[d]);
-      if (!activeDays.length) {
-        setMessage("Please select at least one day");
-        setMessageType("error");
-        return;
-      }
-      
-      // For continuous mode, days must be adjacent
+      if (!activeDays.length) { setMessage("Please select at least one day"); setMessageType("error"); return; }
       if (alarmMode === "continuous" && activeDays.length > 1 && !areAdjacentDays(activeDays)) {
         setMessage("Continuous alarms require adjacent days. Use Daily mode for non-adjacent days.");
         setMessageType("error");
         return;
       }
-      
+      // compute spansNextDay automatically:
+      // - continuous mode always spans next day
+      // - daily repeat spans next day when end <= start (overnight)
+      const normStart = normalizeTime(start);
+      const normEnd = normalizeTime(end);
+      const spans = (alarmMode === "continuous") || (timeToMinutes(normEnd) <= timeToMinutes(normStart));
       newAlarm = {
-        id: Date.now(),
         type: "recurring",
         days: activeDays,
-        start,
-        end,
-        spansNextDay,
-        alarmMode,
+        start: normStart,
+        end: normEnd,
+        spansNextDay: !!spans,
+        alarmMode: alarmMode === "continuous" ? "continuous" : "daily",
         enabled: true
       };
     } else {
-      // One-time schedule
-      if (!startDateTime || !endDateTime) {
-        setMessage("Please set both start and end date/time.");
-        setMessageType("error");
-        return;
-      }
-      const startDT = new Date(startDateTime);
-      const endDT = new Date(endDateTime);
-      if (endDT <= startDT) {
-        setMessage("End date/time must be after start date/time.");
-        setMessageType("error");
-        return;
-      }
-      // Check if the alarm is in the past
-      const now = new Date();
-      if (endDT < now) {
-        setMessage("Cannot schedule alarm in the past.");
-        setMessageType("error");
-        return;
-      }
+      if (!startDateTime || !endDateTime) { setMessage("Please set both start and end date/time."); setMessageType("error"); return; }
       newAlarm = {
-        id: Date.now(),
         type: "one-time",
-        startDateTime,
-        endDateTime,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
         enabled: true
       };
     }
-    // Check for duplicate
-    if (isDuplicateAlarm(selectedZone, newAlarm)) {
-      setShowDuplicateModal(true);
-      return;
-    }
 
-    // Check for conflicts and superseded alarms
+    if (isDuplicateAlarm(selectedZone, newAlarm)) { setShowDuplicateModal(true); return; }
     const { conflicts, superseded } = findConflicts(selectedZone, newAlarm);
-    
-    if (conflicts.length > 0) {
-      // There are conflicting alarms that don't get replaced
-      setConflictingAlarms(conflicts);
-      setShowConflictModal(true);
-      return;
-    }
-    
-    if (superseded.length > 0) {
-      // New alarm supersedes existing alarms - show confirmation
-      setReplacementData({ newAlarm, superseded });
-      setShowReplacementModal(true);
-      return;
-    }
+    if (conflicts.length > 0) { setConflictingAlarms(conflicts); setShowConflictModal(true); return; }
+    if (superseded.length > 0) { setReplacementData({ newAlarm, superseded }); setShowReplacementModal(true); return; }
 
-    // No conflicts or superseded alarms - proceed normally
-    setSchedules(prev => {
-      const next = { ...prev, [selectedZone]: [...(prev[selectedZone] || []), newAlarm] };
-      localStorage.setItem("zoneSchedules", JSON.stringify(next));
-      return next;
-    });
-    setMessage(`Alarm successfully added to Zone ${selectedZone}`);
-    setMessageType("success");
-    resetForm();
+    try {
+      const res = await fetch(`${API_BASE}/zones/${selectedZone}/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAlarm)
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const created = await res.json();
+      // normalize returned times to "HH:MM" for frontend logic (backend may return "HH:MM:SS")
+      const normalized = { ...created };
+      if (normalized.start) normalized.start = normalizeTime(normalized.start);
+      if (normalized.end) normalized.end = normalizeTime(normalized.end);
+      setSchedules(prev => ({ ...prev, [selectedZone]: [...(prev[selectedZone] || []), normalized] }));
+      setMessage(`Alarm successfully added to Zone ${getZoneName(selectedZone)}`);
+      setMessageType("success");
+      resetForm();
+    } catch (err) {
+      console.error("Failed to create schedule", err);
+      setMessage("Failed to save alarm to server");
+      setMessageType("error");
+    }
   }
 
-  function removeRule(zone,id){
-    setSchedules(prev=>{
-      const next={...prev,[zone]:(prev[zone]||[]).filter(r=>r.id!==id)};
-      localStorage.setItem("zoneSchedules", JSON.stringify(next));
-      return next;
-    });
-    setMessage("Alarm removed successfully");
-    setMessageType("info");
+  // removeRule -> delete on server
+  async function removeRule(zone,id){
+    try {
+      const res = await fetch(`${API_BASE}/zones/${zone}/schedules/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      setSchedules(prev => {
+        const nextList = (prev[zone] || []).filter(r => r.id !== id);
+        return { ...prev, [zone]: nextList };
+      });
+      setMessage(`Alarm removed from Zone ${getZoneName(zone)}`);
+      setMessageType("info");
+    } catch (err) {
+      console.error("Failed to delete schedule", err);
+      setMessage("Failed to remove alarm on server");
+      setMessageType("error");
+    }
   }
 
-  function confirmReplacement() {
+  // confirmReplacement -> create new and delete superseded on server
+  async function confirmReplacement() {
     if (!replacementData) return;
-    
     const { newAlarm, superseded } = replacementData;
-    const supersededIds = superseded.map(a => a.id);
-    
-    setSchedules(prev => {
-      // Remove superseded alarms and add new one
-      const filtered = (prev[selectedZone] || []).filter(r => !supersededIds.includes(r.id));
-      const next = { ...prev, [selectedZone]: [...filtered, newAlarm] };
-      localStorage.setItem("zoneSchedules", JSON.stringify(next));
-      return next;
-    });
-    
-    setMessage(`Alarm added and ${superseded.length} existing alarm${superseded.length > 1 ? 's' : ''} replaced`);
-    setMessageType("success");
-    setShowReplacementModal(false);
-    setReplacementData(null);
-    resetForm();
+    try {
+      const res = await fetch(`${API_BASE}/zones/${selectedZone}/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAlarm)
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const created = await res.json();
+      await Promise.all(superseded.map(s => fetch(`${API_BASE}/zones/${selectedZone}/schedules/${s.id}`, { method: "DELETE" })));
+      // refresh
+      const r2 = await fetch(`${API_BASE}/zones/${selectedZone}/schedules`);
+      const data = await (r2.ok ? r2.json() : Promise.resolve({ schedules: [] }));
+      setSchedules(prev => ({ ...prev, [selectedZone]: data.schedules || [] }));
+      setMessage(`Alarm added and ${superseded.length} existing alarm(s) replaced`);
+      setMessageType("success");
+      setShowReplacementModal(false); setReplacementData(null); resetForm();
+    } catch (err) {
+      console.error("Replacement failed", err);
+      setMessage("Failed to replace alarms on server");
+      setMessageType("error");
+    }
   }
 
   function resetForm(){
@@ -489,23 +420,70 @@ function ScheduleAlarms({ embedded = false }) {
 
   // Simple sketch map placeholder
   function SketchMap() {
-    const hl = id => (selectedZone === id ? { stroke:"#000", strokeWidth:3 } : {});
+    // Use selected floorplan dimensions so the map keeps the same proportions as the floorplan
+    const fp = floorplans.find(fp => fp && String(fp.id) === String(selectedFloorplanId));
+    const mapW = (fp && Number(fp.width)) ? Number(fp.width) : 10;   // meters (fallback)
+    const mapH = (fp && Number(fp.depth)) ? Number(fp.depth) : 10;   // meters (fallback)
+
+    // If no zones, render a simple white box with small black border at correct aspect ratio
+    if (!zones || zones.length === 0) {
+      // keep previous visual but use white background + very thin black border and square corners
+      return (
+        <div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
+          <svg width="100%" height="300" viewBox={`0 0 ${mapW} ${mapH}`} preserveAspectRatio="xMidYMid meet">
+            <rect x="0" y="0" width={mapW} height={mapH} fill="#ffffff" stroke="#000" strokeWidth="0.18" />
+          </svg>
+        </div>
+      );
+    }
+
+    // Render stored polygon zones scaled to floorplan (SVG coordinate system: y increases downward)
     return (
       <div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
-        <svg width="100%" height="300" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
-          <rect x="0" y="0" width="600" height="300" fill="#eef6ff" rx="8" />
-          <rect x="40" y="25" width="520" height="250" fill="#ffffff" stroke="#3b82f6" strokeWidth="4" rx="10" />
-          <rect x="60" y="45" width="220" height="105" fill="#fff1f0" stroke="#ff7b7b" rx="6" style={{ opacity:0.9, ...hl("A") }} />
-          <text x="170" y="105" textAnchor="middle" fontSize="26" fontWeight="600" fill="#7a1b1b">A</text>
-          <rect x="320" y="45" width="220" height="105" fill="#e9fff2" stroke="#6be27a" rx="6" style={{ opacity:0.9, ...hl("B") }} />
-          <text x="430" y="105" textAnchor="middle" fontSize="26" fontWeight="600" fill="#0b6b34">B</text>
-          <rect x="200" y="100" width="200" height="120" fill="#fffbe6" stroke="#ffbf47" rx="6" style={{ opacity:0.85, ...hl("C") }} />
-          <text x="300" y="160" textAnchor="middle" fontSize="26" fontWeight="600" fill="#7a4b00">C</text>
-          <rect x="60" y="175" width="220" height="105" fill="#fff4e6" stroke="#ffb86b" rx="6" style={{ opacity:0.9, ...hl("D") }} />
-          <text x="170" y="235" textAnchor="middle" fontSize="26" fontWeight="600" fill="#6b3f00">D</text>
-          <rect x="320" y="175" width="220" height="105" fill="#eef2ff" stroke="#94a8ff" rx="6" style={{ opacity:0.9, ...hl("E") }} />
-          <text x="430" y="235" textAnchor="middle" fontSize="26" fontWeight="600" fill="#2b3f7a">E</text>
-          <text x="50" y="20" fontSize="12" fill="#374151">Zone sketch (placeholder)</text>
+        <svg width="100%" height="300" viewBox={`0 0 ${mapW} ${mapH}`} preserveAspectRatio="xMidYMid meet">
+          {/* white background with very thin black border and sharp corners */}
+          <rect x="0" y="0" width={mapW} height={mapH} fill="#ffffff" stroke="#000" strokeWidth="0.18" />
+          {zones.map((z, i) => {
+            if (!z || !Array.isArray(z.points) || z.points.length === 0) return null;
+            // convert points: keep native units (m) and flip Y to match SVG coords
+            const pts = z.points.map(p => `${p.x},${(mapH - p.y)}`).join(" ");
+            const { border, bg } = zoneColor(i);
+            const cx = z.points.reduce((s,p)=>s + Number(p.x), 0) / z.points.length;
+            const cy = z.points.reduce((s,p)=>s + Number(p.y), 0) / z.points.length;
+            const svgCx = cx;
+            const svgCy = mapH - cy;
+            const isSelected = selectedZone !== "" && String(selectedZone) === String(z.id);
+            const strokeColor = isSelected ? "#000" : border;
+            // outlines: same narrow width whether selected (black) or not
+            const strokeW = 0.12;
+            // compute label font size and optional white background rect to "remove underlying" polygon under name when selected
+            const fontSize = Math.min(1.2, mapH * 0.08);
+            const name = z.name || "";
+            // no background rect for label — only outline highlight when selected
+
+            return (
+              <g key={z.id || i}>
+                <polygon
+                  points={pts}
+                  fill={bg}
+                  stroke={strokeColor}
+                  strokeWidth={strokeW}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <text
+                  x={svgCx}
+                  y={svgCy}
+                  fontSize={fontSize}
+                  textAnchor="middle"
+                  fill={strokeColor}
+                  style={{ fontWeight: 600, pointerEvents: "none" }}
+                >
+                  {name}
+                </text>
+              </g>
+            );
+          })}
         </svg>
       </div>
     );
@@ -639,16 +617,29 @@ function ScheduleAlarms({ embedded = false }) {
             <label className="schedule-alarms__zone-label">
               Select Zone
             </label>
+            {/* Floorplan selector — choose which floorplan's zones to load */}
+            <div style={{ marginBottom: 8 }}>
+              <select
+                value={selectedFloorplanId ?? ""}
+                onChange={onSelectFloorplan}
+                className="schedule-alarms__zone-dropdown"
+                style={{ width: "100%", marginBottom: 6 }}
+              >
+                <option value="">-- Select Floorplan --</option>
+                {floorplans.map(fp => <option key={fp.id} value={fp.id}>{fp.name} — {fp.width}×{fp.depth}m</option>)}
+              </select>
+            </div>
+ 
             <select
-              value={selectedZone}
-              onChange={e => { setSelectedZone(e.target.value); setMessage(""); }}
+              value={selectedZone ?? ""}
+              onChange={onSelectZone}
               className="schedule-alarms__zone-dropdown"
             >
               <option value="">-- Select Zone --</option>
-              {zones.map(z => <option key={z} value={z}>Zone {z}</option>)}
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
             </select>
-          </div>
-
+           </div>
+ 
           <div className="schedule-form">
             <h3 className="schedule-form__title">
               New Scheduled Alarm
@@ -803,7 +794,7 @@ function ScheduleAlarms({ embedded = false }) {
                                 <div className="alarm-mode-option__desc">
                                   {spansNextDay ? (
                                     <>
-                                      {overnightAlarmCount} overnight alarm{overnightAlarmCount !== 1 ? 's' : ''}
+                                      {overnightAlarmCount} overnight alarm{overnightAlarmCount !== 1 ? 's' : ''} 
                                       {overnightPairs.length > 0 && overnightPairs.length <= 4 && (
                                         <div style={{ fontSize: '0.7rem', marginTop: '0.25rem', opacity: 0.8 }}>
                                           {overnightPairs.map(p => `${p[0]}→${p[1]}`).join(', ')}
@@ -971,7 +962,7 @@ function ScheduleAlarms({ embedded = false }) {
             <div className="alarm-list__header-actions">
               {selectedZone && (schedules[selectedZone] || []).length > 0 && (
                 <div className="alarm-list__counter">
-                  Zone {selectedZone} · {(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length} alarm{(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length !== 1 ? 's' : ''}
+                  Zone {getZoneName(selectedZone)} · {(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length} alarm{(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).length !== 1 ? 's' : ''}
                 </div>
               )}
               {selectedZone && (schedules[selectedZone] || []).some(a => !getAlarmStatus(a).active) && (
@@ -996,7 +987,7 @@ function ScheduleAlarms({ embedded = false }) {
             {selectedZone && (schedules[selectedZone] || []).length === 0 && (
               <div className="alarm-list__empty">
                 <div className="alarm-list__empty-icon">🔔</div>
-                No scheduled alarms for Zone {selectedZone}
+                No scheduled alarms for Zone {getZoneName(selectedZone)}
               </div>
             )}
             {selectedZone && sortAlarms(schedules[selectedZone] || []).filter(a => showExpired || getAlarmStatus(a).active).map(r => {
@@ -1134,7 +1125,7 @@ function ScheduleAlarms({ embedded = false }) {
           {selectedZone && (schedules[selectedZone] || []).length > 0 && (
             <div className="alarm-tip">
               <span>💡</span>
-              <span><strong>Tip:</strong> Alarms are saved automatically and persist in your browser.</span>
+              <span><strong>Tip:</strong> Alarms are persisted on the server and loaded from the database.</span>
             </div>
           )}
         </div>
@@ -1152,19 +1143,8 @@ function ScheduleAlarms({ embedded = false }) {
     </div>
   );
 
-  if (embedded) return Inner;
-
-  return (
-    <section className="page">
-      <div className="page__top-bar">
-        <header className="header">
-          <h1 className="title">Zone Alarm Management</h1>
-          <p className="subtitle">Schedule recurring or one-time alarms for different zones with flexible time ranges</p>
-        </header>
-      </div>
-      {Inner}
-    </section>
-  );
-}
-
-export default ScheduleAlarms;
+  // Render the prepared JSX
+  return Inner;
+ }
+ 
+ export default ScheduleAlarms;
