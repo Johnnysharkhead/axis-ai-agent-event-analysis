@@ -79,7 +79,7 @@ function AppRoutes() {
         <Route path="/admin/accounts" element={<ManageAccounts />} />
 
         {/* 2D Floorplan views */}
-        <Route path="/2d-floorplan/configuration" element={<Floormap2D />} />
+        <Route path="/2d-floorplan/floorplan" element={<Floormap2D />} />
         <Route path="/2d-floorplan/zones" element={<ZoneConfiguration />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<ScheduleAlarms />} />
       </Route>
