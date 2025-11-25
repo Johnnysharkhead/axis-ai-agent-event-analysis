@@ -18,6 +18,7 @@ from domain.models import db
 from application.hls_handler import *
 import routes.authentication as auth2
 from flask_login import LoginManager, login_required, current_user
+from routes.alarm import bp as alarm_bp
 from sqlalchemy import inspect, text
 
 
@@ -28,7 +29,7 @@ from routes.recording_routes import recording_bp
 from routes.snapshot_routes import snapshot_bp
 from routes.floorplan_routes import floorplan_bp
 from routes.camera_config_routes import camera_config_bp
-from routes.event_routes import event_bp
+from routes.zone_routes import zone_bp
 
 
 app = Flask(__name__)
@@ -54,7 +55,6 @@ app.register_blueprint(recording_bp)
 app.register_blueprint(snapshot_bp)
 app.register_blueprint(floorplan_bp)
 app.register_blueprint(camera_config_bp)
-app.register_blueprint(event_bp)
 
 
 cameras = {

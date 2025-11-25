@@ -1,108 +1,213 @@
 from . import db
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import func, Time, Boolean
+from sqlalchemy.orm import joinedload
 
 class Zone(db.Model):
-    """
-    Class for storing Zone data in the database.
-    A Zone represents a specific area with defined coordinates.
-    """
+    """Zone model storing polygon coordinates; bbox stored as PostgreSQL float8[]"""
     __tablename__ = "zones"
 
-    id = db.Column(db.Integer, primary_key=True)
-    coordinates = db.Column(db.String(255), nullable=False)  # Store coordinates as a string (e.g., JSON or WKT)
+    id = db.Column(db.BigInteger, primary_key=True)
+    #floorplan_id = db.Column(db.BigInteger, nullable=False)
+    floorplan_id = db.Column(
+    db.Integer,
+    db.ForeignKey("floorplans.id", ondelete="CASCADE"),
+    nullable=False
+    )
+    name = db.Column(db.String(128), nullable=False)
+    coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
+    bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
+    centroid = db.Column(db.JSON, nullable=True)            # jsonb
+    # timestamps removed per schema — handled elsewhere if needed
+
+    # relationship to schedules
+    schedules = db.relationship(
+        "ZoneSchedule",
+        backref="zone",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
+
+    floorplan = db.relationship("Floorplan", back_populates="zones")
 
     #Relationship to EventLog
     #event_logs = db.relationship("EventLog", back_populates="zone", cascade="all, delete-orphan")
 
     def serialize(self):
-        """
-        Convert the Zone object into a dictionary for JSON serialization.
-        """
         return {
-            "id": self.id,
-            "coordinates": self.coordinates
+            "id": int(self.id) if self.id is not None else None,
+            "floorplan_id": int(self.floorplan_id) if self.floorplan_id is not None else None,
+            "name": self.name,
+            "points": self.coordinates,
+            "bbox": list(self.bbox) if self.bbox is not None else None,
+            "centroid": self.centroid,
+            "schedules": [s.serialize() for s in getattr(self, "schedules", [])],
+            # timestamps intentionally omitted
         }
 
-    """
-    These following def's are examples of how to interact with the
-    Zone class
-    """
-def create_zone(x, y):
-    zone = Zone(x_coordinate=x, y_coordinate=y)
-    db.session.add(zone)
-    db.session.commit()
-    return zone.serialize()
+    @staticmethod
+    def compute_meta(points):
+        if not points:
+            return {"bbox": [0.0, 0.0, 0.0, 0.0], "centroid": {"x": 0.0, "y": 0.0}}
+        min_x = min(float(p["x"]) for p in points)
+        min_y = min(float(p["y"]) for p in points)
+        max_x = max(float(p["x"]) for p in points)
+        max_y = max(float(p["y"]) for p in points)
+        sx = sum(float(p["x"]) for p in points)
+        sy = sum(float(p["y"]) for p in points)
+        centroid = {"x": sx / len(points), "y": sy / len(points)}
+        return {"bbox": [min_x, min_y, max_x, max_y], "centroid": centroid}
 
-def update_zone(zone_id, x, y):
-    zone = Zone.query.get(zone_id)
-    if zone:
-        zone.x_coordinate = x
-        zone.y_coordinate = y
-        db.session.commit()
-        return zone.serialize()
-    return {"error": "Zone not found"}
+    def contains_point(self, x, y):
+        pts = self.coordinates or []
+        if not pts:
+            return False
+        if self.bbox:
+            minX, minY, maxX, maxY = self.bbox
+            if x < minX or x > maxX or y < minY or y > maxY:
+                return False
+        inside = False
+        j = len(pts) - 1
+        for i in range(len(pts)):
+            xi, yi = float(pts[i]["x"]), float(pts[i]["y"])
+            xj, yj = float(pts[j]["x"]), float(pts[j]["y"])
+            intersect = ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi)
+            if intersect:
+                inside = not inside
+            j = i
+        return inside
 
-def delete_zone(zone_id):
-    zone = Zone.query.get(zone_id)
-    if zone:
-        db.session.delete(zone)
-        db.session.commit()
-        return {"message": "Zone deleted"}
-    return {"error": "Zone not found"}
+# ZoneSchedule model
+class ZoneSchedule(db.Model):
+    __tablename__ = "zone_schedules"
 
-
-class AlarmSchedule(db.Model):
-    """
-    Class for storing alarm schedules for a zone.
-    Each schedule contains a list of start and end times when the alarm is active.
-    """
-    __tablename__ = "alarm_schedules"
-
-    id = db.Column(db.Integer, primary_key=True)
-    zone_id = db.Column(db.Integer, db.ForeignKey("zones.id"), nullable=False)
-    start_time = db.Column(db.Integer, nullable=False)  # Full integer value for time (e.g., 800 for 08:00)
-    end_time = db.Column(db.Integer, nullable=False)    # Full integer value for time (e.g., 1700 for 17:00)
+    id = db.Column(db.BigInteger, primary_key=True)
+    zone_id = db.Column(db.BigInteger, db.ForeignKey("zones.id", ondelete="CASCADE"), nullable=False)
+    type = db.Column(db.String(16), nullable=False)           # 'recurring' | 'one-time'
+    # store selected days as JSON array for portability across DB backends
+    days = db.Column(db.JSON, nullable=True)                  # JSON array of day codes, e.g. ["Mon","Tue"]
+    start_time = db.Column(Time, nullable=True)               # for recurring: "HH:MM:SS"
+    end_time = db.Column(Time, nullable=True)
+    # allow NULL for one-time schedules (null means "not applicable")
+    spans_next_day = db.Column(Boolean, nullable=True, default=None)
+    start_dt = db.Column(db.DateTime(timezone=True), nullable=True)  # for one-time
+    end_dt = db.Column(db.DateTime(timezone=True), nullable=True)
+    enabled = db.Column(Boolean, default=True)
+    alarm_mode = db.Column(db.String(32), nullable=True)
 
     def serialize(self):
-        """
-        Convert the AlarmSchedule object into a dictionary for JSON serialization.
-        """
         return {
-            "id": self.id,
-            "zone_id": self.zone_id,
-            "start_time": self.start_time,
-            "end_time": self.end_time
+            "id": int(self.id) if self.id is not None else None,
+            "zone_id": int(self.zone_id) if self.zone_id is not None else None,
+            "type": self.type,
+            "days": list(self.days) if self.days is not None else [],
+            # time fields returned as strings that the frontend expects ("HH:MM" for time, ISO for datetimes)
+            "start": self.start_time.isoformat() if self.start_time else None,
+            "end": self.end_time.isoformat() if self.end_time else None,
+            # preserve NULL for one-time schedules; otherwise boolean
+            "spansNextDay": None if self.spans_next_day is None else bool(self.spans_next_day),
+            "startDateTime": self.start_dt.isoformat() if self.start_dt else None,
+            "endDateTime": self.end_dt.isoformat() if self.end_dt else None,
+            "enabled": bool(self.enabled),
+            "alarmMode": self.alarm_mode,
         }
-
-    """
-    These following def's are examples of how to interact with the
-    AlarmSchedule class
-    """
-def create_alarm_schedule(zone_id, start_time, end_time):
-    schedule = AlarmSchedule(zone_id=zone_id, start_time=start_time, end_time=end_time)
-    db.session.add(schedule)
+ 
+# CRUD helpers for zones and schedules
+def create_zone(points, floorplan_id=None, name=None):
+    meta = Zone.compute_meta(points)
+    z = Zone(
+        floorplan_id=floorplan_id,
+        name=name or "Zone",
+        coordinates=points,
+        bbox=meta["bbox"],
+        centroid=meta["centroid"]
+    )
+    db.session.add(z)
     db.session.commit()
-    return schedule.serialize()
+    return z.serialize()
 
-def update_alarm_schedule(schedule_id, start_time, end_time):
-    schedule = AlarmSchedule.query.get(schedule_id)
-    if schedule:
-        schedule.start_time = start_time
-        schedule.end_time = end_time
-        db.session.commit()
-        return schedule.serialize()
-    return {"error": "AlarmSchedule not found"}
+def update_zone(zone_id, points=None, name=None, floorplan_id=None):
+    z = Zone.query.get(zone_id)
+    if not z:
+        return None
+    if points is not None:
+        meta = Zone.compute_meta(points)
+        z.coordinates = points
+        z.bbox = meta["bbox"]
+        z.centroid = meta["centroid"]
+    if name is not None:
+        z.name = name
+    if floorplan_id is not None:
+        z.floorplan_id = floorplan_id
+    db.session.commit()
+    return z.serialize()
 
-def delete_alarm_schedule(schedule_id):
-    schedule = AlarmSchedule.query.get(schedule_id)
-    if schedule:
-        db.session.delete(schedule)
-        db.session.commit()
-        return {"message": "AlarmSchedule deleted"}
-    return {"error": "AlarmSchedule not found"}
+def delete_zone(zone_id):
+    z = Zone.query.get(zone_id)
+    if not z:
+        return False
+    db.session.delete(z)
+    db.session.commit()
+    return True
 
-def is_alarm_active(zone_id, current_time):
-    zone = Zone.query.get(zone_id)
-    if zone:
-        return zone.check_alarm(current_time)
-    return {"error": "Zone not found"}
+def get_zones_for_floorplan(floorplan_id):
+    # eager-load schedules to avoid N+1 queries
+    qs = Zone.query.options(joinedload(Zone.schedules)).filter_by(floorplan_id=floorplan_id).order_by(Zone.id).all()
+    return [z.serialize() for z in qs]
+
+# Schedule helpers
+def create_schedule(zone_id, payload):
+    # determine spans_next_day only for recurring schedules; one-time -> None
+    schedule_type = payload.get("type", "recurring")
+    spans_val = None
+    if schedule_type == "recurring":
+        spans_val = bool(payload.get("spansNextDay", False))
+    s = ZoneSchedule(
+        zone_id=zone_id,
+        type=schedule_type,
+        days=payload.get("days"),
+        start_time=payload.get("start"),
+        end_time=payload.get("end"),
+        spans_next_day=spans_val,
+        start_dt=payload.get("startDateTime"),
+        end_dt=payload.get("endDateTime"),
+        enabled=payload.get("enabled", True),
+        alarm_mode=payload.get("alarmMode"),
+    )
+    db.session.add(s)
+    db.session.commit()
+    return s.serialize()
+
+def update_schedule(schedule_id, payload):
+    s = ZoneSchedule.query.get(schedule_id)
+    if not s:
+        return None
+    if "type" in payload: s.type = payload["type"]
+    if "days" in payload: s.days = payload["days"]
+    if "start" in payload: s.start_time = payload["start"]
+    if "end" in payload: s.end_time = payload["end"]
+    # if client supplies spansNextDay explicitly -> set accordingly;
+    # if schedule type is changed to one-time and client didn't supply spansNextDay -> set to NULL
+    if "spansNextDay" in payload:
+        s.spans_next_day = bool(payload["spansNextDay"])
+    elif "type" in payload and payload["type"] == "one-time":
+        s.spans_next_day = None
+    if "startDateTime" in payload: s.start_dt = payload["startDateTime"]
+    if "endDateTime" in payload: s.end_dt = payload["endDateTime"]
+    if "enabled" in payload: s.enabled = bool(payload["enabled"])
+    if "alarmMode" in payload: s.alarm_mode = payload["alarmMode"]
+    db.session.commit()
+    return s.serialize()
+
+def delete_schedule(schedule_id):
+    s = ZoneSchedule.query.get(schedule_id)
+    if not s:
+        return False
+    db.session.delete(s)
+    db.session.commit()
+    return True
+
+def get_schedules_for_zone(zone_id):
+    qs = ZoneSchedule.query.filter_by(zone_id=zone_id).order_by(ZoneSchedule.id).all()
+    return [s.serialize() for s in qs]
