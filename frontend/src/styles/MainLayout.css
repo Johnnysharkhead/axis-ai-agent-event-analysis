@@ -9,6 +9,8 @@
   flex: 1;
   position: relative;
   align-items: stretch;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .sidebarWrapper {
@@ -28,6 +30,9 @@
   flex: 1;
   padding: 1rem 1.5rem 3rem 2rem;
   background-color: #ffffff;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body.theme-dark .sidebarWrapper {

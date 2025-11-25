@@ -77,7 +77,7 @@ export default function LiveCameraPage({
           <button type="button" className="page__control page__control--primary" onClick={handleResetView}>
             Show all feeds
           </button>
-          <Link className="page__control" to="/video-feed/recording-library">
+          <Link className="page__control page__control--primary" to="/video-feed/recording-library">
             Recording library
           </Link>
         </div>

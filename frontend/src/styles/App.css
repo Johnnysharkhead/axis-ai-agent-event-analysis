@@ -23,6 +23,7 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
+  overflow-x: hidden;
 }
 
 body.theme-dark {
@@ -56,8 +57,8 @@ body.theme-dark {
 }
 
 .app-footer__content {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   display: flex;
   justify-content: flex-start;
   font-weight: 600;

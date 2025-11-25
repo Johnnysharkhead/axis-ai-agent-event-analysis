@@ -158,7 +158,12 @@ function RecordingLibrary() {
           <Link className="page__control page__control--primary" to="/video-feed/video-recording">
             Open recording console
           </Link>
-          <button type="button" className="page__control" onClick={fetchVideos} disabled={isLoadingList}>
+          <button
+            type="button"
+            className="page__control page__control--primary"
+            onClick={fetchVideos}
+            disabled={isLoadingList}
+          >
             {isLoadingList ? "Refreshing…" : "Refresh library"}
           </button>
         </div>
