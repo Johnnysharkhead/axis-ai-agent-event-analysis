@@ -21,4 +21,5 @@ from .camera import Camera
 from .recording import Recording, Metadata, Snapshot, EventLog
 from .fusion_data import FusionData
 from .floorplan import Floorplan
+from .position_history import PositionHistory
 
