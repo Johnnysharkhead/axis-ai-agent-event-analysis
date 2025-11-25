@@ -32,7 +32,7 @@ class Zone(db.Model):
     floorplan = db.relationship("Floorplan", back_populates="zones")
 
     #Relationship to EventLog
-    #event_logs = db.relationship("EventLog", back_populates="zone", cascade="all, delete-orphan")
+    event_logs = db.relationship("EventLog", back_populates="zone", cascade="all, delete-orphan")
 
     def serialize(self):
         return {

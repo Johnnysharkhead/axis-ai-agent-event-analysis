@@ -127,14 +127,13 @@ class EventLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     #FK to Zone
-    #zone_id = db.Column(
-    #    db.Integer,
-    #    db.ForeignKey("zones.id", name=fk_name("event_logs", "zone_id")),
-    #    nullable=True,
-    #)
+    zone_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey("zones.id", name=fk_name("event_logs", "zone_id")),
+        nullable=True,
+    )
 
-    #Relationship with zones
-    #zone = db.relationship("Zone", back_populates="event_logs")
+    zone = db.relationship("Zone", back_populates="event_logs")
 
     # MANY-TO-MANY relation to Recordings
     recordings = db.relationship(
