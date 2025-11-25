@@ -152,7 +152,7 @@ def ensure_user_columns():
 # db = SQLAlchemy(app)
 
 with app.app_context():
-    from domain.models import User, InviteKey, Room, Camera, Recording, Metadata
+    from domain.models import User, InviteKey, Room, Camera, Recording, Metadata, PositionHistory
 
     auth2.init_auth(app, db, User, InviteKey)
     # db.drop_all()  # <- This clears the local database (uncomment this the first time or if invitation key does not work)

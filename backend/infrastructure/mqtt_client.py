@@ -27,7 +27,8 @@ EVENT_DIR = os.getenv("EVENT_DIR", "events")    # the directory to store events,
 COOLDOWN_SECONDS = int(os.getenv("COOLDOWN_SECONDS", 10))   # cooldown period between processing events from the same camera
 last_trigger_time = {}
 _flask_app = None
-CAMERA_MAP = {"B8A44F9EED3B": 1, "B8A44F9EED3C": 2, "B8A44F9EED3D": 3}
+CAMERA_MAP = {"B8A44F9EED3B": 1, "E8272505477E": 2, "B8A44F9EEE36": 3}
+
 
 
 def log_event(msg):
