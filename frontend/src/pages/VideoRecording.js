@@ -138,7 +138,7 @@ export default function VideoRecording() {
         </header>
 
         <div className="page__controls">
-          <Link className="page__control" to="/video-feed/recording-library">
+          <Link className="page__control page__control--primary" to="/video-feed/recording-library">
             Recording library
           </Link>
           <button type="button" className="page__control page__control--primary" onClick={() => setModalOpen(true)}>

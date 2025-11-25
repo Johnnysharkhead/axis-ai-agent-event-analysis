@@ -5,7 +5,7 @@ nav {
     position: sticky;
     top: 0;
     z-index: 100;
-    width: 100vw;
+    width: 100%;
     margin: 0;
     left: 0; 
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -41,6 +41,10 @@ nav {
 .navbar-logo-search:hover {
     background-color: #e0e0e0;
     border-radius: 6px;
+}
+
+body.theme-dark .navbar-logo-search:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .hamburger-menu {
