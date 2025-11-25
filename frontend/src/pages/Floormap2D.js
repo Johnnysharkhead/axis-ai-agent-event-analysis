@@ -41,7 +41,7 @@ function Floormap2D() {
 
     eventSource.onmessage = (e) => {
       const pos = JSON.parse(e.data);
-      console.log('Position update:', pos);
+      // console.log('Position update:', pos);
 
       //Add people with postion and timestamp of lastseen
       setPeople(prev => ({
@@ -316,6 +316,33 @@ function Floormap2D() {
         });
     }
   };
+
+  function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect =
+      yi > pt.y !== yj > pt.y &&
+      pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + 0.0000001) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+useEffect(() => {
+  Object.entries(people).forEach(([trackId, person]) => {
+    zones.forEach((zone) => {
+      if (
+        zone.points &&
+        pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)
+      ) {
+        console.log(`Intrusion detected! Person ${trackId} entered zone "${zone.name}"`);
+        // You can trigger other actions here (alert, API call, etc)
+      }
+    });
+  });
+}, [people, zones]);
 
   return (
     <section className="page">
