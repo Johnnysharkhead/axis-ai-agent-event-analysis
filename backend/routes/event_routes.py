@@ -64,5 +64,29 @@ def create_event_internal():
         db.session.rollback()
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+    
+
+@event_bp.route('/internal/events', methods=['GET'])
+def get_events_internal():
+    """
+    Internal route to fetch all events with their recordings and snapshots.
+    """
+    try:
+        events = EventLog.query.all()
+        print(events)
+        result = []
+        for event in events:
+            event_data = {
+                "event_id": event.id,
+                #"zone_id": event.zone_id,
+                "recordings": [],
+            }
+            
+        
+        return jsonify(result), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
