@@ -361,9 +361,6 @@ useEffect(() => {
           <div className="page__section">
             <h3 className="page__section-title">Floorplan Selection</h3>
             <div>
-              <label htmlFor="floorplan-select" className="floorplan-select-label">
-                Select a Floorplan
-              </label>
               <select
                 id="floorplan-select"
                 value={selectedFloorplan?.id || ""}
@@ -397,23 +394,23 @@ useEffect(() => {
             </small>
           </div>
 
-          {/* Room Configuration Toggle */}
+          {/* Room Configuration */}
           <div className="page__section">
-            <button
-              onClick={() => setIsConfigVisible(!isConfigVisible)}
-              className="page__control room-config-toggle"
-            >
-              {isConfigVisible ? "Hide" : "Show"} Room Configuration
-            </button>
+          <button
+          onClick={() => setIsConfigVisible(!isConfigVisible)}
+          className="page__control room-config-toggle"
+          >
+          {isConfigVisible ? "Hide" : "Show"} Room Configuration
+          </button>
+
+          {isConfigVisible && (
+          <>
+          <h3 className="page__section-title">Room Configuration</h3>
+          <RoomConfiguration onSave={handleSaveConfig} />
+          </>
+          )}
           </div>
 
-          {/* Room Configuration Panel */}
-          {isConfigVisible && (
-            <div className="page__section">
-              <h3 className="page__section-title">Room Configuration</h3>
-              <RoomConfiguration onSave={handleSaveConfig} />
-            </div>
-          )}
 
           {/* Active People Panel */}
           <div className="page__section active-people">
