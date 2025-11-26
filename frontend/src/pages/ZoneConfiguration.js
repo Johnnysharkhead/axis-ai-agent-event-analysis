@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../styles/pages.css";
+import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans } from "../utils/floorplanPersistence";
 
 function indexToLetters(idx) {
   let n = idx + 1, s = "";
@@ -36,11 +37,21 @@ function computeMeta(points) {
 }
 
 export default function ZoneConfiguration() {
-  // API base (fall back to localhost backend used by other pages)
+  const [persistedId, savePersistedId] = usePersistedFloorplan();
   const API_BASE = window.__API_URL__ || "http://localhost:5001";
 
-  // load list of floorplans from backend
+  const [floorplans, setFloorplans] = useState([]);
+  const [selectedFloorplan, setSelectedFloorplan] = useState(null);
+
   async function loadFloorplans() {
+    //Try cache
+    const cached = getCachedFloorplans();
+    if (cached) {
+      setFloorplans(cached);
+      return;
+    }
+
+    //Cache miss, fetch from backend
     try {
       const res = await fetch(`${API_BASE}/floorplan`);
       if (!res.ok) {
@@ -56,7 +67,7 @@ export default function ZoneConfiguration() {
       else if (Array.isArray(data.results)) list = data.results;
       else if (data.floorplan) list = [data.floorplan];
       setFloorplans(list);
-      if (!selectedFloorplan && list.length) setSelectedFloorplan(list[0]);
+      cacheFloorplans(list);
     } catch (err) {
       console.warn("Failed to load floorplans", err);
       setFloorplans([]);
@@ -64,8 +75,13 @@ export default function ZoneConfiguration() {
   }
   useEffect(() => { loadFloorplans(); }, []);
 
-  const [floorplans, setFloorplans] = useState([]);
-  const [selectedFloorplan, setSelectedFloorplan] = useState(null);
+  //Auto-restore floorplan selection
+  useEffect(() => {
+    if (persistedId && floorplans.length > 0 && !selectedFloorplan) {
+      const fp = floorplans.find(f => f.id === persistedId);
+      if (fp) setSelectedFloorplan(fp);
+    }
+  }, [persistedId, floorplans]);
   const roomWidth = selectedFloorplan?.width || 10;
   const roomDepth = selectedFloorplan?.depth || 10;
   const planId = selectedFloorplan?.id ?? "default";
@@ -331,6 +347,7 @@ export default function ZoneConfiguration() {
 
   async function handleSelect(e) {
     const id = e.target.value;
+    savePersistedId(Number(id));
     const fp = floorplans.find(f => String(f.id) === String(id));
     if (fp) { setSelectedFloorplan(fp); return; }
     // fetch single floorplan as fallback
