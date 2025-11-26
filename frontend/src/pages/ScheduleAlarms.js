@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/pages.css";
 import "../styles/scheduleAlarms.css";
+import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans } from "../utils/floorplanPersistence";
 
 // pure helpers (safe at module level)
 function zoneColor(i) {
@@ -65,10 +66,9 @@ function formatDuration(start, end, spansNextDay, totalDays = 1) {
 }
 
 function ScheduleAlarms({ embedded = false }) {
-  // API base (reuse same convention as other pages)
+  const [persistedId, savePersistedId] = usePersistedFloorplan();
   const API_BASE = window.__API_URL__ || "http://localhost:5001";
 
-  // --- component state (hooks must be inside component) ---
   const [zones, setZones] = useState([]);
   const [schedules, setSchedules] = useState({}); // { [zoneId]: [schedule,...] }
   const [floorplans, setFloorplans] = useState([]);
@@ -97,6 +97,14 @@ function ScheduleAlarms({ embedded = false }) {
   // --- load floorplans on mount ---
   useEffect(() => {
     async function loadFloorplans() {
+      //Try cache
+      const cached = getCachedFloorplans();
+      if (cached) {
+        setFloorplans(cached);
+        return;
+      }
+
+      //Cache miss, fetch from backend
       const candidates = [
         `${API_BASE}/floorplan`,
         `${API_BASE}/floorplans`,
@@ -122,6 +130,7 @@ function ScheduleAlarms({ embedded = false }) {
           // basic validation: must contain id/name
           if (list.length && list.every(p => p && ("id" in p))) {
             setFloorplans(list);
+            cacheFloorplans(list);
             return;
           }
         } catch (err) {
@@ -135,6 +144,13 @@ function ScheduleAlarms({ embedded = false }) {
     }
     loadFloorplans();
   }, [API_BASE]);
+
+  // Auto-restore floorplan selection
+  useEffect(() => {
+    if (persistedId && floorplans.length > 0 && !selectedFloorplanId) {
+      setSelectedFloorplanId(persistedId);
+    }
+  }, [persistedId, floorplans]);
 
   // --- load zones when selected floorplan changes ---
   useEffect(() => {
@@ -180,6 +196,7 @@ function ScheduleAlarms({ embedded = false }) {
   function onSelectFloorplan(e) {
     const v = e.target.value;
     const id = v ? Number(v) : null;
+    savePersistedId(id);
     setSelectedFloorplanId(id);
     setSelectedZone("");
     setZones([]);

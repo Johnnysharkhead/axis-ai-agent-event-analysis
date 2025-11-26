@@ -3,10 +3,12 @@ import "../styles/pages.css";
 import RoomConfiguration from "../components/RoomConfiguration";
 import HeatmapOverlay from "../components/HeatmapOverlay";
 import "../styles/Floormap2D.css";
+import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans, invalidateFloorplanCache } from "../utils/floorplanPersistence";
 
 
 
 function Floormap2D() {
+  const [persistedId, savePersistedId] = usePersistedFloorplan();
   const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 10 });
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [cameras, setCameras] = useState([]);
@@ -85,15 +87,19 @@ function Floormap2D() {
   }, []);
 
   useEffect(() => {
-    fetch("http://localhost:5001/floorplan")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.floorplans) {
-          setFloorplans(data.floorplans);
-        }
-      })
-      .catch((err) => console.error("Failed to fetch floorplans:", err));
-  }, []);
+    if (persistedId && floorplans.length > 0 && !selectedFloorplan) {
+      //instantly update the dropdown text
+      const floorplan = floorplans.find(fp => fp.id === persistedId);
+      if (floorplan) {
+        setSelectedFloorplan(floorplan);
+        //load the full details in the background
+        setTimeout(() => {
+          const event = { target: { value: String(persistedId) } };
+          handleSelectFloorplanChange(event);
+        }, 0);
+      }
+    }
+  }, [persistedId, floorplans]);
 
   const fetchCameras = () => {
     fetch("http://localhost:5001/cameras")
@@ -115,6 +121,14 @@ function Floormap2D() {
   };
 
   const handleFetchFloorplans = () => {
+    //Try cache first
+    const cached = getCachedFloorplans();
+    if (cached) {
+      setFloorplans(cached);
+      return;
+    }
+
+    //Cache miss, fetch from backend
     fetch("http://localhost:5001/floorplan", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -124,6 +138,7 @@ function Floormap2D() {
         if (data.floorplans) {
           console.log("Fetched floorplans:", data.floorplans);
           setFloorplans(data.floorplans);
+          cacheFloorplans(data.floorplans);
         } else {
           console.error("No floorplans found in the database.");
         }
@@ -166,7 +181,8 @@ function Floormap2D() {
         console.log("Floorplan POST response:", data);
         newConfig.new_floorplan_id = data.new_floorplan_id;
         fetchCameras();
-        setZones([])
+        setZones([]);
+        invalidateFloorplanCache(); // Clear cache so new floorplan appears
 
         fetch(`http://localhost:5001/floorplan/${data.new_floorplan_id}`)
           .then((res) => res.json())
@@ -220,6 +236,8 @@ function Floormap2D() {
   const handleSelectFloorplanChange = (e) => {
     const floorplanId = parseInt(e.target.value);
     if (!floorplanId) return;
+
+    savePersistedId(floorplanId);
 
     fetch(`http://localhost:5001/floorplan/${floorplanId}`, {
       method: "GET",
@@ -304,6 +322,7 @@ function Floormap2D() {
         })
         .then((data) => {
           console.log("Floorplan deleted successfully:", data);
+          invalidateFloorplanCache(); // Clear cache so deleted floorplan disappears
           // Uppdatera listan med floorplans
           setFloorplans((prevFloorplans) =>
             prevFloorplans.filter((fp) => fp.id !== floorplanId)
