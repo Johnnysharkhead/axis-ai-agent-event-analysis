@@ -56,6 +56,8 @@ app.register_blueprint(recording_bp)
 app.register_blueprint(snapshot_bp)
 app.register_blueprint(floorplan_bp)
 app.register_blueprint(camera_config_bp)
+app.register_blueprint(zone_bp)
+app.register_blueprint(alarm_bp)
 app.register_blueprint(event_bp)
 
 
