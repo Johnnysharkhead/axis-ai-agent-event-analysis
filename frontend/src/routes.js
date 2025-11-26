@@ -27,6 +27,8 @@ import CameraConfig from "./pages/CameraConfig";
 import ZoneConfiguration from "./pages/ZoneConfiguration";
 import { isAuthenticated } from "./utils/api";
 import ScheduleAlarms from "./pages/ScheduleAlarms";
+import IntrusionSummary from "./pages/IntrusionSummary";
+
 
 
 function ProtectedRoute({ children }) {
@@ -78,10 +80,10 @@ function AppRoutes() {
         <Route path="/admin/accounts" element={<ManageAccounts />} />
 
         {/* 2D Floorplan views */}
-        <Route path="/2d-floorplan/configuration" element={<Floormap2D />} />
-        <Route path="/2d-floorplan/heatmap" element={<Floormap2D />} />
+        <Route path="/2d-floorplan/floorplan" element={<Floormap2D />} />
         <Route path="/2d-floorplan/zones" element={<ZoneConfiguration />} />
         <Route path="/2d-floorplan/schedule-alarms" element={<ScheduleAlarms />} />
+        <Route path="/ai-features/intrusion-summary" element={<IntrusionSummary />} />
       </Route>
     </Routes>
   );

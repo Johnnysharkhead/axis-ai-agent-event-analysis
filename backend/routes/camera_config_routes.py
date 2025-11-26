@@ -1,4 +1,8 @@
 
+###this file should be restructured into 2 different files, currently it handles routes for camera configs
+### and the position stream and heatmap. Ill do it before the sprint 3 merge to main
+###Split into camera-config_routes and position_routes 
+
 #Camera Configuration Routes
 #geolocation, orientation and restart
 #Will test with cameras 12/11
@@ -12,11 +16,12 @@ from infrastructure.mqtt_client import get_events
 from flask import Blueprint, request, jsonify, Response, stream_with_context, g
 from flask_cors import CORS
 from functools import wraps
-from domain.models import Camera
+from domain.models import Camera, PositionHistory, db
 import traceback
 from infrastructure.floorplan_handler import FloorplanManager
 from infrastructure.track_fusion import TrackFusion
 from infrastructure.position_processor import PositionProcessor
+from datetime import datetime
 
 camera_config_bp = Blueprint('camera_config', __name__)
 CORS(camera_config_bp, origins=["http://localhost:3000"], supports_credentials=True)
@@ -40,7 +45,10 @@ position_processor = PositionProcessor(
     bottom_left_coord=[58.395908306412494, 15.577992051878446]
 )
 
+# Initialize track fusion manager for multi-camera tracking
+track_fusion = TrackFusion(fusion_distance=0.5, track_timeout=3.0)
 
+#------------------------CONFIGS FOR CAMERA--------------------------
 def camera_request(url, timeout=10):
     try:
         response = requests.get(url, auth=HTTPBasicAuth(CAMERA_USER, CAMERA_PASS), timeout=timeout)
@@ -221,19 +229,6 @@ def restart_camera(camera_id):
 @camera_config_bp.route("/cameras/<int:camera_id>/configure", methods=["POST", "OPTIONS"])
 @validate_camera_id
 def configure_camera(camera_id):
-    """
-    Configure camera in one request
-    Request body:
-    {
-        "latitude": 58.3977,
-        "longitude": 15.5765,
-        "tilt": -45.0,
-        "heading": 90.0,
-        "elevation": 0.0,  (optional)
-        "installation_height": 3.5,
-        "restart": true  (optional, default: false)
-    }
-    """
     if request.method == "OPTIONS":
         return jsonify({"message": "CORS preflight"}), 200
 
@@ -324,14 +319,20 @@ def get_camera_orientation(camera_id):
 
     return make_camera_response(response, error)
 
+#------------------------FLOORMAP AND HEATMAP------------------
+
 #Stream object geoposition with multi-camera fusion
 @camera_config_bp.route('/stream/positions')
 def stream_positions():
     # Stream real-time position data to frontend
     # Processes MQTT events and applies track fusion.
- 
+
     def generate():
         last_sent = {}
+        position_batch = []
+        last_db_insert = time.time()
+        BATCH_INSERT_INTERVAL = 5.0  #Insert to DB every 5 seconds
+
         while True:
             #Get events from MQTT client
             for event in get_events():
@@ -347,18 +348,146 @@ def stream_positions():
                         yield f"data: {json.dumps(position)}\n\n"
                         last_sent[track_id] = position
 
+                        #updated the heatmap in batches to save performance
+                        position_batch.append({
+                            'track_id': track_id,
+                            'x_m': position['x_m'],
+                            'y_m': position['y_m'],
+                            'timestamp': datetime.utcnow()
+                        })
+
+            #Same here, updated db in batches every 5s
+            current_time = time.time()
+            if position_batch and (current_time - last_db_insert) >= BATCH_INSERT_INTERVAL:
+                try:
+                    db.session.bulk_insert_mappings(PositionHistory, position_batch)
+                    db.session.commit()
+                    position_batch.clear()
+                    last_db_insert = current_time
+                    print(f"[Stream] Saved batch of {len(position_batch)} positions to database for heatmap")
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"[Error] Failed to insert positions to DB: {e}")
+                    position_batch.clear()
+
             time.sleep(0.5)
+
 
     return Response(stream_with_context(generate()),
                     mimetype='text/event-stream')
 
+# Heatmap data endpoint
+@camera_config_bp.route('/heatmap/data', methods=['GET'])
+def get_heatmap_data():
 
-#-------------------------Test--------------------------------
+    try:
+        # Get query parameters
+        duration = int(request.args.get('duration', 600))
+        grid_size = int(request.args.get('grid_size', 50))
+        floorplan_width = float(request.args.get('floorplan_width', 10.0))
+        floorplan_height = float(request.args.get('floorplan_height', 10.0))
+
+        from datetime import timedelta
+        time_threshold = datetime.utcnow() - timedelta(seconds=duration)
+
+        # Query positions from database within time window
+        positions = PositionHistory.query.filter(
+            PositionHistory.timestamp >= time_threshold
+        ).all()
+
+        # Initialize grid
+        grid = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+        cell_width = floorplan_width / grid_size
+        cell_height = floorplan_height / grid_size
+
+        # Aggregate positions into grid cells
+        for pos in positions:
+            # Calculate grid cell coordinates
+            grid_x = int(pos.x_m / cell_width)
+            grid_y = int(pos.y_m / cell_height)
+
+            if 0 <= grid_x < grid_size and 0 <= grid_y < grid_size:
+                grid[grid_y][grid_x] += 1
+
+        # Normalize grid values to 0-1 range
+        max_value = max(max(row) for row in grid) if any(any(row) for row in grid) else 1
+
+        normalized_grid = [
+            [cell / max_value if max_value > 0 else 0 for cell in row]
+            for row in grid
+        ]
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'grid': normalized_grid,
+                'grid_size': grid_size,
+                'max_value': max_value,
+                'total_positions': len(positions),
+                'duration_seconds': duration,
+                'floorplan_width': floorplan_width,
+                'floorplan_height': floorplan_height
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"[Error] Heatmap data error: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@camera_config_bp.route('/heatmap/clear', methods=['DELETE', 'OPTIONS'])
+def clear_heatmap_history():
+    """
+    Clear position history from the database
+    Optional query params:
+    - older_than: Delete records older than X seconds (default: delete all)
+    """
+    if request.method == "OPTIONS":
+        return jsonify({"message": "CORS preflight"}), 200
+
+    try:
+        older_than = request.args.get('older_than', type=int)
+
+        if older_than:
+            # Delete records older than specified duration
+            from datetime import timedelta
+            time_threshold = datetime.utcnow() - timedelta(seconds=older_than)
+            deleted_count = PositionHistory.query.filter(
+                PositionHistory.timestamp < time_threshold
+            ).delete()
+        else:
+            # Delete all records
+            deleted_count = PositionHistory.query.delete()
+
+        db.session.commit()
+
+        print(f"[Heatmap] Cleared {deleted_count} position history records")
+
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Deleted {deleted_count} position history records'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[Error] Failed to clear heatmap history: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+#-------------------------Test-remove below when we ship--------------------------------
 
 #testing endpoint for when we dont have acces to cameras
 @camera_config_bp.route('/test/mock-stream')
 def mock_stream():
- 
+
     def generate():
         import random
 
@@ -367,6 +496,11 @@ def mock_stream():
             'person_1': {'x': 2.0, 'y': 2.0, 'dx': 0.2, 'dy': 0.1},
             'person_2': {'x': 8.0, 'y': 7.0, 'dx': -0.15, 'dy': -0.2}
         }
+
+        # Add database batch insert for heatmap
+        position_batch = []
+        last_db_insert = time.time()
+        BATCH_INSERT_INTERVAL = 5.0
 
         while True:
             for track_id, person in people.items():
@@ -388,10 +522,36 @@ def mock_stream():
                 }
                 yield f"data: {json.dumps(data)}\n\n"
 
+                # Add to batch for database
+                position_batch.append({
+                    'track_id': track_id,
+                    'x_m': round(person['x'], 2),
+                    'y_m': round(person['y'], 2),
+                    'timestamp': datetime.utcnow()
+                })
+
+            # Insert positions to database every 5 seconds
+            current_time = time.time()
+            if position_batch and (current_time - last_db_insert) >= BATCH_INSERT_INTERVAL:
+                try:
+                    db.session.bulk_insert_mappings(PositionHistory, position_batch)
+                    db.session.commit()
+                    position_batch.clear()
+                    last_db_insert = current_time
+                    print(f"[Mock Stream] Saved batch of positions to database for heatmap")
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"[Error] Failed to insert mock positions to DB: {e}")
+                    position_batch.clear()
+
             time.sleep(0.5)  # Update every 0.5 seconds
 
     return Response(stream_with_context(generate()),
                     mimetype='text/event-stream')
+
+
+
+
 
 #Test
 @camera_config_bp.route('/test/calc-position', methods=['POST', 'OPTIONS'])

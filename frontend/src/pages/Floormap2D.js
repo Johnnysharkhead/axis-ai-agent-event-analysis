@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../styles/pages.css";
 import RoomConfiguration from "../components/RoomConfiguration";
+import HeatmapOverlay from "../components/HeatmapOverlay";
 import "../styles/Floormap2D.css";
 
 
@@ -17,7 +18,10 @@ function Floormap2D() {
   const [useMockStream, setUseMockStream] = useState(false);
   const [newCamera, setNewCamera] = useState({ x: "", y: "" });
   const [mapHeight, setMapHeight] = useState(400);
-  const [isAvailableCamerasVisible, setIsAvailableCamerasVisible] = useState(true);
+  const [isAvailableCamerasVisible, setIsAvailableCamerasVisible] = useState(false);
+  const [isHeatmapVisible, setIsHeatmapVisible] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [heatmapDuration, setHeatmapDuration] = useState(600);
   const [zones, setZones] = useState([]);
 
   useEffect(() => {
@@ -37,7 +41,7 @@ function Floormap2D() {
 
     eventSource.onmessage = (e) => {
       const pos = JSON.parse(e.data);
-      console.log('Position update:', pos);
+      // console.log('Position update:', pos);
 
       //Add people with postion and timestamp of lastseen
       setPeople(prev => ({
@@ -313,6 +317,33 @@ function Floormap2D() {
     }
   };
 
+  function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect =
+      yi > pt.y !== yj > pt.y &&
+      pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + 0.0000001) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+useEffect(() => {
+  Object.entries(people).forEach(([trackId, person]) => {
+    zones.forEach((zone) => {
+      if (
+        zone.points &&
+        pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)
+      ) {
+        console.log(`Intrusion detected! Person ${trackId} entered zone "${zone.name}"`);
+        // You can trigger other actions here (alert, API call, etc)
+      }
+    });
+  });
+}, [people, zones]);
+
   return (
     <section className="page">
       <header className="header">
@@ -330,9 +361,6 @@ function Floormap2D() {
           <div className="page__section">
             <h3 className="page__section-title">Floorplan Selection</h3>
             <div>
-              <label htmlFor="floorplan-select" className="floorplan-select-label">
-                Select a Floorplan
-              </label>
               <select
                 id="floorplan-select"
                 value={selectedFloorplan?.id || ""}
@@ -366,23 +394,23 @@ function Floormap2D() {
             </small>
           </div>
 
-          {/* Room Configuration Toggle */}
+          {/* Room Configuration */}
           <div className="page__section">
-            <button
-              onClick={() => setIsConfigVisible(!isConfigVisible)}
-              className="page__control room-config-toggle"
-            >
-              {isConfigVisible ? "Hide" : "Show"} Room Configuration
-            </button>
+          <button
+          onClick={() => setIsConfigVisible(!isConfigVisible)}
+          className="page__control room-config-toggle"
+          >
+          {isConfigVisible ? "Hide" : "Show"} Room Configuration
+          </button>
+
+          {isConfigVisible && (
+          <>
+          <h3 className="page__section-title">Room Configuration</h3>
+          <RoomConfiguration onSave={handleSaveConfig} />
+          </>
+          )}
           </div>
 
-          {/* Room Configuration Panel */}
-          {isConfigVisible && (
-            <div className="page__section">
-              <h3 className="page__section-title">Room Configuration</h3>
-              <RoomConfiguration onSave={handleSaveConfig} />
-            </div>
-          )}
 
           {/* Active People Panel */}
           <div className="page__section active-people">
@@ -565,6 +593,68 @@ function Floormap2D() {
               </>
             )}
           </div>
+
+          {/* Heatmap Panel */}
+          <div className="page__section heatmap-panel">
+            <h3
+              className="page__section-title heatmap-panel-title"
+              onClick={() => setIsHeatmapVisible(!isHeatmapVisible)}
+            >
+              Heatmap
+              <span className="heatmap-panel-toggle">
+                {isHeatmapVisible ? "▼" : "▲"}
+              </span>
+            </h3>
+            {isHeatmapVisible && (
+              <>
+                <button
+                  onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+                  className={`heatmap-toggle-button ${heatmapEnabled ? "enabled" : "disabled"}`}
+                >
+                  {heatmapEnabled ? "Hide Heatmap" : "Show Heatmap"}
+                </button>
+
+                {heatmapEnabled && (
+                  <>
+                    <div className="heatmap-control">
+                      <label className="heatmap-control-label">Time Window</label>
+                      <select
+                        value={heatmapDuration}
+                        onChange={(e) => setHeatmapDuration(parseInt(e.target.value))}
+                        className="heatmap-duration-select"
+                      >
+                        <option value={300}>5 minutes</option>
+                        <option value={600}>10 minutes</option>
+                        <option value={1800}>30 minutes</option>
+                        <option value={3600}>1 hour</option>
+                        <option value={7200}>2 hours</option>
+                        <option value={14400}>4 hours</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("Are you sure you want to clear all heatmap history?")) {
+                          try {
+                            const response = await fetch("http://localhost:5001/heatmap/clear", {
+                              method: "DELETE",
+                            });
+                            const data = await response.json();
+                            alert(`Cleared ${data.deleted_count || 0} position records`);
+                          } catch (err) {
+                            alert("Failed to clear heatmap data");
+                          }
+                        }
+                      }}
+                      className="heatmap-clear-button"
+                    >
+                      Clear History
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </aside>
 
         {/* Floormap */}
@@ -669,6 +759,16 @@ function Floormap2D() {
                 }
               }}
             >
+              {/* Heatmap Overlay */}
+              {heatmapEnabled && selectedFloorplan && (
+                <HeatmapOverlay
+                  duration={heatmapDuration}
+                  floorplanWidth={roomConfig.width}
+                  floorplanHeight={roomConfig.depth}
+                  enabled={heatmapEnabled}
+                />
+              )}
+
               {/* Absolute positioned content */}
             <div className="floormap-content">
             <svg
