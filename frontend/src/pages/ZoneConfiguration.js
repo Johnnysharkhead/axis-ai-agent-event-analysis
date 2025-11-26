@@ -72,11 +72,9 @@ export default function ZoneConfiguration() {
 
   const [zones, setZones] = useState([]);
   const [drawMode, setDrawMode] = useState(false);
-  const [intrusionMode, setIntrusionMode] = useState(false);
   const [currentVerts, setCurrentVerts] = useState([]);
   const [previewPoint, setPreviewPoint] = useState(null);
   const [snapTarget, setSnapTarget] = useState(null);
-  const [intrusionResult, setIntrusionResult] = useState(null);
   const containerRef = useRef(null);
 
   // Modal / pending polygon state for naming and inline-editing
@@ -183,22 +181,6 @@ export default function ZoneConfiguration() {
   function onMapClick(e) {
     // while naming a zone, ignore clicks on the map (prevent continuing draw)
     if (showNameModal) return;
-    if (intrusionMode) {
-      const p = pageToRoom(e.clientX, e.clientY);
-      // find ALL zones that contain the point (support overlapping zones)
-      const hits = zones.filter(z => {
-        if (!z.bbox) return false;
-        const [minX,minY,maxX,maxY] = z.bbox;
-        if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) return false;
-        return pointInPolygon(p, z.points || []);
-      });
-      setIntrusionResult({
-        point: p,
-        zoneNames: hits.map(h => h.name),
-        zones: hits
-      });
-      return;
-    }
     if (!drawMode) return;
     const snap = getSnapTargetForClient(e.clientX, e.clientY);
     const p = snap ? { x: snap.x, y: snap.y } : pageToRoom(e.clientX, e.clientY);
@@ -207,7 +189,7 @@ export default function ZoneConfiguration() {
   }
 
   function onMapMouseMove(e) {
-    const snap = getSnapTargetForClient(e.clientX, e.clientY);
+    const snap = drawMode ? getSnapTargetForClient(e.clientX, e.clientY) : null; 
     setSnapTarget(snap);
     if (!drawMode || currentVerts.length === 0) return;
     const p = snap ? { x: snap.x, y: snap.y } : pageToRoom(e.clientX, e.clientY);
@@ -234,7 +216,22 @@ export default function ZoneConfiguration() {
     setShowNameModal(true);
     setDrawMode(false); // prevent further drawing while naming
     const centroid = centroidOf(pending);
-    setModalPos(pointToPercent(centroid));
+    let pos = pointToPercent(centroid);
+    
+    // Clamp modal position to prevent exceeding container edges
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const modalWidth = 400; // approximate modal width (minWidth 320, maxWidth 420)
+    const modalHeight = 200; // approximate modal height
+    const halfWidthPct = (modalWidth / 2 / containerRect.width) * 100;
+    const halfHeightPct = (modalHeight / 2 / containerRect.height) * 100;
+    
+    // Clamp horizontal position to keep modal within left/right bounds
+    pos.xPct = Math.max(halfWidthPct, Math.min(100 - halfWidthPct, pos.xPct));
+    
+    // Clamp vertical position to keep modal within top/bottom bounds (though it's positioned above)
+    pos.yPct = Math.max(halfHeightPct * 1.2, Math.min(100 - halfHeightPct, pos.yPct));
+    
+    setModalPos(pos);
   }
   function undoVertex() { setCurrentVerts(v => v.slice(0,-1)); }
   function clearZones() {
@@ -387,18 +384,15 @@ export default function ZoneConfiguration() {
           <h3 className="page__section-title">Map</h3>
           <p className="page__section-subtitle">
             {selectedFloorplan
-              ? `${roomWidth}×${roomDepth} m — map fits viewport proportionally`
+              ? `${roomWidth}×${roomDepth} m - Floorplan Loaded` 
               : "No floorplan selected — choose one from the list on the left"}
           </p>
 
           <div style={{ marginTop:12 }}>
             <div style={{ width:"90vw", maxWidth:900, margin:"0 auto" }}>
               <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                <button className="page__control" onClick={() => { setIntrusionMode(false); setDrawMode(d => !d); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); }} disabled={!selectedFloorplan}>
+                <button className="page__control" onClick={() => { setDrawMode(d => !d); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); }} disabled={!selectedFloorplan}>
                   {drawMode ? "Exit draw" : "Draw polygon"}
-                </button>
-                <button className="page__control" onClick={() => { setDrawMode(false); setIntrusionMode(s => !s); setCurrentVerts([]); setPreviewPoint(null); setSnapTarget(null); setIntrusionResult(null); }} style={intrusionMode ? { background:"#fde68a" } : {}}>
-                  {intrusionMode ? "Exit intrusion" : "Intrusion test"}
                 </button>
                 <button className="page__control" onClick={undoVertex} disabled={!drawMode || currentVerts.length===0}>Undo vertex</button>
                 <button className="page__control" onClick={finishPolygon} disabled={!selectedFloorplan || !drawMode || currentVerts.length<3}>Finish polygon</button>
@@ -413,7 +407,7 @@ export default function ZoneConfiguration() {
                 onMouseLeave={onMapMouseLeave}
                 onTouchStart={(e)=> {
                   const t = e.touches?.[0]; if (!t) return;
-                  if (intrusionMode) onMapClick({ clientX: t.clientX, clientY: t.clientY }); else if (drawMode) onMapClick({ clientX: t.clientX, clientY: t.clientY });
+                  if (drawMode) onMapClick({ clientX: t.clientX, clientY: t.clientY });
                 }}
               >
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
@@ -444,24 +438,6 @@ export default function ZoneConfiguration() {
                     {previewPoint && <circle cx={pointToPercent(previewPoint).xPct} cy={pointToPercent(previewPoint).yPct} r="1.0" fill="rgba(37,99,235,0.9)" />}
                   </>}
                 </svg>
-
-                {intrusionResult && (
-                  <div style={{ position:"absolute", right:10, top:10, background:"white", border:"1px solid rgba(0,0,0,0.12)", padding:10, borderRadius:6, boxShadow:"0 6px 18px rgba(0,0,0,0.08)" }}>
-                    <div style={{ fontWeight:700, marginBottom:6 }}>Intrusion test</div>
-                    {intrusionResult.zoneNames && intrusionResult.zoneNames.length > 0 ? (
-                      <div>
-                        Point inside zone{intrusionResult.zoneNames.length > 1 ? "s" : ""}:
-                        <div style={{ marginTop:6 }}>
-                          <strong>{intrusionResult.zoneNames.join(", ")}</strong>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>No zone at point</div>
-                    )}
-                    <div style={{ marginTop:8, fontSize:12, color:"var(--color-muted)" }}>{intrusionResult.point.x.toFixed(2)}m, {intrusionResult.point.y.toFixed(2)}m</div>
-                    <div style={{ marginTop:8, display:"flex", gap:8 }}><button className="page__control" onClick={() => setIntrusionResult(null)}>Close</button></div>
-                  </div>
-                )}
 
                 {/* Name modal anchored over the polygon (and with backdrop) */}
                 {showNameModal && modalPos && (
@@ -501,7 +477,8 @@ export default function ZoneConfiguration() {
                           fontSize: 14,
                           borderRadius: 8,
                           border: "1px solid rgba(15,23,42,0.08)",
-                          marginBottom: 12
+                          marginBottom: 12,
+                          boxSizing: "border-box"
                         }}
                       />
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
