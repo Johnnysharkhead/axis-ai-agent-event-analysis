@@ -8,6 +8,12 @@ def fk_name(table, column) -> str:
 
 from datetime import datetime
 
+event_recordings = db.Table(
+    "event_recordings",
+    db.Column("event_id", db.Integer, db.ForeignKey("event_logs.id"), primary_key=True),
+    db.Column("recording_id", db.BigInteger, db.ForeignKey("recordings.recording_id"), primary_key=True),
+)
+
 class Recording(db.Model):
     """
     Class for storing Recording data in the database.
@@ -28,17 +34,18 @@ class Recording(db.Model):
     """
     __tablename__ = "recordings"
 
-    recording_id = db.Column(db.Integer, primary_key=True)
+    recording_id = db.Column(db.BigInteger, primary_key=True)  # CHANGED: Integer -> BigInteger
     url = db.Column(db.String(100), nullable=False)
 
     snapshots = db.relationship("Snapshot", back_populates="recording", cascade="all, delete-orphan")
     recording_metadata = db.relationship("Metadata", back_populates="recording", cascade="all, delete-orphan")
-        
-    # ForeignKey to EventLog
-    event_id = db.Column(db.Integer, db.ForeignKey("event_logs.id"), nullable=True)
 
-    # Relationship with EventLog
-    event = db.relationship("EventLog", back_populates="recordings")
+     # MANY-TO-MANY relation to EventLog
+    events = db.relationship(
+        "EventLog",
+        secondary="event_recordings",
+        back_populates="recordings"
+    )
 
     # camera_id       = db.Column(db.Integer, db.ForeignKey("cameras.id"), nullable = False)
         
@@ -68,7 +75,7 @@ class Snapshot(db.Model):
     """
     __tablename__ = "snapshots"
     id = db.Column(db.Integer, primary_key = True)
-    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("snapshot", "recording_id"), nullable=False)
+    recording_id = db.Column(db.BigInteger, db.ForeignKey("recordings.recording_id"), name=fk_name("snapshot", "recording_id"), nullable=False)  # CHANGED: Integer -> BigInteger
     url = db.Column(db.String(200), nullable = False)
     timestamp = db.Column(db.DateTime, default = datetime.utcnow)
 
@@ -111,7 +118,7 @@ class Metadata(db.Model):
     data_object_id = db.Column(db.String)
     data_class_types = db.Column(db.String)
 
-    recording_id = db.Column(db.Integer, db.ForeignKey("recordings.recording_id"), name=fk_name("metadata", "recording_id"), nullable=False)
+    recording_id = db.Column(db.BigInteger, db.ForeignKey("recordings.recording_id"), name=fk_name("metadata", "recording_id"), nullable=False)  # CHANGED: Integer -> BigInteger
     recording = db.relationship("Recording", back_populates="recording_metadata")
 
 class EventLog(db.Model):
@@ -119,11 +126,27 @@ class EventLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Relationship with recordings
-    recordings = db.relationship("Recording", back_populates="event", cascade="all, delete-orphan")
+    #FK to Zone
+    zone_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey("zones.id", name=fk_name("event_logs", "zone_id")),
+        nullable=True,
+    )
+
+    zone = db.relationship("Zone", back_populates="event_logs")
+
+    # MANY-TO-MANY relation to Recordings
+    recordings = db.relationship(
+        "Recording",
+        secondary="event_recordings",
+        back_populates="events",
+        cascade="all"
+    )
 
     def serialize(self):
         """Convert the event log to a dictionary."""
         return {
             "id": self.id,
+            #"zone_id": self.zone_id,
+            "recording_ids": [r.recording_id for r in self.recordings],
         }

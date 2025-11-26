@@ -3,14 +3,21 @@
 Intrusion Detection module.
 This version DOES NOT depend on the database or main.py camera registration.
 Camera URLs are hard-coded below and always available.
+Now ALSO saves events, recordings, snapshots and metadata to the database.
 """
 
+# ========== IMPORTS ==========
+# Corrected imports for Docker environment (where /app is root)
 import os
 import json
 import time
 import threading
 import datetime
 import subprocess
+import requests  # <--- Ensure requests is imported
+
+# REMOVED: Database imports to avoid context errors
+# from domain.models import db...
 
 # ========== CONFIG ==========
 EVENT_DIR = os.getenv("EVENT_DIR", "events")
@@ -130,7 +137,6 @@ def save_event_json(camera_id, timestamp, event_data):
 def trigger_intrusion(topic, payload):
     """
     Called by mqtt_client when intrusion should occur.
-    Hard-coded camera URLs ensure we always find the camera.
     """
     try:
         serial = topic.split("/")[1]           # extract Axis serial number
@@ -143,8 +149,19 @@ def trigger_intrusion(topic, payload):
 
         last_trigger_time[camera_id] = now
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
+        # Snapshot + clip in parallel
+        threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
+        threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
+        
+        # Use a simpler integer ID if possible, or ensure schema supports BigInt
+        # Truncating or hashing might be safer if this ID is too large for standard SQL Integer
+        recording_id_int = int(f"{camera_id}{timestamp}")
+        
+        # Paths for clip & snapshot
+        clip_path = f"{EVENT_DIR}/clip_{camera_id}_{timestamp}.mp4"
+        snapshot_path = f"{EVENT_DIR}/snap_{camera_id}_{timestamp}.jpg"
         event_data = {
             "camera_id": camera_id,
             "serial": serial,
@@ -154,6 +171,25 @@ def trigger_intrusion(topic, payload):
         }
 
         save_event_json(camera_id, timestamp, event_data)
+        
+        # --- Save to db via Internal Route ---
+        try:
+            # Fixed: Use /internal/create since blueprint has no url_prefix
+            api_url = "http://localhost:5001/internal/create"
+            
+            payload_data = {
+                "camera_id": camera_id,
+                "timestamp": timestamp,
+                "clip_path": clip_path,
+                "snapshot_path": snapshot_path
+            }
+            
+            # Send with timeout so we don't block the intrusion logic
+            requests.post(api_url, json=payload_data, timeout=2)
+            log(f"[API] Sent event to DB: {api_url}")
+
+        except Exception as api_e:
+            log(f"[API] Warning: Failed to send event to DB: {api_e}")
 
         # Snapshot + clip in parallel
         threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
