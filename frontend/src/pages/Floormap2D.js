@@ -43,7 +43,6 @@ function Floormap2D() {
 
     eventSource.onmessage = (e) => {
       const pos = JSON.parse(e.data);
-      // console.log('Position update:', pos);
 
       //Add people with postion and timestamp of lastseen
       setPeople(prev => ({
@@ -207,8 +206,6 @@ function Floormap2D() {
   const handleRemoveCamera = (cameraId) => {
     const confirmRemove = window.confirm("Are you sure you want to remove this camera?");
     if (confirmRemove) {
-      console.log(cameraId)
-      console.log(selectedFloorplan)
       fetch(`http://localhost:5001/floorplan/${selectedFloorplan.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -260,15 +257,28 @@ function Floormap2D() {
             const zoneData = floorplan.zones;
             const zoneList = Array.isArray(zoneData) ? zoneData : zoneData.zones || [];
             setZones(zoneList);
+            fetch(`http://localhost:5001/api/get_active_schedules/${floorplanId}`)
+              .then((res) => res.json())
+              .then((data) => {
+                console.log(data);
+
+                const activeSchedules = data.active || [];
+                const activeZoneIds = new Set(activeSchedules.map((s) => s.zone_id));
+
+                const updatedZones = zoneList.map((zone) => ({
+                  ...zone,
+                  active: activeZoneIds.has(zone.id)
+                }));
+
+                setZones(updatedZones);
+              });
           } else {
             setZones([])
           }
-
           // Fetch all cameras and set their placed status and coordinates
           fetch("http://localhost:5001/cameras")
             .then((res) => res.json())
             .then((camData) => {
-              console.log(camData)
               let fetchedCameras = [];
               if (camData.cameras) {
                 fetchedCameras = camData.cameras.map((camera) => {
@@ -352,11 +362,11 @@ function Floormap2D() {
 useEffect(() => {
   Object.entries(people).forEach(([trackId, person]) => {
     zones.forEach((zone) => {
-      if (
-        zone.points &&
-        pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)
-      ) {
+      if (!zone.active) return; // ignore inactive zones
+
+      if (zone.points && pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)) {
         console.log(`Intrusion detected! Person ${trackId} entered zone "${zone.name}"`);
+
         // You can trigger other actions here (alert, API call, etc)
         // Trigger backend intrusion detection
         const camera = cameras.find(c => c.placed);
@@ -382,7 +392,6 @@ useEffect(() => {
         .then(data => console.log("Intrusion API response:", data))
         .catch(err => console.error("Error sending intrusion event:", err));
       }
-      
     });
   });
 }, [people, zones]);
@@ -495,7 +504,6 @@ useEffect(() => {
                       </div>
                       <button
                         onClick={() => {
-                          console.log(camera.id)
                           handleRemoveCamera(camera.id)
                         }
                         }
