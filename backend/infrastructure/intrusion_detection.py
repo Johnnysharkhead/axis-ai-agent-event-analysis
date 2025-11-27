@@ -192,6 +192,27 @@ def trigger_intrusion(topic, payload):
             "payload": payload,
         }
 
+        save_event_json(camera_id, timestamp, event_data)
+        
+        # --- Save to db via Internal Route ---
+        try:
+            # Fixed: Use /internal/create since blueprint has no url_prefix
+            api_url = "http://localhost:5001/internal/create"
+            
+            payload_data = {
+                "camera_id": camera_id,
+                "timestamp": timestamp,
+                "clip_path": clip_path,
+                "snapshot_path": snapshot_path
+            }
+            
+            # Send with timeout so we don't block the intrusion logic
+            requests.post(api_url, json=payload_data, timeout=2)
+            log(f"[API] Sent event to DB: {api_url}")
+ 
+        except Exception as api_e:
+            log(f"[API] Warning: Failed to send event to DB: {api_e}")
+
         event_path = save_event_json(camera_id, timestamp, event_data)
 
         snapshot_path = f"{EVENT_DIR}/snap_{camera_id}_{timestamp}.jpg"
