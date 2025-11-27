@@ -1,8 +1,9 @@
 from . import db
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import func, Time, Boolean
+from sqlalchemy import func, Time, Boolean, and_, or_
 from sqlalchemy.orm import joinedload
+import traceback
 
 class Zone(db.Model):
     """Zone model storing polygon coordinates; bbox stored as PostgreSQL float8[]"""
@@ -211,3 +212,63 @@ def delete_schedule(schedule_id):
 def get_schedules_for_zone(zone_id):
     qs = ZoneSchedule.query.filter_by(zone_id=zone_id).order_by(ZoneSchedule.id).all()
     return [s.serialize() for s in qs]
+
+
+def get_current_active_schedules(floorplan_id):
+    try:
+        now = datetime.now()
+        current_time = now.time()
+        weekday = now.strftime("%a")
+
+        all_zone_schedules_for_floorplan = (
+            ZoneSchedule.query
+            .join(Zone)
+            .filter(Zone.floorplan_id == floorplan_id)
+        )
+
+        # Use JSON containment operator instead of contains()
+        weekday_filter = ZoneSchedule.days.op("@>")([weekday])
+
+        recurring = and_(
+            ZoneSchedule.type == "recurring",
+            weekday_filter,
+            or_(
+                # normal same-day schedules
+                and_(
+                    ZoneSchedule.spans_next_day.is_(False),
+                    ZoneSchedule.start_time <= current_time,
+                    ZoneSchedule.end_time >= current_time,
+                ),
+                # schedules that span past midnight
+                and_(
+                    ZoneSchedule.spans_next_day.is_(True),
+                    or_(
+                        ZoneSchedule.start_time <= current_time,
+                        ZoneSchedule.end_time >= current_time,
+                    ),
+                ),
+            ),
+        )
+
+        one_time = and_(
+            ZoneSchedule.type == "one-time",
+            ZoneSchedule.start_dt <= now,
+            ZoneSchedule.end_dt >= now,
+        )
+
+        active = (
+            all_zone_schedules_for_floorplan
+            .filter(or_(recurring, one_time))
+            .all()
+        )
+
+        inactive = (
+            all_zone_schedules_for_floorplan
+            .filter(~or_(recurring, one_time))
+            .all()
+        )
+
+        return active, inactive
+
+    except Exception as e:
+        traceback.print_exc()
