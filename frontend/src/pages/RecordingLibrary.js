@@ -13,7 +13,8 @@ const isHlsRecording = (fileName) =>
   typeof fileName === "string" && fileName.toLowerCase().endsWith(HLS_EXTENSION);
 
 function RecordingLibrary() {
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState([]); // array of filenames
+  const [dbRecordings, setDbRecordings] = useState([]); // array of db entries
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [listError, setListError] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -24,6 +25,8 @@ function RecordingLibrary() {
   const [videoError, setVideoError] = useState(null);
   const [info, setInfo] = useState(null);
   const [infoState, setInfoState] = useState({ loading: false, error: null });
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const availableModes = useMemo(() => {
     if (!selectedVideo) return [];
@@ -42,8 +45,8 @@ function RecordingLibrary() {
     fetch(`${API_URL}/videos`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
-        console.log(data)
         setVideos(data.recordings);
+        setDbRecordings(data.db_entries || []);
         if (data.recordings.length && !selectedVideo) {
           const defaultVideo = data.recordings[0];
           setSelectedVideo(defaultVideo);
@@ -144,6 +147,55 @@ function RecordingLibrary() {
     setVisibleCount((count) => Math.min(filteredVideos.length, count + PAGE_SIZE));
   }, [filteredVideos.length]);
 
+    // Delete logic
+    const handleDeleteRecording = useCallback((recordingIdOrFileName) => {
+      setDeleteTarget(recordingIdOrFileName);
+      setShowDeleteModal(true);
+    }, []);
+
+    const confirmDeleteRecording = useCallback(() => {
+      if (!deleteTarget) return;
+
+      const deleteOptions = {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          typeof deleteTarget === "number"
+            ? { recording_id: deleteTarget } // Send recording_id if it's a database entry
+            : { filename: deleteTarget } // Send filename if it's a filesystem-only file
+        ),
+      };
+
+      fetch(`${API_URL}/recordings`, deleteOptions)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to delete");
+          return res.json();
+        })
+        .then(() => {
+          setShowDeleteModal(false);
+          setDeleteTarget(null);
+          fetchVideos();
+          if (
+            selectedVideo &&
+            ((typeof deleteTarget === "number" && dbRecordings.some((r) => r.recording_id === deleteTarget && r.url === selectedVideo)) ||
+              (typeof deleteTarget !== "number" && selectedVideo === deleteTarget))
+          ) {
+            setSelectedVideo(null);
+          }
+        })
+        .catch(() => {
+          setListError("Failed to delete recording.");
+          setShowDeleteModal(false);
+          setDeleteTarget(null);
+        });
+    }, [deleteTarget, fetchVideos, selectedVideo, dbRecordings]);
+
+    const cancelDeleteRecording = useCallback(() => {
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+    }, []);
+
   return (
     <section className="page recording-page">
       <div className="page__top-bar">
@@ -170,19 +222,34 @@ function RecordingLibrary() {
       </div>
 
       <div className="page__split page__split--sidebar">
-        <VideoListPanel
-          isLoading={isLoadingList}
-          error={listError}
-          videos={visibleVideos}
-          total={filteredVideos.length}
-          hasMore={visibleVideos.length < filteredVideos.length}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onRefresh={fetchVideos}
-          onLoadMore={handleLoadMore}
-          onSelect={handleSelectVideo}
-          selectedVideo={selectedVideo}
-        />
+          <VideoListPanel
+            isLoading={isLoadingList}
+            error={listError}
+            videos={visibleVideos}
+            total={filteredVideos.length}
+            hasMore={visibleVideos.length < filteredVideos.length}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onRefresh={fetchVideos}
+            onLoadMore={handleLoadMore}
+            onSelect={handleSelectVideo}
+            selectedVideo={selectedVideo}
+            dbRecordings={dbRecordings}
+            onDelete={handleDeleteRecording}
+          />
+
+          {showDeleteModal && (
+            <div className="modal-overlay">
+              <div className="modal">
+                <h2>Confirm Delete</h2>
+                <p>Are you sure you want to delete "{deleteTarget}"? This cannot be undone.</p>
+                <div className="modal-actions">
+                  <button className="recording-button recording-button--danger" onClick={confirmDeleteRecording}>Delete</button>
+                  <button className="recording-button" onClick={cancelDeleteRecording}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
 
         <div className="page__stack recording-column">
           <PlaybackToolbar
@@ -214,6 +281,7 @@ function VideoListPanel({
   isLoading,
   error,
   videos,
+  dbRecordings,
   total,
   hasMore,
   searchTerm,
@@ -222,6 +290,7 @@ function VideoListPanel({
   onLoadMore,
   onSelect,
   selectedVideo,
+  onDelete,
 }) {
   let content;
   if (isLoading) {
@@ -231,6 +300,7 @@ function VideoListPanel({
   } else if (!videos.length) {
     content = <p className="recording-message">No recordings match your filters.</p>;
   } else {
+    // Map filenames to db entries for delete buttons
     content = (
       <ul className="recording-sidebar__list">
         {videos.map((fileName) => {
@@ -247,11 +317,46 @@ function VideoListPanel({
             .filter(Boolean)
             .join(" ");
 
+          // Find db entry for this file
+          // Adjust matching logic to strip 'playlist.m3u8' suffix
+          const normalizedFileName = fileName.replace(/\/playlist\.m3u8$/, "");
+          const dbEntry = dbRecordings.find(
+            (r) => r.url && r.url.endsWith(normalizedFileName)
+          );
+
           return (
             <li key={fileName} className="recording-sidebar__item">
-              <button type="button" onClick={() => onSelect(fileName)} className={buttonClass}>
-                {displayName}
-              </button>
+              <div className="recording-sidebar__item-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(fileName)}
+                  className={buttonClass}
+                  style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'visible', flexGrow: 1, textAlign: 'left', paddingRight: '8px' }}
+                >
+                  {displayName}
+                </button>
+                <button
+                  type="button"
+                  className="recording-button recording-button--icon"
+                  onClick={() => onDelete(dbEntry ? dbEntry.recording_id : fileName)}
+                  aria-label="Delete recording"
+                  style={{ 
+                    fontSize: '1rem', 
+                    marginLeft: '8px', 
+                    height: '100%', 
+                    width: '24px', 
+                    backgroundColor: '#ff4d4d', 
+                    color: 'white', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    border: 'none', 
+                    borderRadius: '4px'
+                  }}
+                >
+                  🗑️
+                </button>
+              </div>
             </li>
           );
         })}
@@ -520,6 +625,7 @@ VideoListPanel.propTypes = {
   isLoading: PropTypes.bool.isRequired,
   error: PropTypes.string,
   videos: PropTypes.arrayOf(PropTypes.string).isRequired,
+  dbRecordings: PropTypes.array,
   total: PropTypes.number.isRequired,
   hasMore: PropTypes.bool.isRequired,
   searchTerm: PropTypes.string.isRequired,
@@ -528,6 +634,7 @@ VideoListPanel.propTypes = {
   onLoadMore: PropTypes.func.isRequired,
   onSelect: PropTypes.func.isRequired,
   selectedVideo: PropTypes.string,
+  onDelete: PropTypes.func.isRequired,
 };
 
 PlaybackToolbar.propTypes = {
