@@ -4,6 +4,7 @@ from domain.models.zone import (
     create_zone, delete_zone, get_zones_for_floorplan, Zone,
     create_schedule, update_schedule, delete_schedule, get_schedules_for_zone
 )
+from infrastructure.intrusion_detection import trigger_zone_intrusion
 import traceback
 
 zone_bp = Blueprint('zone', __name__)
@@ -147,3 +148,26 @@ def zone_schedule_item(zone_id, schedule_id):
         except Exception:
             traceback.print_exc()
             return jsonify({"error": "failed deleting schedule"}), 500
+
+# Trigger intrusion detection when object enters a zone
+@zone_bp.route("/api/zone-intrusion", methods=["POST", "OPTIONS"])
+def api_zone_intrusion():
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    data = request.json
+    camera_id = data["camera_id"]
+    zone_id = data["zone_id"]
+    zone_name = data["zone_name"]
+    track_id = data["track_id"]
+    object_xy = {"x": data["x_m"], "y": data["y_m"]}
+
+    ok = trigger_zone_intrusion(
+        camera_id=camera_id,
+        zone_name=zone_name,
+        zone_id=zone_id,
+        track_id=track_id,
+        object_xy=object_xy
+    )
+
+    return jsonify({"ok": ok})

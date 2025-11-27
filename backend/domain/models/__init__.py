@@ -23,4 +23,5 @@ from .fusion_data import FusionData
 from .floorplan import Floorplan
 from .zone import Zone
 from .position_history import PositionHistory
+from .zone import Zone
 

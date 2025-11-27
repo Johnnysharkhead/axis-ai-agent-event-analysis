@@ -13,7 +13,7 @@ import datetime
 import subprocess
 import paho.mqtt.client as mqtt
 from infrastructure.fusion_persistence import is_fusion_topic, store_fusion_message
-from infrastructure.intrusion_detection import trigger_intrusion
+from infrastructure.intrusion_detection import trigger_intrusion, process_fusion_for_intrusion
 
 # START  ----------
 import json
@@ -50,52 +50,52 @@ ignore_log_time = {}
 IGNORE_LOG_INTERVAL = 5  # seconds
 
 
-def process_mqtt_event(topic, payload):
-    """
-    Intrusion detection trigger logic with log-rate limiting:
-    - Trigger intrusion when observations exist
-    - Ignore cooldown spam (print at most once every IGNORE_LOG_INTERVAL seconds)
-    """
-    try:
-        serial = topic.split("/")[1]
-        camera_id = CAMERA_MAP.get(serial, serial)
+# def process_mqtt_event(topic, payload):
+#     """
+#     Intrusion detection trigger logic with log-rate limiting:
+#     - Trigger intrusion when observations exist
+#     - Ignore cooldown spam (print at most once every IGNORE_LOG_INTERVAL seconds)
+#     """
+#     try:
+#         serial = topic.split("/")[1]
+#         camera_id = CAMERA_MAP.get(serial, serial)
 
-        frame = payload.get("frame") if isinstance(payload, dict) else None
+#         frame = payload.get("frame") if isinstance(payload, dict) else None
 
-        if frame is not None:
-            observations = frame.get("observations", [])
+#         if frame is not None:
+#             observations = frame.get("observations", [])
 
-            if observations:
+#             if observations:
 
-                now = time.time()
+#                 now = time.time()
 
-                # cooldown OK → trigger
-                if now - last_trigger_time.get(camera_id, 0) >= COOLDOWN_SECONDS:
-                    last_trigger_time[camera_id] = now
+#                 # cooldown OK → trigger
+#                 if now - last_trigger_time.get(camera_id, 0) >= COOLDOWN_SECONDS:
+#                     last_trigger_time[camera_id] = now
 
-                    log_event(f"[Intrusion-Trigger] Observations detected → {camera_id}")
+#                     log_event(f"[Intrusion-Trigger] Observations detected → {camera_id}")
 
-                    threading.Thread(
-                        target=trigger_intrusion,
-                        args=(topic, payload),
-                        daemon=True
-                    ).start()
+#                     threading.Thread(
+#                         target=trigger_intrusion,
+#                         args=(topic, payload),
+#                         daemon=True
+#                     ).start()
 
-                else:
-                    # ★ suppression of repeated cooldown logs ★
-                    last_log = ignore_log_time.get(camera_id, 0)
-                    if now - last_log >= IGNORE_LOG_INTERVAL:
-                        log_event(f"[Intrusion] Ignored due to cooldown → {camera_id}")
-                        ignore_log_time[camera_id] = now
+#                 else:
+#                     # ★ suppression of repeated cooldown logs ★
+#                     last_log = ignore_log_time.get(camera_id, 0)
+#                     if now - last_log >= IGNORE_LOG_INTERVAL:
+#                         log_event(f"[Intrusion] Ignored due to cooldown → {camera_id}")
+#                         ignore_log_time[camera_id] = now
 
-            else:
-                log_event(f"[Event] No observations → {camera_id}")
+#             else:
+#                 log_event(f"[Event] No observations → {camera_id}")
 
-        else:
-            log_event(f"[Event] Non-frame MQTT message → {camera_id}")
+#         else:
+#             log_event(f"[Event] Non-frame MQTT message → {camera_id}")
 
-    except Exception as e:
-        log_event(f"[Event] Error: {e}")
+#     except Exception as e:
+#         log_event(f"[Event] Error: {e}")
 
 # Rate limiting: Print detections every 2 seconds per person
 last_print_time = {}
@@ -130,6 +130,7 @@ def on_message(client, userdata, msg):
     if is_fusion_topic(msg.topic):
         log_event(f"[Fusion] Topic: {msg.topic}")
         store_fusion_message(msg.topic, payload, flask_app=_flask_app, log_fn=log_event)
+        
 
 
     event = {"topic": msg.topic, "payload": payload}
@@ -141,7 +142,7 @@ def on_message(client, userdata, msg):
     event = {"topic": msg.topic, "payload": payload}
     events.append(event)
     
-    process_mqtt_event(msg.topic, payload)
+    process_fusion_for_intrusion(payload)
 
 #------------------------START: Can be removed /Victor --------------------------
     # Process scene metadata
