@@ -352,6 +352,7 @@ function Floormap2D() {
 useEffect(() => {
   Object.entries(people).forEach(([trackId, person]) => {
     zones.forEach((zone) => {
+      console.log(zone)
       if (
         zone.points &&
         pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)
@@ -359,28 +360,28 @@ useEffect(() => {
         console.log(`Intrusion detected! Person ${trackId} entered zone "${zone.name}"`);
         // You can trigger other actions here (alert, API call, etc)
         // Trigger backend intrusion detection
-        const camera = cameras.find(c => c.placed);
+        // const camera = cameras.find(c => c.placed);
 
-        if (!camera) {
-          console.warn("No camera placed, cannot send intrusion event.");
-          return;
-        }
+        // if (!camera) {
+        //   console.warn("No camera placed, cannot send intrusion event.");
+        //   return;
+        // }
 
-        fetch("http://localhost:5001/api/zone-intrusion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            camera_id: camera.id,
-            zone_id: zone.id,
-            zone_name: zone.name,
-            track_id: trackId,
-            x_m: person.x_m,
-            y_m: person.y_m
-          })
-        })
-        .then(res => res.json())
-        .then(data => console.log("Intrusion API response:", data))
-        .catch(err => console.error("Error sending intrusion event:", err));
+        // fetch("http://localhost:5001/api/zone-intrusion", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({
+        //     camera_id: camera.id,
+        //     zone_id: zone.id,
+        //     zone_name: zone.name,
+        //     track_id: trackId,
+        //     x_m: person.x_m,
+        //     y_m: person.y_m
+        //   })
+        // })
+        // .then(res => res.json())
+        // .then(data => console.log("Intrusion API response:", data))
+        // .catch(err => console.error("Error sending intrusion event:", err));
       }
       
     });
