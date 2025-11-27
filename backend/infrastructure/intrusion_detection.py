@@ -14,10 +14,9 @@ import time
 import threading
 import datetime
 import subprocess
-import requests  # <--- Ensure requests is imported
-
-# REMOVED: Database imports to avoid context errors
-# from domain.models import db...
+from domain.models import Camera, Floorplan, Zone
+from infrastructure.floorplan_handler import FloorplanManager
+from infrastructure import alarm_control
 
 # ========== CONFIG ==========
 EVENT_DIR = os.getenv("EVENT_DIR", "events")
@@ -49,6 +48,26 @@ last_trigger_time = {}
 # ========== LOGGING ==========
 def log(msg):
     print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
+    
+    
+# =========================================================
+# Point-in-polygon (EXACT same logic as frontend)
+# =========================================================
+def point_in_polygon(pt, poly):
+    """
+    pt: {"x": float, "y": float}
+    poly: [{"x": float, "y": float}, ...]
+    """
+    inside = False
+    for i in range(len(poly)):
+        j = (i - 1) % len(poly)
+        xi, yi = poly[i]["x"], poly[i]["y"]
+        xj, yj = poly[j]["x"], poly[j]["y"]
+        intersect = (yi > pt["y"]) != (yj > pt["y"]) and \
+            pt["x"] < (xj - xi) * (pt["y"] - yi) / ((yj - yi) + 1e-9) + xi
+        if intersect:
+            inside = not inside
+    return inside
 
 
 # ================================
@@ -131,23 +150,23 @@ def save_event_json(camera_id, timestamp, event_data):
     return json_path
 
 
-# ================================
-# Main public entry point
-# ================================
+# =========================================================
+# Main intrusion trigger (MQTT)
+# =========================================================
 def trigger_intrusion(topic, payload):
-    """
-    Called by mqtt_client when intrusion should occur.
-    """
+    """Classic intrusion trigger used by MQTT-based events."""
     try:
-        serial = topic.split("/")[1]           # extract Axis serial number
-        camera_id = CAMERA_MAP.get(serial, serial)
+        serial = topic.split("/")[1]
+        camera = Camera.query.filter_by(serialno=serial).first()
+        camera_id = camera.id if camera else None
 
         now = time.time()
-        if now - last_trigger_time.get(camera_id, 0) < COOLDOWN_SECONDS:
+        if camera_id and now - last_trigger_time.get(camera_id, 0) < COOLDOWN_SECONDS:
             log(f"[Intrusion] Ignored (cooldown) → camera {camera_id}")
             return False
 
-        last_trigger_time[camera_id] = now
+        if camera_id:
+            last_trigger_time[camera_id] = now
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
@@ -157,7 +176,10 @@ def trigger_intrusion(topic, payload):
         
         # Use a simpler integer ID if possible, or ensure schema supports BigInt
         # Truncating or hashing might be safer if this ID is too large for standard SQL Integer
-        recording_id_int = int(f"{camera_id}{timestamp}")
+        if camera_id is not None:
+            recording_id_int = int(f"{camera_id}{timestamp}")
+        else:
+          recording_id_int = None
         
         # Paths for clip & snapshot
         clip_path = f"{EVENT_DIR}/clip_{camera_id}_{timestamp}.mp4"
@@ -170,30 +192,16 @@ def trigger_intrusion(topic, payload):
             "payload": payload,
         }
 
-        save_event_json(camera_id, timestamp, event_data)
-        
-        # --- Save to db via Internal Route ---
-        try:
-            # Fixed: Use /internal/create since blueprint has no url_prefix
-            api_url = "http://localhost:5001/internal/create"
-            
-            payload_data = {
-                "camera_id": camera_id,
-                "timestamp": timestamp,
-                "clip_path": clip_path,
-                "snapshot_path": snapshot_path
-            }
-            
-            # Send with timeout so we don't block the intrusion logic
-            requests.post(api_url, json=payload_data, timeout=2)
-            log(f"[API] Sent event to DB: {api_url}")
+        event_path = save_event_json(camera_id, timestamp, event_data)
 
-        except Exception as api_e:
-            log(f"[API] Warning: Failed to send event to DB: {api_e}")
+        snapshot_path = f"{EVENT_DIR}/snap_{camera_id}_{timestamp}.jpg"
+        clip_path = f"{EVENT_DIR}/clip_{camera_id}_{timestamp}.mp4"
 
-        # Snapshot + clip in parallel
         threading.Thread(target=capture_snapshot, args=(camera_id, timestamp), daemon=True).start()
         threading.Thread(target=record_event_clip, args=(camera_id, timestamp), daemon=True).start()
+
+        # Trigger alarm loop when intrusion is detected
+        alarm_control.start_loop()
 
         log(f"[Intrusion] Triggered → camera {camera_id}")
         return True
@@ -201,3 +209,94 @@ def trigger_intrusion(topic, payload):
     except Exception as e:
         log(f"[Intrusion] Error: {e}")
         return False
+
+
+# =========================================================
+# Zone-based intrusion trigger (recommended)
+# =========================================================
+def trigger_zone_intrusion(camera_id, zone_name, zone_id, track_id, object_xy):
+    """Unified entry for floorplan-zone intrusion events."""
+    topic = f"zone_intrusion/{camera_id}/{zone_id}"
+    payload = {
+        "source": "zone",
+        "zone_name": zone_name,
+        "zone_id": zone_id,
+        "track_id": track_id,
+        "object_xy": object_xy,
+    }
+    return trigger_intrusion(topic, payload)
+
+
+# =========================================================
+# Zone-based intrusion processing (called by mqtt_client)
+# =========================================================
+def process_fusion_for_intrusion(payload):
+    """
+    This function:
+    - Extracts camera serial, track_id, lat/lon
+    - Converts to floorplan coordinates
+    - Loads all zones of the floorplan
+    - Uses point-in-polygon to detect intrusion
+    - Calls trigger_zone_intrusion()
+    """
+    # Extract fields
+    serial = (
+        payload.get("device", {}).get("serialNo")
+        or payload.get("camera_serial")
+        or payload.get("serial")
+    )
+    track_id = payload.get("track_id")
+    lat = payload.get("latitude") or payload.get("lat")
+    lon = payload.get("longitude") or payload.get("lon")
+
+    if serial is None or lat is None or lon is None:
+        return False
+
+    # Locate camera
+    camera = Camera.query.filter_by(serialno=serial).first()
+    if not camera or not camera.floorplan:
+        return False
+
+    floorplan = camera.floorplan
+
+    # Convert coordinates
+    bottom_left = floorplan.corner_geocoordinates.get("bottom_left")
+    try:
+        xy = FloorplanManager.calculate_position_on_floorplan(
+            object_lat=float(lat),
+            object_lon=float(lon),
+            bottom_left_coords=bottom_left,
+        )
+        x_m, y_m = xy["x_m"], xy["y_m"]
+    except Exception:
+        return False
+
+    pt = {"x": x_m, "y": y_m}
+
+    # Check zones
+    zones = Zone.query.filter_by(floorplan_id=floorplan.id).all()
+    for zone in zones:
+        try:
+            poly = json.loads(zone.coordinates)
+        except Exception:
+            continue
+
+        if point_in_polygon(pt, poly):
+            trigger_zone_intrusion(
+                camera_id=camera.id,
+                zone_name=zone.name,
+                zone_id=zone.id,
+                track_id=track_id,
+                object_xy=pt,
+            )
+            return True
+
+    return False
+    
+    
+    
+    
+    # [intrusion]-cameraIDtimestamp
+    # strore the name of the zone that triggered the intrusion
+    # alarm signal 
+

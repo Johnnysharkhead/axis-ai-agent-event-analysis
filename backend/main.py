@@ -11,6 +11,7 @@ import os
 from infrastructure.livestream import VideoCamera
 from infrastructure.video_saver import recording_manager
 from infrastructure.mqtt_client import start_mqtt, get_events
+from flask import request, jsonify
 import time
 
 from datetime import datetime
@@ -194,6 +195,7 @@ def events():
     if request.method == "OPTIONS":
         return _build_cors_preflight_response()
     return jsonify(get_events())
+
 
 if __name__ == "__main__":
     with app.app_context():

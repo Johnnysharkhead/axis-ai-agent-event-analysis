@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axisTriangle from "../assets/axis-triangle.png";
-import "../styles/Sidebar.css"; 
+import "../styles/Sidebar.css";
 
 const SECTIONS = [
-  { title: "Video Feed", items: ["Live Feed", "Video Recording","Recording Library"] },
-  { title: "2D Floorplan", items: ["Floorplan", "Zones", "Schedule Alarms",
-     "Camera Configure"] },
+  {
+    title: "Video Feed",
+    items: ["Live Feed", "Video Recording", "Recording Library"],
+  },
+  {
+    title: "2D Floorplan",
+    items: ["Floorplan", "Zones", "Schedule Alarms", "Camera Configure"],
+  },
   { title: "AI Features", items: ["Intrusion Summary"] },
   { title: "Alarms", items: ["Alarm History"] },
 ];
@@ -16,20 +21,24 @@ function getPath(id) {
   if (id === "2D Floorplan|Camera Configure") return "/cameras/configure";
 
   const [section, label] = id.split("|");
-  return `/${section.toLowerCase().replace(/\s/g, "-")}/${label.toLowerCase().replace(/\s/g, "-")}`;
+  return `/${section.toLowerCase().replace(/\s/g, "-")}/${label
+    .toLowerCase()
+    .replace(/\s/g, "-")}`;
 }
 // NEW: helper to resolve the API base URL in a reusable way
-function getApiBase() { 
-  return ( 
-    process.env.REACT_APP_API_URL || 
-    process.env.API_URL || 
-    `${window.location.protocol}//${window.location.hostname}:5001` 
-  ); 
-} 
+function getApiBase() {
+  return (
+    process.env.REACT_APP_API_URL ||
+    process.env.API_URL ||
+    `${window.location.protocol}//${window.location.hostname}:5001`
+  );
+}
 
 function Sidebar({ onSelect }) {
   const location = useLocation();
-  const [activeId, setActiveId] = useState(() => inferIdFromPath(location.pathname));
+  const [activeId, setActiveId] = useState(() =>
+    inferIdFromPath(location.pathname)
+  );
   const navigate = useNavigate();
 
   const select = (id, label) => {
@@ -52,7 +61,8 @@ function Sidebar({ onSelect }) {
     const apiBase = getApiBase(); // CHANGED: use helper
 
     try {
-      const res = await fetch(`${apiBase}/api/alarm/loop/start`, { // CHANGED: /loop/start instead of /play
+      const res = await fetch(`${apiBase}/api/alarm/loop/start`, {
+        // CHANGED: /loop/start instead of /play
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -67,48 +77,50 @@ function Sidebar({ onSelect }) {
       }
 
       if (!res.ok || data.ok === false) {
-        const errMsg = data.error || data.message || raw || `HTTP ${res.status}`;
+        const errMsg =
+          data.error || data.message || raw || `HTTP ${res.status}`;
         throw new Error(errMsg);
       }
 
       // CHANGED: message now reflects repeating loop, not just one shot
       const info = data.message ? ` (${data.message})` : "";
-      alert(`Alarm started and will repeat every 30 seconds.${info}`); 
+      alert(`Alarm started and will repeat every 30 seconds.${info}`);
     } catch (err) {
       console.error("Failed to start alarm loop:", err); // log text
-      alert(`Failed to start alarm loop: ${err.message}`); 
+      alert(`Failed to start alarm loop: ${err.message}`);
     }
   };
 
   // NEW: stop button handler – calls /api/alarm/stop
-  const stopAlarmLoop = async () => { 
-    const apiBase = getApiBase(); 
+  const stopAlarmLoop = async () => {
+    const apiBase = getApiBase();
 
-    try { 
-      const res = await fetch(`${apiBase}/api/alarm/stop`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-      }); 
+    try {
+      const res = await fetch(`${apiBase}/api/alarm/stop`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
 
-      const raw = await res.text(); 
-      let data = {}; 
-      try { 
-        data = JSON.parse(raw); 
-      } catch (e) { 
-        // ignore parse errors – raw will still be used in error if needed 
-      } 
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        // ignore parse errors – raw will still be used in error if needed
+      }
 
-      if (!res.ok || data.ok === false) { 
-        const errMsg = data.error || data.message || raw || `HTTP ${res.status}`; 
-        throw new Error(errMsg); 
-      } 
+      if (!res.ok || data.ok === false) {
+        const errMsg =
+          data.error || data.message || raw || `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
 
-      alert(data.message || "Alarm loop stopped."); 
-    } catch (err) { 
-      console.error("Failed to stop alarm loop:", err); 
-      alert(`Failed to stop alarm loop: ${err.message}`); 
-    } 
-  }; 
+      alert(data.message || "Alarm loop stopped.");
+    } catch (err) {
+      console.error("Failed to stop alarm loop:", err);
+      alert(`Failed to stop alarm loop: ${err.message}`);
+    }
+  };
 
   return (
     <aside className="sidebar">
@@ -121,7 +133,6 @@ function Sidebar({ onSelect }) {
         </span>
         Dashboard
       </button>
-
       {SECTIONS.map((section) => (
         <div key={section.title} className="sidebar-section">
           <div className="sidebar-section-title">{section.title}</div>
@@ -148,45 +159,37 @@ function Sidebar({ onSelect }) {
         </div>
       ))}
 
-  
-     {/*
---- Alarm controls section temporarily disabled ---
-<div className="sidebar-section">
-  <div className="sidebar-section-title">Test Button</div>
+      {/*
+      --- Alarm controls section temporarily disabled ---
+      <div className="sidebar-section">
+        <div className="sidebar-section-title">Test Button</div>
 
-  <div className="sidebar-row">
-    <button
-      className={`sidebar-radio`}
-      aria-label="Start Alarm"
-      aria-pressed={false}
-    />
-    <button
-      className={`sidebar-item`}
-      onClick={testSpeaker}
-    >
-      🔊 Start Alarm
-    </button>
-  </div>
+        <div className="sidebar-row">
+          <button
+            className={`sidebar-radio`}
+            aria-label="Start Alarm"
+            aria-pressed={false}
+          />
+          <button className={`sidebar-item`} onClick={testSpeaker}>
+            🔊 Start Alarm
+          </button>
+        </div>
 
-  <div className="sidebar-row">
-    <button
-      className={`sidebar-radio`}
-      aria-label="Stop Alarm"
-      aria-pressed={false}
-    />
-    <button
-      className={`sidebar-item`}
-      onClick={stopAlarmLoop}
-    >
-      ⏹ Stop Alarm
-    </button>
-  </div>
-</div>
-*/}
-   </aside>
+        <div className="sidebar-row">
+          <button
+            className={`sidebar-radio`}
+            aria-label="Stop Alarm"
+            aria-pressed={false}
+          />
+          <button className={`sidebar-item`} onClick={stopAlarmLoop}>
+            ⏹ Stop Alarm
+          </button>
+        </div>
+      </div>
+      */}
+    </aside>
   );
 }
-
 
 function slugify(value) {
   return value.toLowerCase().replace(/\s/g, "-");
@@ -196,7 +199,7 @@ function inferIdFromPath(pathname) {
   if (pathname === "/dashboard" || pathname === "/home") {
     return "Dashboard";
   }
-   if (pathname.startsWith("/cameras/configure")) {
+  if (pathname.startsWith("/cameras/configure")) {
     return "2D Floorplan|Camera Configure";
   }
 
