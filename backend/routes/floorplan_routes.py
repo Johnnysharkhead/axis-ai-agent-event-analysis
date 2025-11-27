@@ -128,11 +128,11 @@ def handle_floorplan(floorplan_id):
             camera_id = data.get("camera_id")
             print(f"camera_id: {camera_id}")
             if not camera_id:
-                return jsonify({'error' : "camera ID is required"})
+                return jsonify({'error' : "camera ID is required"}), 400
             
             camera = Camera.query.filter_by(id=camera_id, floorplan_id=floorplan_id).first()
             if not camera:
-                return jsonify({'error' : "no camera found."})
+                return jsonify({'error' : "no camera found."}), 404
             
             camera.floorplan_id = None
 

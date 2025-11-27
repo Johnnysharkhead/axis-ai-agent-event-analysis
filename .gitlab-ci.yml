@@ -14,15 +14,16 @@ tests:
   image: python:3.12
   stage: test
   variables:
-    PYTHONPATH: "${CI_PROJECT_DIR}"
+    PYTHONPATH: "${CI_PROJECT_DIR}/backend"
   before_script:
     - python -V
     - pip install --upgrade pip
     - pip install pytest pytest-html
     - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+    - if [ -f backend/setup.py ] || [ -f backend/pyproject.toml ]; then pip install -e ./backend || true; fi
   script:
     - mkdir -p reports
-    - pytest backend/tests/test_authentication.py --html=reports/backend_report.html --self-contained-html --tb=short --verbose
+    - pytest backend/tests --html=reports/backend_report.html --self-contained-html --tb=short -q
   artifacts:
     when: always
     paths:

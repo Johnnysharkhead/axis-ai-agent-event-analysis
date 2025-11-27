@@ -2,7 +2,7 @@
 import pytest
 from flask import Flask
 from flask_login import FlaskLoginClient
-from backend.routes.authentication import init_auth, auth_bp
+from routes.authentication import init_auth, auth_bp
 from datetime import datetime, timedelta
 
 # ---------------- Mock Models ----------------
