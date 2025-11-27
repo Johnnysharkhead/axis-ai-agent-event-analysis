@@ -1,5 +1,6 @@
 from flask import Blueprint
 import os
+import shutil
 from flask import send_from_directory, jsonify, request, Response
 #from main import cameras, app, _build_cors_preflight_response,RECORDINGS_DIR
 from infrastructure.video_saver import recording_manager
@@ -8,7 +9,7 @@ import time
 import cv2
 from infrastructure.livestream import VideoCamera
 # from backend_extensions import db
-from domain.models import db, Recording
+from domain.models import db, Recording, Snapshot
 from datetime import datetime
 
 recording_bp = Blueprint('recording', __name__) #, url_prefix='/recording')
@@ -353,6 +354,8 @@ def serve_video(filename):
         response.headers["Content-Type"] = "application/vnd.apple.mpegurl"
     elif lower_name.endswith(HLS_SEGMENT_EXTENSION):
         response.headers["Content-Type"] = "video/mp2t"
+        response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
     return response
 
 
@@ -408,3 +411,124 @@ def _build_cors_preflight_response():
     response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
     response.headers.add("Access-Control-Allow-Methods", "GET, PUT, POST, PATCH, DELETE, OPTIONS")
     return response
+
+
+@recording_bp.route("/recordings", methods=["DELETE", "OPTIONS"])
+def delete_recording():
+    """
+    Delete a recording by recording_id.
+    Automatically removes:
+    - Recording database entry
+    - All associated snapshots (database + files)
+    - Recording folder with all video segments
+    """
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+
+    data = request.get_json()
+    print("DELETE /recordings payload:", data)
+
+    recording_id = data.get("recording_id")
+
+    if not recording_id:
+        return jsonify({"error": "recording_id must be provided"}), 400
+
+    try:
+        # Find the recording in the database
+        recording = Recording.query.get(recording_id)
+        if not recording:
+            return jsonify({"error": f"Recording {recording_id} not found"}), 404
+
+        print(f"DEBUG: Deleting recording {recording_id}")
+        print(f"DEBUG: Recording URL: '{recording.url}'")
+
+        deleted_items = {
+            "recording_id": recording_id,
+            "recording_folder": None,
+            "snapshots_deleted": 0
+        }
+
+        # Step 1: Extract folder name from recording URL
+        # The URL is stored as absolute path: "/app/recordings/recording_YYYYMMDD_
+        if recording.url.startswith(RECORDINGS_DIR):
+            # Extract just the folder name (e.g., "recording_20251127_132645")
+            folder_name = os.path.basename(recording.url.rstrip("/"))
+        else:
+            # Fallback: assume URL is already just the folder name
+            folder_name = recording.url.split("/")[-1]
+
+        print(f"DEBUG: Extracted folder_name: '{folder_name}'")
+
+        # Step 2: Validate folder name
+        if not folder_name or not folder_name.startswith("recording_"):
+            print(f"ERROR: Invalid folder name '{folder_name}'")
+            # Continue with database cleanup even if folder is invalid
+            folder_name = None
+
+        # Step 3: Delete snapshot files from filesystem
+        # Use the snapshots relationship instead of snapshot_paths
+        if hasattr(recording, 'snapshots') and recording.snapshots:
+            for snapshot in recording.snapshots:
+                # snapshot.url contains the path to the snapshot file
+                if snapshot.url:
+                    snapshot_path = os.path.join(RECORDINGS_DIR, snapshot.url)
+                    if os.path.exists(snapshot_path):
+                        try:
+                            os.remove(snapshot_path)
+                            deleted_items["snapshots_deleted"] += 1
+                            print(f"DEBUG: Deleted snapshot: {snapshot.url}")
+                        except OSError as e:
+                            print(f"WARNING: Could not delete snapshot {snapshot_path}: {e}")
+
+        # Step 4: Delete recording folder from filesystem
+        if folder_name:
+            recording_folder = os.path.join(RECORDINGS_DIR, folder_name)
+            recording_folder_abs = os.path.abspath(recording_folder)
+            recordings_dir_abs = os.path.abspath(RECORDINGS_DIR)
+
+            print(f"DEBUG: Recording folder to delete: {recording_folder_abs}")
+            print(f"DEBUG: Recordings directory: {recordings_dir_abs}")
+
+            # Safety checks
+            if recording_folder_abs == recordings_dir_abs:
+                print(f"ERROR: Attempted to delete root recordings directory - BLOCKED")
+                return jsonify({"error": "Cannot delete root recordings directory"}), 400
+
+            # Verify it's actually inside RECORDINGS_DIR
+            if not recording_folder_abs.startswith(recordings_dir_abs + os.sep):
+                print(f"ERROR: Folder is not inside recordings directory - BLOCKED")
+                return jsonify({"error": "Invalid recording path"}), 400
+
+            # Delete the folder
+            if os.path.exists(recording_folder_abs) and os.path.isdir(recording_folder_abs):
+                try:
+                    contents = os.listdir(recording_folder_abs)
+                    print(f"DEBUG: Deleting folder with {len(contents)} items: {recording_folder_abs}")
+                    shutil.rmtree(recording_folder_abs)
+                    deleted_items["recording_folder"] = folder_name
+                    print(f"SUCCESS: Deleted folder {folder_name}")
+                except PermissionError as pe:
+                    print(f"ERROR: Permission denied: {pe}")
+                    return jsonify({"error": f"Permission denied: {str(pe)}"}), 500
+                except OSError as e:
+                    print(f"ERROR: Failed to delete folder: {e}")
+                    return jsonify({"error": f"Failed to delete folder: {str(e)}"}), 500
+            else:
+                print(f"WARNING: Recording folder does not exist: {recording_folder_abs}")
+
+        # Step 5: Delete from database (cascades to snapshots and metadata)
+        db.session.delete(recording)
+        db.session.commit()
+        print(f"SUCCESS: Deleted recording {recording_id} from database")
+
+        return jsonify({
+            "message": "Recording deleted successfully",
+            "details": deleted_items
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERROR: Exception during deletion: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to delete recording: {str(e)}"}), 500
