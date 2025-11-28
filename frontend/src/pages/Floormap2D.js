@@ -26,6 +26,11 @@ function Floormap2D() {
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const [heatmapDuration, setHeatmapDuration] = useState(600);
   const [zones, setZones] = useState([]);
+  const [isFloorplanVisible, setIsFloorplanVisible] = useState(true);
+  const [isActivePeopleVisible, setIsActivePeopleVisible] = useState(true);
+  const [isPlacedCamerasVisible, setIsPlacedCamerasVisible] = useState(true);
+
+
 
   useEffect(() => {
     const containerWidth = Math.min(window.innerWidth * 0.6, 800); // exempel på maxbredd
@@ -410,25 +415,37 @@ useEffect(() => {
         {/* LEFT SIDEBAR - Settings & Configuration */}
         <aside className="page__stack">
 
-          {/* Floorplan Selection */}
-          <div className="page__section">
-            <h3 className="page__section-title">Floorplan Selection</h3>
-            <div>
-              <select
-                id="floorplan-select"
-                value={selectedFloorplan?.id || ""}
-                onChange={handleSelectFloorplanChange}
-                className="floorplan-select"
-              >
-                <option value="">-- Select a Floorplan --</option>
-                {floorplans.map((fp) => (
-                  <option key={fp.id} value={fp.id}>
-                    {fp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {/* Floorplan Selection */}
+      <div className="page__section floorplan-selection">
+        <h3
+          className="page__section-title floorplan-selection-title"
+          onClick={() => setIsFloorplanVisible(!isFloorplanVisible)}
+          style={{ cursor: "pointer" }}
+       >
+         Floorplan Selection
+          <span className="floorplan-selection-toggle" style={{ marginLeft: "10px" }}>
+            {isFloorplanVisible ? "▲" : "▼" }
+          </span>
+        </h3>
+
+        {isFloorplanVisible && (
+         <div className="floorplan-selection-content">
+           <select
+             id="floorplan-select"
+             value={selectedFloorplan?.id || ""}
+             onChange={handleSelectFloorplanChange}
+              className="floorplan-select"
+           >
+              <option value="">-- Select a Floorplan --</option>
+              {floorplans.map((fp) => (
+                <option key={fp.id} value={fp.id}>
+              {fp.name}
+                </option>
+                 ))}
+           </select>
           </div>
+       )}
+      </div> 
 
           {/* Stream Settings */}
           <div className="page__section">
@@ -448,75 +465,104 @@ useEffect(() => {
           </div>
 
           {/* Room Configuration */}
-          <div className="page__section">
-          <button
+          <div className="page__section room-configuration">
+          <h3
+           className="page__section-title room-configuration-title"
           onClick={() => setIsConfigVisible(!isConfigVisible)}
-          className="page__control room-config-toggle"
-          >
-          {isConfigVisible ? "Hide" : "Show"} Room Configuration
-          </button>
+          style={{ cursor: "pointer" }}
+            >
+            Room Configuration
+          <span className="room-configuration-toggle" style={{ marginLeft: "10px" }}>
+            {isConfigVisible ? "▲" : "▼"}
+           </span>
+          </h3>
 
           {isConfigVisible && (
-          <>
-          <h3 className="page__section-title">Room Configuration</h3>
+          <div className="room-configuration-content">
           <RoomConfiguration onSave={handleSaveConfig} />
-          </>
-          )}
+           </div>
+            )}
           </div>
+
 
 
           {/* Active People Panel */}
           <div className="page__section active-people">
-            <h3 className="page__section-title active-people-title">
-              Active People ({Object.keys(people).length})
+            <h3
+              className="page__section-title active-people-title"
+              onClick={() => setIsActivePeopleVisible(!isActivePeopleVisible)}
+              style={{ cursor: "pointer" }}
+            >
+             Active People ({Object.keys(people).length})
+              <span className="active-people-toggle" style={{ marginLeft: "10px" }}>
+                {isActivePeopleVisible ? "▲" : "▼"}
+             </span>
             </h3>
-            {Object.keys(people).length === 0 ? (
-              <p className="active-people-empty">No people detected</p>
-            ) : (
-              <div className="active-people-list">
-                {Object.entries(people).map(([trackId, person]) => (
-                  <div key={trackId} className="active-people-item">
-                    <strong className="active-people-item-title">Track {trackId}</strong>
-                    <div className="active-people-item-position">
-                      Position: ({person.x_m.toFixed(2)}m, {person.y_m.toFixed(2)}m)
-                    </div>
+
+            {isActivePeopleVisible && (
+              <>
+                {Object.keys(people).length === 0 ? (
+                 <p className="active-people-empty">No people detected</p>
+               ) : (
+                 <div className="active-people-list">
+                   {Object.entries(people).map(([trackId, person]) => (
+                      <div key={trackId} className="active-people-item">
+                       <strong className="active-people-item-title">Track {trackId}</strong>
+                      <div className="active-people-item-position">
+                         Position: ({person.x_m.toFixed(2)}m, {person.y_m.toFixed(2)}m)
+                       </div>
+                      </div>
+                   ))}
                   </div>
-                ))}
-              </div>
-            )}
+               )}
+               </>
+           )}
           </div>
 
+
+        
           {/* Placed Cameras Panel */}
           <div className="page__section placed-cameras">
-            <h3 className="page__section-title placed-cameras-title">Placed Cameras</h3>
-            {cameras.filter((camera) => camera.placed).length === 0 ? (
-              <p className="placed-cameras-empty">No cameras placed</p>
-            ) : (
-              <div className="placed-cameras-list">
-                {cameras
-                  .filter((camera) => camera.placed)
-                  .map((camera) => (
-                    <div key={camera.id} className="placed-camera-item">
-                      <div className="placed-camera-info">
-                        <strong>Camera {camera.id}</strong>
-                        <div className="placed-camera-coordinates">
-                          ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
+          <h3
+              className="page__section-title placed-cameras-title"
+              onClick={() => setIsPlacedCamerasVisible(!isPlacedCamerasVisible)}
+              style={{ cursor: "pointer" }}
+              >
+              Placed Cameras
+              <span className="placed-cameras-toggle" style={{ marginLeft: "10px" }}>
+               {isPlacedCamerasVisible ? "▲" : "▼"}
+              </span>
+          </h3>
+
+          {isPlacedCamerasVisible && (
+           <>
+             {cameras.filter((camera) => camera.placed).length === 0 ? (
+               <p className="placed-cameras-empty">No cameras placed</p>
+              ) : (
+               <div className="placed-cameras-list">
+                  {cameras
+                    .filter((camera) => camera.placed)
+                    .map((camera) => (
+                      <div key={camera.id} className="placed-camera-item">
+                        <div className="placed-camera-info">
+                          <strong>Camera {camera.id}</strong>
+                          <div className="placed-camera-coordinates">
+                           ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          handleRemoveCamera(camera.id)
-                        }
-                        }
-                        className="placed-camera-remove-button"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
+                       <button
+                         onClick={() => handleRemoveCamera(camera.id)}
+                         className="placed-camera-remove-button"
+                       >
+                          Remove
+                       </button>
+                     </div>
+                   ))}
+               </div>
+             )}
+            </>
+         )}
+        </div>
 
           {/* Available Cameras Panel */}
           <div className="page__section available-cameras">
@@ -527,7 +573,7 @@ useEffect(() => {
             >
               Available Cameras
               <span style={{ marginLeft: "10px" }}>
-                {isAvailableCamerasVisible ? "▼" : "▲"}
+                {isAvailableCamerasVisible ? "▲" : "▼"}
               </span>
             </h3>
             {isAvailableCamerasVisible && (
@@ -654,7 +700,7 @@ useEffect(() => {
             >
               Heatmap
               <span className="heatmap-panel-toggle">
-                {isHeatmapVisible ? "▼" : "▲"}
+                {isHeatmapVisible ? "▲" : "▼"}
               </span>
             </h3>
             {isHeatmapVisible && (
