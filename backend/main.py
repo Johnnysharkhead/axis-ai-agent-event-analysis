@@ -32,6 +32,7 @@ from routes.floorplan_routes import floorplan_bp
 from routes.camera_config_routes import camera_config_bp
 from routes.zone_routes import zone_bp
 from routes.event_routes import event_bp
+from routes.ai_routes import ai_bp # AI-Agent route
 
 
 app = Flask(__name__)
@@ -60,6 +61,7 @@ app.register_blueprint(camera_config_bp)
 app.register_blueprint(zone_bp)
 app.register_blueprint(alarm_bp)
 app.register_blueprint(event_bp)
+app.register_blueprint(ai_bp) # AI-Agent blueprint
 
 
 cameras = {
