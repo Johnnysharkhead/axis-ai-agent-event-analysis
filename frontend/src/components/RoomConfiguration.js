@@ -68,14 +68,16 @@ function RoomConfiguration({ onSave }) {
       </label>
       <button
         type="submit"
-        style={{
-          padding: "0.3rem 0.8rem", 
-          backgroundColor: "#f0f0f0", 
-          color: "#333", 
-          border: "1px solid #ccc",
-          borderRadius: "4px", 
+        style={{ 
+          padding: "0.75rem",
+          backgroundColor: "#2563eb",   // new blue colour
+          color: "#ffffff",             // white text
+          border: "none",
+          borderRadius: "8px",
           cursor: "pointer",
           fontSize: "0.9rem",
+          fontWeight: 600,
+          width: "100%",         
         }}
       >
         Save Room Configuration

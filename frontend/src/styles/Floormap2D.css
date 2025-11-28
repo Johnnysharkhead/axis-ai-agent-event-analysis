@@ -53,13 +53,27 @@
 
   /* Active People Panel */
 .active-people {
-    margin-bottom: 1.5rem; 
+    /* use default .page__section spacing */
   }
+
+  /* Placed Cameras Panel */
+.placed-cameras {
+    /* use default .page__section spacing */
+  }
+
+  /* Available Cameras Panel */
+.available-cameras {
+    /* use default .page__section spacing */
+  }
+
+  /* Heatmap Panel */
+.heatmap-panel {
+  /* use default .page__section spacing */
+}
   
   .active-people-title {
     font-size: 1.2rem;
     font-weight: bold;
-    margin-bottom: 1rem;
   }
   
   .active-people-empty {
@@ -92,15 +106,10 @@
     margin-top: 0.25rem;
   }
 
-  /* Placed Cameras Panel */
-.placed-cameras {
-    margin-bottom: 1.5rem;
-  }
   
   .placed-cameras-title {
     font-size: 1.2rem;
     font-weight: bold;
-    margin-bottom: 1rem;
   }
   
   .placed-cameras-empty {
@@ -145,10 +154,7 @@
     cursor: pointer;
   }
 
-/* Available Cameras Panel */
-.available-cameras {
-    margin-bottom: 1.5rem; 
-  }
+
   
   .available-cameras-title {
     display: flex;
@@ -266,8 +272,6 @@
     overflow: hidden;
   }
   
-  
-  
   .floormap-container.highlight {
     border: 3px solid #007bff;
     box-shadow: inset 0px 0px 20px 4px rgba(0, 123, 255, 0.3);
@@ -358,11 +362,6 @@
   background-color: #dc2626;
 }
 
-/* Heatmap Panel */
-.heatmap-panel {
-  margin-bottom: 1.5rem;
-}
-
 .heatmap-panel-title {
   display: flex;
   justify-content: space-between;
@@ -402,9 +401,17 @@
   opacity: 0.9;
 }
 
+.active-people-toggle,
+.placed-cameras-toggle {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+
 .heatmap-control {
   margin-bottom: 1rem;
 }
+
 
 .heatmap-control-label {
   display: block;
@@ -441,3 +448,47 @@
 .heatmap-clear-button:hover {
   background-color: #b91c1c;
 }
+
+.floorplan-selection-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.floorplan-selection-toggle {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Room Configuration header + arrow */
+.room-configuration-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.room-configuration-toggle {
+  font-size: 0.8rem;
+  color: #666;
+  margin-left: 10px;
+}
+
+/* Make Active People + Placed Cameras titles match other collapsible cards */
+.active-people-title,
+.placed-cameras-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Arrow style  */
+.active-people-toggle,
+.placed-cameras-toggle {
+  font-size: 0.8rem;
+  color: #666;
+}
+
