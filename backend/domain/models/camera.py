@@ -42,6 +42,6 @@ class Camera(db.Model):
             "ip_address" : self.ip_address,
             "lat" : self.lat if self.lat else None,
             "lon" : self.lon if self.lon else None,
-            "heading" : self.heading_deg
+            "heading" : self.heading_deg,
             "serialno" : self.serialno
         }
