@@ -1,13 +1,19 @@
 import requests
 import json
+import time  # <--- NEW: For timing
+import logging # <--- NEW: For logging
 import os
 from sqlalchemy import or_, desc
 from domain.models import db, FusionData
 
+# Setup Logger to print to terminal
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("AI_AGENT")
+
 # Configuration
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
 OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
-MODEL_NAME = "llama3.2:1b"
+MODEL_NAME = "phi4-mini"  # Ensure this matches the model pulled in the Dockerfile
 
 def get_latest_human_event():
     """
@@ -93,8 +99,17 @@ def generate_security_summary():
             "prompt": prompt,
             "stream": False
         }
-        
+        # --- START TIMER ---
+        start_time = time.time()
+        logger.info(f"🚀 [AI] Sending request to {MODEL_NAME}...")
+
+
         response = requests.post(OLLAMA_URL, json=payload, timeout=60)
+
+        # --- END TIMER ---
+        end_time = time.time()
+        duration = end_time - start_time
+
         """
         if response.status_code == 200:
             ai_text = response.json().get('response', '')
@@ -104,6 +119,8 @@ def generate_security_summary():
         """
         if response.status_code == 200:
             ai_text = response.json().get('response', '').strip()
+            # --- LOG THE RESULT ---
+            logger.info(f"✅ [AI] Finished in {duration:.2f} seconds.")
             
             # --- PYTHON CLEANUP (Safety Net) ---
             # Remove asterisks if the AI ignored rule #2
