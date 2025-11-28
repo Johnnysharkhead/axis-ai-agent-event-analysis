@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../styles/pages.css";
+import KY25Image from "../assets/KY25.png";
 import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans } from "../utils/floorplanPersistence";
 
 function indexToLetters(idx) {
@@ -427,6 +428,25 @@ export default function ZoneConfiguration() {
                   if (drawMode) onMapClick({ clientX: t.clientX, clientY: t.clientY });
                 }}
               >
+          <div>
+             {/* Wall overlay image for KY25 floorplan - from HEAD (commented out per user request) */}
+                          { selectedFloorplan && selectedFloorplan.name === "KY25(TA EJ BORT)" && (
+                            <img
+                              src={KY25Image}
+                              alt="Floorplan walls"
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "contain",
+                                opacity: 0.9,
+                                pointerEvents: "none",
+                              }}
+                            />
+                          ) }
+              </div>
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
                   {zones.map((z,i) => {
                     const pts = polygonPointsAttr(z.points || []);

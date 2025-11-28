@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/pages.css";
 import "../styles/scheduleAlarms.css";
+import KY25Image from "../assets/KY25.png";
 import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans } from "../utils/floorplanPersistence";
 
 // pure helpers (safe at module level)
@@ -456,10 +457,21 @@ function ScheduleAlarms({ embedded = false }) {
 
     // Render stored polygon zones scaled to floorplan (SVG coordinate system: y increases downward)
     return (
-      <div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
-        <svg width="100%" height="300" viewBox={`0 0 ${mapW} ${mapH}`} preserveAspectRatio="xMidYMid meet">
-          {/* white background with very thin black border and sharp corners */}
-          <rect x="0" y="0" width={mapW} height={mapH} fill="#ffffff" stroke="#000" strokeWidth="0.18" />
+<div style={{ width:"100%", display:"flex", justifyContent:"center" }}>
+  <svg width="100%" height="300" viewBox={`0 0 ${mapW} ${mapH}`} preserveAspectRatio="xMidYMid meet">
+    <image
+      href={KY25Image}
+      x="0"
+      y="0"
+      width={mapW}
+      height={mapH}
+      preserveAspectRatio="xMidYMid meet"
+      style={{
+        opacity: 0.9,
+        pointerEvents: "none",
+      }}
+    />
+{/* white background with very thin black border and sharp corners */}
           {zones.map((z, i) => {
             if (!z || !Array.isArray(z.points) || z.points.length === 0) return null;
             // convert points: keep native units (m) and flip Y to match SVG coords
@@ -1156,6 +1168,7 @@ function ScheduleAlarms({ embedded = false }) {
         <div className="zone-map__container">
           <SketchMap />
         </div>
+
       </div>
     </div>
   );
