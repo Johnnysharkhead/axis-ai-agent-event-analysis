@@ -1,12 +1,23 @@
 from . import db
 from datetime import datetime
+from sqlalchemy import func, Time, Boolean, and_, or_, TypeDecorator, JSON
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import func, Time, Boolean, and_, or_
 from sqlalchemy.orm import joinedload
 import traceback
 
+class PortableFloatArray(TypeDecorator):
+    """Array type that uses PostgreSQL ARRAY in production, JSON in SQLite for testing"""
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(db.Float))
+        else:
+            return dialect.type_descriptor(JSON())
+
 class Zone(db.Model):
-    """Zone model storing polygon coordinates; bbox stored as PostgreSQL float8[]"""
+    """Zone model storing polygon coordinates; bbox uses ARRAY in PostgreSQL, JSON in SQLite"""
     __tablename__ = "zones"
 
     id = db.Column(db.BigInteger, primary_key=True)
@@ -18,7 +29,7 @@ class Zone(db.Model):
     )
     name = db.Column(db.String(128), nullable=False)
     coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
-    bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
+    bbox = db.Column(PortableFloatArray, nullable=False)   # ARRAY in PostgreSQL, JSON in SQLite
     centroid = db.Column(db.JSON, nullable=True)            # jsonb
     # timestamps removed per schema — handled elsewhere if needed
 
