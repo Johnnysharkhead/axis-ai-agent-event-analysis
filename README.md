@@ -5,7 +5,7 @@
  * **React (Frontend):** A real-time dashboard for monitoring security events.
  * **Flask (Backend):** The API layer that processes data and manages the database.
  * **Mosquitto (MQTT):** The message broker that ingests raw metadata from camera sensors.
- * **Ollama (AI):** A local Large Language Model (Llama 3.2) that generates human-readable event summaries.
+ * **Ollama (AI):** A local Large Language Model (Phi 4 Mini) that generates human-readable event summaries.
 
 
 ## 🚀 First time setup
