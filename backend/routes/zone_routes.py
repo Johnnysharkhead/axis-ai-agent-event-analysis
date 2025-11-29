@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from domain.models import db
 from domain.models.zone import (
     create_zone, delete_zone, get_zones_for_floorplan, Zone,
-    create_schedule, update_schedule, delete_schedule, get_schedules_for_zone
+    create_schedule, update_schedule, delete_schedule, get_schedules_for_zone, get_current_active_schedules
 )
 from infrastructure.intrusion_detection import trigger_zone_intrusion
 import traceback
@@ -171,3 +171,20 @@ def api_zone_intrusion():
     )
 
     return jsonify({"ok": ok})
+
+@zone_bp.route("/api/get_active_schedules/<floorplan_id>", methods = ['OPTIONS', 'GET'])
+def get_active_schedules(floorplan_id):
+    
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    try:
+        active_schedules, inactive_schedules = get_current_active_schedules(floorplan_id)
+        return jsonify({
+            "active" : [s.serialize() for s in active_schedules] if active_schedules else [],
+            "inactive" : [s.serialize() for s in inactive_schedules] if inactive_schedules else [],
+        })
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error' : 'failed to fecth active schedules for floorplan {floorplan_id}'}), 400

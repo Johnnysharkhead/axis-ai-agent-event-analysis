@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../styles/pages.css";
 import RoomConfiguration from "../components/RoomConfiguration";
+import KY25Image from "../assets/KY25.png";
 import HeatmapOverlay from "../components/HeatmapOverlay";
 import "../styles/Floormap2D.css";
 import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans, invalidateFloorplanCache } from "../utils/floorplanPersistence";
@@ -25,6 +26,11 @@ function Floormap2D() {
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const [heatmapDuration, setHeatmapDuration] = useState(600);
   const [zones, setZones] = useState([]);
+  const [isFloorplanVisible, setIsFloorplanVisible] = useState(true);
+  const [isActivePeopleVisible, setIsActivePeopleVisible] = useState(true);
+  const [isPlacedCamerasVisible, setIsPlacedCamerasVisible] = useState(true);
+
+
 
   useEffect(() => {
     const containerWidth = Math.min(window.innerWidth * 0.6, 800); // exempel på maxbredd
@@ -43,7 +49,6 @@ function Floormap2D() {
 
     eventSource.onmessage = (e) => {
       const pos = JSON.parse(e.data);
-      // console.log('Position update:', pos);
 
       //Add people with postion and timestamp of lastseen
       setPeople(prev => ({
@@ -207,8 +212,6 @@ function Floormap2D() {
   const handleRemoveCamera = (cameraId) => {
     const confirmRemove = window.confirm("Are you sure you want to remove this camera?");
     if (confirmRemove) {
-      console.log(cameraId)
-      console.log(selectedFloorplan)
       fetch(`http://localhost:5001/floorplan/${selectedFloorplan.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -260,15 +263,28 @@ function Floormap2D() {
             const zoneData = floorplan.zones;
             const zoneList = Array.isArray(zoneData) ? zoneData : zoneData.zones || [];
             setZones(zoneList);
+            fetch(`http://localhost:5001/api/get_active_schedules/${floorplanId}`)
+              .then((res) => res.json())
+              .then((data) => {
+                console.log(data);
+
+                const activeSchedules = data.active || [];
+                const activeZoneIds = new Set(activeSchedules.map((s) => s.zone_id));
+
+                const updatedZones = zoneList.map((zone) => ({
+                  ...zone,
+                  active: activeZoneIds.has(zone.id)
+                }));
+
+                setZones(updatedZones);
+              });
           } else {
             setZones([])
           }
-
           // Fetch all cameras and set their placed status and coordinates
           fetch("http://localhost:5001/cameras")
             .then((res) => res.json())
             .then((camData) => {
-              console.log(camData)
               let fetchedCameras = [];
               if (camData.cameras) {
                 fetchedCameras = camData.cameras.map((camera) => {
@@ -352,11 +368,11 @@ function Floormap2D() {
 useEffect(() => {
   Object.entries(people).forEach(([trackId, person]) => {
     zones.forEach((zone) => {
-      if (
-        zone.points &&
-        pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)
-      ) {
+      if (!zone.active) return; // ignore inactive zones
+
+      if (zone.points && pointInPolygon({ x: person.x_m, y: person.y_m }, zone.points)) {
         console.log(`Intrusion detected! Person ${trackId} entered zone "${zone.name}"`);
+
         // You can trigger other actions here (alert, API call, etc)
         // Trigger backend intrusion detection
         const camera = cameras.find(c => c.placed);
@@ -382,7 +398,6 @@ useEffect(() => {
         .then(data => console.log("Intrusion API response:", data))
         .catch(err => console.error("Error sending intrusion event:", err));
       }
-      
     });
   });
 }, [people, zones]);
@@ -400,25 +415,37 @@ useEffect(() => {
         {/* LEFT SIDEBAR - Settings & Configuration */}
         <aside className="page__stack">
 
-          {/* Floorplan Selection */}
-          <div className="page__section">
-            <h3 className="page__section-title">Floorplan Selection</h3>
-            <div>
-              <select
-                id="floorplan-select"
-                value={selectedFloorplan?.id || ""}
-                onChange={handleSelectFloorplanChange}
-                className="floorplan-select"
-              >
-                <option value="">-- Select a Floorplan --</option>
-                {floorplans.map((fp) => (
-                  <option key={fp.id} value={fp.id}>
-                    {fp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {/* Floorplan Selection */}
+      <div className="page__section floorplan-selection">
+        <h3
+          className="page__section-title floorplan-selection-title"
+          onClick={() => setIsFloorplanVisible(!isFloorplanVisible)}
+          style={{ cursor: "pointer" }}
+       >
+         Floorplan Selection
+          <span className="floorplan-selection-toggle" style={{ marginLeft: "10px" }}>
+            {isFloorplanVisible ? "▲" : "▼" }
+          </span>
+        </h3>
+
+        {isFloorplanVisible && (
+         <div className="floorplan-selection-content">
+           <select
+             id="floorplan-select"
+             value={selectedFloorplan?.id || ""}
+             onChange={handleSelectFloorplanChange}
+              className="floorplan-select"
+           >
+              <option value="">-- Select a Floorplan --</option>
+              {floorplans.map((fp) => (
+                <option key={fp.id} value={fp.id}>
+              {fp.name}
+                </option>
+                 ))}
+           </select>
           </div>
+       )}
+      </div> 
 
           {/* Stream Settings */}
           <div className="page__section">
@@ -438,76 +465,104 @@ useEffect(() => {
           </div>
 
           {/* Room Configuration */}
-          <div className="page__section">
-          <button
+          <div className="page__section room-configuration">
+          <h3
+           className="page__section-title room-configuration-title"
           onClick={() => setIsConfigVisible(!isConfigVisible)}
-          className="page__control room-config-toggle"
-          >
-          {isConfigVisible ? "Hide" : "Show"} Room Configuration
-          </button>
+          style={{ cursor: "pointer" }}
+            >
+            Room Configuration
+          <span className="room-configuration-toggle" style={{ marginLeft: "10px" }}>
+            {isConfigVisible ? "▲" : "▼"}
+           </span>
+          </h3>
 
           {isConfigVisible && (
-          <>
-          <h3 className="page__section-title">Room Configuration</h3>
+          <div className="room-configuration-content">
           <RoomConfiguration onSave={handleSaveConfig} />
-          </>
-          )}
+           </div>
+            )}
           </div>
+
 
 
           {/* Active People Panel */}
           <div className="page__section active-people">
-            <h3 className="page__section-title active-people-title">
-              Active People ({Object.keys(people).length})
+            <h3
+              className="page__section-title active-people-title"
+              onClick={() => setIsActivePeopleVisible(!isActivePeopleVisible)}
+              style={{ cursor: "pointer" }}
+            >
+             Active People ({Object.keys(people).length})
+              <span className="active-people-toggle" style={{ marginLeft: "10px" }}>
+                {isActivePeopleVisible ? "▲" : "▼"}
+             </span>
             </h3>
-            {Object.keys(people).length === 0 ? (
-              <p className="active-people-empty">No people detected</p>
-            ) : (
-              <div className="active-people-list">
-                {Object.entries(people).map(([trackId, person]) => (
-                  <div key={trackId} className="active-people-item">
-                    <strong className="active-people-item-title">Track {trackId}</strong>
-                    <div className="active-people-item-position">
-                      Position: ({person.x_m.toFixed(2)}m, {person.y_m.toFixed(2)}m)
-                    </div>
+
+            {isActivePeopleVisible && (
+              <>
+                {Object.keys(people).length === 0 ? (
+                 <p className="active-people-empty">No people detected</p>
+               ) : (
+                 <div className="active-people-list">
+                   {Object.entries(people).map(([trackId, person]) => (
+                      <div key={trackId} className="active-people-item">
+                       <strong className="active-people-item-title">Track {trackId}</strong>
+                      <div className="active-people-item-position">
+                         Position: ({person.x_m.toFixed(2)}m, {person.y_m.toFixed(2)}m)
+                       </div>
+                      </div>
+                   ))}
                   </div>
-                ))}
-              </div>
-            )}
+               )}
+               </>
+           )}
           </div>
 
+
+        
           {/* Placed Cameras Panel */}
           <div className="page__section placed-cameras">
-            <h3 className="page__section-title placed-cameras-title">Placed Cameras</h3>
-            {cameras.filter((camera) => camera.placed).length === 0 ? (
-              <p className="placed-cameras-empty">No cameras placed</p>
-            ) : (
-              <div className="placed-cameras-list">
-                {cameras
-                  .filter((camera) => camera.placed)
-                  .map((camera) => (
-                    <div key={camera.id} className="placed-camera-item">
-                      <div className="placed-camera-info">
-                        <strong>Camera {camera.id}</strong>
-                        <div className="placed-camera-coordinates">
-                          ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
+          <h3
+              className="page__section-title placed-cameras-title"
+              onClick={() => setIsPlacedCamerasVisible(!isPlacedCamerasVisible)}
+              style={{ cursor: "pointer" }}
+              >
+              Placed Cameras
+              <span className="placed-cameras-toggle" style={{ marginLeft: "10px" }}>
+               {isPlacedCamerasVisible ? "▲" : "▼"}
+              </span>
+          </h3>
+
+          {isPlacedCamerasVisible && (
+           <>
+             {cameras.filter((camera) => camera.placed).length === 0 ? (
+               <p className="placed-cameras-empty">No cameras placed</p>
+              ) : (
+               <div className="placed-cameras-list">
+                  {cameras
+                    .filter((camera) => camera.placed)
+                    .map((camera) => (
+                      <div key={camera.id} className="placed-camera-item">
+                        <div className="placed-camera-info">
+                          <strong>Camera {camera.id}</strong>
+                          <div className="placed-camera-coordinates">
+                           ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          console.log(camera.id)
-                          handleRemoveCamera(camera.id)
-                        }
-                        }
-                        className="placed-camera-remove-button"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
+                       <button
+                         onClick={() => handleRemoveCamera(camera.id)}
+                         className="placed-camera-remove-button"
+                       >
+                          Remove
+                       </button>
+                     </div>
+                   ))}
+               </div>
+             )}
+            </>
+         )}
+        </div>
 
           {/* Available Cameras Panel */}
           <div className="page__section available-cameras">
@@ -518,7 +573,7 @@ useEffect(() => {
             >
               Available Cameras
               <span style={{ marginLeft: "10px" }}>
-                {isAvailableCamerasVisible ? "▼" : "▲"}
+                {isAvailableCamerasVisible ? "▲" : "▼"}
               </span>
             </h3>
             {isAvailableCamerasVisible && (
@@ -645,7 +700,7 @@ useEffect(() => {
             >
               Heatmap
               <span className="heatmap-panel-toggle">
-                {isHeatmapVisible ? "▼" : "▲"}
+                {isHeatmapVisible ? "▲" : "▼"}
               </span>
             </h3>
             {isHeatmapVisible && (
@@ -723,11 +778,12 @@ useEffect(() => {
             )}
 
             {/* The Floormap Container */}
-            <div
-              className={`floormap-container ${highlightEdges ? "highlight" : ""}`}
-              style={{ width: "100%", height: `${mapHeight}px`, position: "relative" }}
+                  <div
+                    className={`floormap-container ${highlightEdges ? "highlight" : ""}`}
+                    
+                    style={{ width: `${(mapHeight * roomConfig.width) / roomConfig.depth}px`, height: `${mapHeight}px`, position: "relative" }}
 
-              onDragOver={(e) => {
+                    onDragOver={(e) => {
                 e.preventDefault();
                 handleAutoScroll(e); // Lägg till automatisk scrollning
             
@@ -813,80 +869,99 @@ useEffect(() => {
               )}
 
               {/* Absolute positioned content */}
-            <div className="floormap-content">
-            <svg
-              viewBox={`0 0 ${roomConfig.width} ${roomConfig.depth}`}
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                pointerEvents: "none",
-                zIndex: 1,
-              }}
-              preserveAspectRatio="none"
-            >
-              {/* Render zones as polygons */}
-              {zones.map((zone, i) => (
-                <polygon
-                  key={zone.id}
-                  points={
-                    (zone.points || [])
-                      .map((p) => `${p.x},${roomConfig.depth - p.y}`)
-                      .join(" ")
-                  }
-                  fill={`hsl(${(i * 57) % 360} 75% 50% / 0.12)`}
-                  stroke={`hsl(${(i * 57) % 360} 75% 35%)`}
-                  strokeWidth={0.01 * roomConfig.width} // much thinner lines
-                />
-              ))}
-
-              {/* Render zone names at centroid */}
-              {zones.map((zone, i) =>
-                zone.centroid ? (
-                  <text
-                    key={zone.id + "_label"}
-                    x={zone.centroid?.x}
-                    y={zone.centroid ? roomConfig.depth - zone.centroid.y : 0}
-                    fontSize={0.18 * roomConfig.width}
-                    textAnchor="middle"
-                    fill={`hsl(${(i * 57) % 360} 75% 35%)`}
-                    style={{ fontWeight: 700 }}
-                  >
-                    {zone.name}
-                  </text>
-                ) : null
-              )}
-            </svg>
-
-            {/* Render cameras as blue circles */}
-            {cameras
-              .filter((camera) => camera.placed)
-              .map((camera) => (
-                <div
-                  key={camera.id}
-                  className="camera-circle"
+              <div className="floormap-content">
+                {/* Wall overlay image for KY25 floorplan - from HEAD (commented out per user request) */}
+                { selectedFloorplan && selectedFloorplan.name === "KY25(TA EJ BORT)" && (
+                  <img
+                    src={KY25Image}
+                    alt="Floorplan walls"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "fill",
+                      opacity: 0.9,
+                      pointerEvents: "none",
+                    }}
+                  />
+                ) }
+                
+                {/* SVG for zones */}
+                <svg
+                  viewBox={`0 0 ${roomConfig.width} ${roomConfig.depth}`}
                   style={{
-                    left: `${(camera.x / roomConfig.width) * 100}%`,
-                    bottom: `${(camera.y / roomConfig.depth) * 100}%`,
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    pointerEvents: "none",
+                    zIndex: 1,
                   }}
-                  title={`Camera ${camera.id}`}
-                />
-              ))}
+                  preserveAspectRatio="none"
+                >
+                  {/* Render zones as polygons */}
+                  {zones.map((zone, i) => (
+                    <polygon
+                      key={zone.id}
+                      points={
+                        (zone.points || [])
+                          .map((p) => `${p.x},${roomConfig.depth - p.y}`)
+                          .join(" ")
+                      }
+                      fill={`hsl(${(i * 57) % 360} 75% 50% / 0.12)`}
+                      stroke={`hsl(${(i * 57) % 360} 75% 35%)`}
+                      strokeWidth={0.01 * roomConfig.width} // much thinner lines
+                    />
+                  ))}
 
-            {/* Render people as red circles */}
-            {Object.entries(people).map(([trackId, person]) => (
-              <div
-                key={trackId}
-                className="person-circle"
-                style={{
-                  left: `${(person.x_m / roomConfig.width) * 100}%`,
-                  bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
-                }}
-                title={`Track ID: ${trackId}`}
-              />
-            ))}
-          </div>
+                  {/* Render zone names at centroid */}
+                  {zones.map((zone, i) =>
+                    zone.centroid ? (
+                      <text
+                        key={zone.id + "_label"}
+                        x={zone.centroid?.x}
+                        y={zone.centroid ? roomConfig.depth - zone.centroid.y : 0}
+                        fontSize={0.18 * roomConfig.width}
+                        textAnchor="middle"
+                        fill={`hsl(${(i * 57) % 360} 75% 35%)`}
+                        style={{ fontWeight: 700 }}
+                      >
+                        {zone.name}
+                      </text>
+                    ) : null
+                  )}
+                </svg>
+
+                {/* Render cameras as blue circles */}
+                {cameras
+                  .filter((camera) => camera.placed)
+                  .map((camera) => (
+                    <div
+                      key={camera.id}
+                      className="camera-circle"
+                      style={{
+                        left: `${(camera.x / roomConfig.width) * 100}%`,
+                        bottom: `${(camera.y / roomConfig.depth) * 100}%`,
+                      }}
+                      title={`Camera ${camera.id}`}
+                    />
+                  ))}
+
+                {/* Render people as red circles */}
+                {Object.entries(people).map(([trackId, person]) => (
+                  <div
+                    key={trackId}
+                    className="person-circle"
+                    style={{
+                      left: `${(person.x_m / roomConfig.width) * 100}%`,
+                      bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
+                    }}
+                    title={`Track ID: ${trackId}`}
+                  />
+                ))}
+              </div>
             </div>
 
 

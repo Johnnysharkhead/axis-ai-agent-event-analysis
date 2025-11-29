@@ -30,8 +30,12 @@ def floorplans():
             return jsonify({"message": "no floorplans in database"}), 200
         
         except Exception as e:
+            import traceback, sys
             traceback.print_exc()
-            return jsonify({"error": "failed fetching floorplans from db"}), 404
+            return jsonify({
+                "error": "failed fetching floorplans from db",
+                "details": str(e) # Added this so we can get details when it is not working
+            }),404
         
     elif request.method == "POST":
         try:
