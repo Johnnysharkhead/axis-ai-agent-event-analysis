@@ -837,7 +837,6 @@ useEffect(() => {
                     />
                   )}
 
-                {/* EVERYTHING (zones + cameras + FOV) must be in ONE SVG */}
                 <svg
                   viewBox={`0 0 ${roomConfig.width} ${roomConfig.depth}`}
                   style={{
@@ -849,7 +848,7 @@ useEffect(() => {
                   }}
                   preserveAspectRatio="none"
                 >
-                  {/* ZONES */}
+                  {/* Zones */}
                   {zones.map((zone, i) => (
                     <polygon
                       key={zone.id}
@@ -862,7 +861,7 @@ useEffect(() => {
                     />
                   ))}
 
-                  {/* ZONE LABELS */}
+                  {/* Zone labels */}
                   {zones.map((zone, i) =>
                     zone.centroid ? (
                       <text
@@ -879,21 +878,19 @@ useEffect(() => {
                     ) : null
                   )}
 
-                  {/* FIXED — CAMERA FOV SECTORS */}
+                  {/* FOV config*/}
                   {cameras
                     .filter((c) => c.placed)
                     .map((camera) => {
                       const range = 20;
                       const halfFov = 33.5;
 
-                      // angles
                       const startDeg = camera.heading - halfFov;
                       const endDeg = camera.heading + halfFov;
 
                       const rad = (deg) => (deg * Math.PI) / 180;
                       const mapAngle = (deg) => rad(90 - deg);
 
-                      // compute endpoints
                       const sx = camera.x + range * Math.cos(mapAngle(startDeg));
                       const sy = camera.y + range * Math.sin(mapAngle(startDeg));
                       const ex = camera.x + range * Math.cos(mapAngle(endDeg));
@@ -920,7 +917,6 @@ useEffect(() => {
                       );
                     })}
 
-                  {/* CAMERA DOTS */}
                   {cameras
                     .filter((c) => c.placed)
                     .map((camera) => (

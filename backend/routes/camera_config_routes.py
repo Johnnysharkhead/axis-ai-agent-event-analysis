@@ -234,13 +234,18 @@ def configure_camera(camera_id):
 
     data = request.get_json()
     results = {"camera_id": camera_id, "steps": []}
-
+    try:
+        camera = Camera.query.filter_by(camera_id = camera_id).first()
+    except Exception as e:
+        return jsonify({'error' : 'camera not found in database'}), 500
+    
     #Set Geolocation
     if "latitude" in data and "longitude" in data:
         response, error, formatted_lat, formatted_lng = set_geolocation(
             g.camera_ip, data["latitude"], data["longitude"]
         )
-
+        camera.lat = data["latitude"]
+        camera.lon = data["longitude"]
         if error:
             results["steps"].append({"step": "geolocation", "success": False, "error": error})
         else:
@@ -251,6 +256,7 @@ def configure_camera(camera_id):
                 "longitude": formatted_lng
             })
 
+
     #Set Orientation
     if "tilt" in data and "heading" in data and "installation_height" in data:
         response, error = set_orientation(
@@ -260,6 +266,9 @@ def configure_camera(camera_id):
             data["installation_height"],
             data.get("elevation")
         )
+        camera.tilt_deg = data["tilt"]
+        camera.heading_deg = data["heading"]
+        camera.height_m = data["installation_height"]
 
         if error:
             results["steps"].append({"step": "orientation", "success": False, "error": error})
@@ -292,7 +301,7 @@ def configure_camera(camera_id):
     #Check success
     all_success = all(step.get("success", False) for step in results["steps"])
     results["success"] = all_success
-
+    db.session.commit()
     return jsonify(results), 200 if all_success else 207
 
 #Get current geolocation of camera
