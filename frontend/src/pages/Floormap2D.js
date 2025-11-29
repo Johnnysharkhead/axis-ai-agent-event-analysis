@@ -886,22 +886,68 @@ useEffect(() => {
                       </text>
                     ) : null
                   )}
+
+                                    {/* Render camera FOV sectors */}
+                  {cameras
+                    .filter((camera) => camera.placed)
+                    .map((camera) => {
+                      console.log(camera.heading)
+                      const range = 20; // meters
+                      const halfFov = 33.5;
+
+                      const startDeg = camera.heading - halfFov;
+                      const endDeg = camera.heading + halfFov;
+
+                      const toRad = (deg) => (deg * Math.PI) / 180;
+                      const svgAngle = (deg) => toRad(-(deg - 90));
+
+                      const startX = camera.x + range * Math.cos(svgAngle(startDeg));
+                      const startY = camera.y + range * Math.sin(svgAngle(startDeg));
+
+                      const endX = camera.x + range * Math.cos(svgAngle(endDeg));
+                      const endY = camera.y + range * Math.sin(svgAngle(endDeg));
+
+                      // flip y because your svg uses (0,0) top-left but floorplan has y increasing upward
+                      const flip = (y) => roomConfig.depth - y;
+
+                      // Arc must use "large-arc-flag"
+                      const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+
+                      // SVG arc path
+                      const pathData = `
+                        M ${camera.x},${flip(camera.y)}
+                        L ${startX},${flip(startY)}
+                        A ${range} ${range} 0 ${largeArc} 1 ${endX} ${flip(endY)}
+                        Z
+                      `;
+
+                      return (
+                        <path
+                          key={"fov_" + camera.id}
+                          d={pathData}
+                          fill="rgba(255, 217, 0, 0.15)"
+                          stroke="blue"
+                          strokeWidth={0.05 * roomConfig.width}
+                        />
+                      );
+                    })}
+
+                  {/* Camera position markers */}
+                    {cameras
+                      .filter((camera) => camera.placed)
+                      .map((camera) => (
+                        <circle
+                          key={camera.id}
+                          cx={camera.x}
+                          cy={roomConfig.depth - camera.y}
+                          r={0.25}
+                          fill="blue"
+                        />
+                      ))}
                 </svg>
 
-                {/* Render cameras as blue circles */}
-                {cameras
-                  .filter((camera) => camera.placed)
-                  .map((camera) => (
-                    <div
-                      key={camera.id}
-                      className="camera-circle"
-                      style={{
-                        left: `${(camera.x / roomConfig.width) * 100}%`,
-                        bottom: `${(camera.y / roomConfig.depth) * 100}%`,
-                      }}
-                      title={`Camera ${camera.id}`}
-                    />
-                  ))}
+
+
 
                 {/* Render people as red circles */}
                 {Object.entries(people).map(([trackId, person]) => (
