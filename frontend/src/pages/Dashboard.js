@@ -6,6 +6,7 @@ import intrusionIcon from "../assets/intrusion-icon.jpg";
 import securityCameraIcon from "../assets/security-camera.jpg";
 import "../styles/pages.css";
 import { getCachedUser } from "../utils/userStorage";
+import { triggerAiAnalysis } from "../utils/api"; // Import the new API function
 
 const dashboardTiles = [
   {
@@ -61,13 +62,53 @@ const buildPlaceholderSummary = (user) => {
 
 function Dashboard({ isAlarmFiring = false }) {
   const [isAlarmActive, setIsAlarmActive] = useState(Boolean(isAlarmFiring));
+  // State for AI Data
   const [aiSummary, setAiSummary] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // New loading state
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryDismissed, setSummaryDismissed] = useState(false);
 
   useEffect(() => {
-    const user = getCachedUser();
-    setAiSummary(buildPlaceholderSummary(user));
+    const fetchAiData = async () => {
+      const user = getCachedUser();
+      const sinceLabel = formatSinceLabel(user?.last_login);
+      
+      setIsLoading(true);
+
+      try {
+        // 1. Call the Backend API
+        const data = await triggerAiAnalysis();
+        
+        // 2. Format the response for the UI
+        // The API returns { message: "..." }
+        // We create a 'short' version by taking the first sentence or first 100 chars
+        const fullText = data.message || "No analysis available.";
+        const shortText = fullText.length > 120 
+          ? fullText.substring(0, 120) + "..." 
+          : fullText;
+
+        setAiSummary({
+          title: "AI Security Agent",
+          short: shortText,
+          detail: fullText,
+          sinceLabel: sinceLabel,
+        });
+
+      } catch (error) {
+        console.error("AI Fetch Failed:", error);
+        // Fallback in case of error (e.g. AI container is offline)
+        setAiSummary({
+          title: "System Status",
+          short: "AI Agent is currently offline.",
+          detail: "Could not retrieve the latest security analysis. Please check container status.",
+          sinceLabel: sinceLabel,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAiData();
   }, []);
 
   const handleTriggerAlarm = () => setIsAlarmActive(true);
@@ -131,33 +172,49 @@ function Dashboard({ isAlarmFiring = false }) {
         </div>
       </div>
 
-      {showAiSummary && (
-        <div className="ai-summary" role="status" aria-live="polite">
-          <div className="ai-summary__content">
-            <div className="ai-summary__eyebrow">AI Summary</div>
-            <div className="ai-summary__headline">What happened in the last {aiSummary.sinceLabel}</div>
-            <p className="ai-summary__text">
-              {summaryExpanded ? aiSummary.detail : aiSummary.short}
-            </p>
+     
+        {/* AI SUMMARY SECTION */}
+      <div className="ai-summary-wrapper" style={{ minHeight: '160px' }}>
+        {isLoading ? (
+          /* Simple Loading State */
+          <div className="ai-summary" style={{ opacity: 0.7 }}>
+             <div className="ai-summary__content">
+                <div className="ai-summary__eyebrow">AI Analysis</div>
+                <div className="ai-summary__headline">Analyzing security logs...</div>
+                <p className="ai-summary__text">Please wait while the AI agent scans the latest Intrusion logs.</p>
+             </div>
           </div>
-          <div className="ai-summary__actions">
-            <button
-              type="button"
-              className="ai-summary__button ai-summary__button--ghost"
-              onClick={() => setSummaryExpanded((prev) => !prev)}
-            >
-              {summaryExpanded ? "Show less" : "See more"}
-            </button>
-            <button
-              type="button"
-              className="ai-summary__button ai-summary__button--primary"
-              onClick={() => setSummaryDismissed(true)}
-            >
-              Dismiss
-            </button>
+        ) : showAiSummary ? (
+          <div className="ai-summary" role="status" aria-live="polite">
+            <div className="ai-summary__content">
+              <div className="ai-summary__eyebrow">{aiSummary.title}</div>
+              <div className="ai-summary__headline">
+                Report generated {aiSummary.sinceLabel}
+              </div>
+              <p className="ai-summary__text">
+                {summaryExpanded ? aiSummary.detail : aiSummary.short}
+              </p>
+            </div>
+            <div className="ai-summary__actions">
+              <button
+                type="button"
+                className="ai-summary__button ai-summary__button--ghost"
+                onClick={() => setSummaryExpanded((prev) => !prev)}
+              >
+                {summaryExpanded ? "Show less" : "See more"}
+              </button>
+              <button
+                type="button"
+                className="ai-summary__button ai-summary__button--primary"
+                onClick={() => setSummaryDismissed(true)}
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </div>
+
 
       
         <div className="page__placeholder-grid page__placeholder-grid--spaced">

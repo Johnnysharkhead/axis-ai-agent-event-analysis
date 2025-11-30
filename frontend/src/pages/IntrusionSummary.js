@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react"; // Added useEffect
 import "../styles/pages.css";
 import "../styles/eventHistory.css";
 import { getCachedUser } from "../utils/userStorage";
+import { getAiHistory } from "../utils/api"; // <--- IMPORT API
 
 const formatSinceLabel = (dateString) => {
   if (!dateString) return "since your last session";
@@ -19,27 +20,6 @@ const formatSinceLabel = (dateString) => {
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 };
 
-const mockDailySummaries = [
-  {
-    date: "2025-11-18",
-    headline: "Perimeter remained stable; minor noise on Camera 2",
-    summary:
-      "No boundary crossings detected; cameras held connection and detection confidence remained nominal. Camera 2 registered brief motion at 02:14 and 02:29; both were classified as environmental noise.",
-  },
-  {
-    date: "2025-11-17",
-    headline: "Ingress matched 7-day baseline",
-    summary:
-      "Average ingress matched the prior 7-day baseline. No unusual heatmap clusters formed inside restricted zones. Zone A detection confidence averaged 96% with no false positives after 9pm.",
-  },
-  {
-    date: "2025-11-25",
-    headline: "Thief stealing cookies",
-    summary:
-      "Brief boundary crossing on Zone B at 23:42 flagged then dismissed as animal motion. All cameras maintained connectivity; highest jitter recorded on Camera 3 (42 ms).",
-  },
-];
-
 const quickRangeOptions = [
   { label: "Today", value: "today" },
   { label: "Last 7 days", value: "7days" },
@@ -50,8 +30,43 @@ const quickRangeOptions = [
 export default function IntrusionSummary() {
   const user = getCachedUser();
   const sinceLabel = useMemo(() => formatSinceLabel(user?.last_login), [user]);
+  
+  // --- STATE MANAGEMENT ---
+  const [summaries, setSummaries] = useState([]); // Replaces mock data
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState("7days");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // --- FETCH DATA ON MOUNT ---
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getAiHistory();
+        
+        // Map Backend Data (summary_date, summary_text) to Frontend UI (date, headline, summary)
+        const formattedData = data.map((item) => {
+          // Create a headline by taking the first few words of the summary
+          const text = item.summary_text || "";
+          const generatedHeadline = text.split('.')[0] + "..."; // First sentence as headline
+
+          return {
+            date: item.summary_date || item.created_at.split('T')[0],
+            headline: generatedHeadline,
+            summary: text
+          };
+        });
+
+        setSummaries(formattedData);
+      } catch (error) {
+        console.error("Failed to load history:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
 
   const resolvedRange = useMemo(() => {
     const now = new Date();
@@ -78,12 +93,11 @@ export default function IntrusionSummary() {
     const toTs = resolvedRange.to ? resolvedRange.to.getTime() : null;
     const term = searchTerm.trim();
 
-    return mockDailySummaries
+    // Use 'summaries' state instead of mock data
+    return summaries
       .filter((item) => {
         const itemTs = new Date(item.date).getTime();
         if (Number.isNaN(itemTs)) return false;
-        if (fromTs && itemTs < fromTs) return false;
-        if (toTs && itemTs > toTs) return false;
         if (fromTs && itemTs < fromTs) return false;
         if (toTs && itemTs > toTs) return false;
 
@@ -95,7 +109,7 @@ export default function IntrusionSummary() {
         return true;
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [resolvedRange, searchTerm]);
+  }, [resolvedRange, searchTerm, summaries]); // Added summaries to dependency array
 
   const handleResetFilters = () => {
     setSelectedRange("7days");
@@ -157,19 +171,24 @@ export default function IntrusionSummary() {
           </div>
 
           <div className="ai-day-list">
-            {filteredSummaries.map((day) => (
-              <article key={day.date} className="ai-day-card">
-                <div className="ai-day-card__head">
-                  <div>
-                    <div className="ai-summary__eyebrow">{new Date(day.date).toLocaleDateString()}</div>
-                    <h4 className="ai-day-card__title">{day.headline}</h4>
+            {isLoading ? (
+               /* Loading State */
+               <p className="recording-message">Loading history from AI Agent...</p>
+            ) : filteredSummaries.length > 0 ? (
+              filteredSummaries.map((day, index) => (
+                <article key={`${day.date}-${index}`} className="ai-day-card">
+                  <div className="ai-day-card__head">
+                    <div>
+                      <div className="ai-summary__eyebrow">{new Date(day.date).toLocaleDateString()}</div>
+                      <h4 className="ai-day-card__title">{day.headline}</h4>
+                    </div>
                   </div>
-                </div>
-                <p className="ai-day-card__summary">{day.summary}</p>
-              </article>
-            ))}
-
-            {!filteredSummaries.length && <p className="recording-message">No summaries for this date range.</p>}
+                  <p className="ai-day-card__summary">{day.summary}</p>
+                </article>
+              ))
+            ) : (
+              <p className="recording-message">No summaries found for this date range.</p>
+            )}
           </div>
         </div>
       </div>

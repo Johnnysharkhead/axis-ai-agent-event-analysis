@@ -1,10 +1,11 @@
 import requests
 import json
-import time  # <--- NEW: For timing
-import logging # <--- NEW: For logging
+import time  
+import logging 
 import os
 from sqlalchemy import or_, desc
-from domain.models import db, FusionData
+from datetime import date
+from domain.models import db, FusionData, DailySummary
 
 # Setup Logger to print to terminal
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ def get_latest_human_event():
     event = FusionData.query.filter(
         or_(
             FusionData.class_type.ilike('Human'),
-            FusionData.class_type.ilike('Person'), # Just in case Axis sends 'Person'
+            FusionData.class_type.ilike('Person'), 
             FusionData.class_type.ilike('Face')
         )
     ).order_by(desc(FusionData.event_timestamp)).first()
@@ -117,6 +118,7 @@ def generate_security_summary():
         else:
             return {"status": "error", "message": f"AI Service returned code {response.status_code}"}
         """
+        """
         if response.status_code == 200:
             ai_text = response.json().get('response', '').strip()
             # --- LOG THE RESULT ---
@@ -132,8 +134,114 @@ def generate_security_summary():
             return {"status": "success", "message": ai_text, "data_source": event_data}
         else:
             return {"status": "error", "message": f"AI Service returned code {response.status_code}"}
+        """
+
+        if response.status_code == 200:
+            ai_text = response.json().get('response', '').strip()
+            
+            # --- LOG THE RESULT ---
+            logger.info(f"✅ [AI] Finished in {duration:.2f} seconds.")
+            
+            # --- PYTHON CLEANUP (Safety Net) ---
+            ai_text = ai_text.replace('*', '').replace('#', '').replace('"', '')
+            if "System Log" in ai_text:
+                ai_text = ai_text.split('\n')[-1].strip()
+            
+            # 1. Construct the Success Result
+            final_result = {
+                "status": "success", 
+                "message": ai_text, 
+                "data_source": event_data
+            }
+
+            # 2. SAVE TO NEON DB (The new part)
+            # Pass the camera serial so we know which camera this summary belongs to
+            save_daily_summary(
+                ai_result=final_result,
+                target_date=date.today(),
+                camera_serial=event_data.get('camera') 
+            )
+            
+            # 3. Return to Frontend
+            return final_result
+
+        else:
+            # Handle API Errors
+            error_msg = f"AI Service returned code {response.status_code}"
+            logger.error(f"❌ {error_msg}")
+            
+            error_result = {"status": "error", "message": error_msg}
+
+            # OPTIONAL: Save the failure to DB so you have a record of it
+            save_daily_summary(
+                ai_result=error_result,
+                target_date=date.today()
+            )
+
+            return error_result
+
 
     except requests.exceptions.ConnectionError:
         return {"status": "error", "message": "Could not connect to AI Agent. Is the container running?"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    
+
+# 4. Save Result to DailySummary    
+def save_daily_summary(ai_result, target_date=None, zone_id=None, camera_serial=None):
+    """
+    Saves the AI analysis result into the DailySummary table.
+    """
+    # 1. Default to today if no date provided
+    if not target_date:
+        target_date = date.today()
+
+    # 2. Determine Status & Error Message based on AI result
+    if ai_result['status'] == 'success':
+        status = 'success'
+        summary_text = ai_result['message']
+        error_message = None
+    else:
+        status = 'failed'
+        summary_text = "Summary generation failed."
+        error_message = ai_result['message']
+
+    # 3. Check for duplicates (Optional: Update if exists, or Create new)
+    # This prevents creating multiple rows for the exact same day/camera/zone combo
+    existing_record = DailySummary.query.filter_by(
+        summary_date=target_date,
+        camera_serial=camera_serial,
+        zone_id=zone_id
+    ).first()
+
+    try:
+        if existing_record:
+            # UPDATE existing record
+            existing_record.summary_text = summary_text
+            existing_record.status = status
+            existing_record.error_message = error_message
+            # existing_record.updated_at = datetime.utcnow() # If you have this column
+            print(f"🔄 Updated existing summary for {target_date}")
+        else:
+            # INSERT new record
+            new_summary = DailySummary(
+                summary_date=target_date,
+                camera_serial=camera_serial,  # Can be None (Global summary)
+                zone_id=zone_id,              # Can be None (Global summary)
+                summary_text=summary_text,
+                status=status,
+                error_message=error_message
+            )
+            db.session.add(new_summary)
+            print(f"✅ Created new summary for {target_date}")
+
+        # 4. Commit to Neon DB
+        db.session.commit()
+        return True
+
+    except Exception as e:
+        print(f"❌ Database Error: {e}")
+        db.session.rollback()
+        return False
+
+

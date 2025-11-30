@@ -227,3 +227,23 @@ export async function updateUserBlock(userId, { isBlocked, resetFailedAttempts }
 		user: result.body
 	};
 }
+
+// AI Service API calls
+
+// Trigger AI analysis
+export const triggerAiAnalysis = async () => {
+  const response = await fetch(`${API_URL}/ai/latest-analysis`);
+  if (!response.ok) {
+    const text = await response.text(); // Read text to see the real error
+    console.error("Backend Error:", text);
+    throw new Error('Failed to generate analysis');
+  }
+  return response.json();
+};
+
+// Fetch AI analysis history
+export const getAiHistory = async () => {
+  const response = await fetch(`${API_URL}/ai/history`);
+  if (!response.ok) throw new Error('Failed to fetch history');
+  return response.json();
+};
