@@ -166,7 +166,7 @@ def get_occluded_fov(floorplan_id, camera_id):
             return jsonify({'error' : 'floorplan not found in database'}), 404
         
         cam_coords = floorplan.camera_floorplancoordinates[str(camera_id)]
-
+        print(f"cam_coords: {cam_coords}")
         if not cam_coords:
             return jsonify({'error' : 'Camera is not placed on selected floorplan'}), 404
 
@@ -174,14 +174,15 @@ def get_occluded_fov(floorplan_id, camera_id):
         cam_point = Point(cam_x, cam_y)
 
         wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
-
+        for wall in wall_polygons:
+            print(f"Wall : {wall}")
         fov_range = 20
         half_fov_deg = 33.5
         num_rays = 100
 
         start_deg = camera.heading_deg - half_fov_deg
         end_deg = camera.heading_deg + half_fov_deg
-
+        print(camera.heading_deg)
         occluded_points = []
 
         for i in range(num_rays + 1):
@@ -193,10 +194,11 @@ def get_occluded_fov(floorplan_id, camera_id):
             ray_end_x = cam_x + fov_range * math.cos(map_angle_rad)
             ray_end_y = cam_y + fov_range * math.sin(map_angle_rad)
 
-            ray = LineString([cam_point, (ray_end_x, ray_end_y)])
-
-            min_dist_sq = fov_range ** 2
+            # Initialize the closest intersection for *this specific ray* to its maximum range.
+            # This needs to be inside the loop to reset for each ray.
             closest_intersection = Point(ray_end_x, ray_end_y)
+            min_dist_sq = fov_range ** 2
+            ray = LineString([cam_point, closest_intersection])
 
             for wall in wall_polygons:
                 if ray.intersects(wall):

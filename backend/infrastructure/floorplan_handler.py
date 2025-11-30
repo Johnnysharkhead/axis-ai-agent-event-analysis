@@ -116,7 +116,10 @@ class FloorplanManager:
         # Invert the image so walls are white (for findContours)
         _, thresholded = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
         
-        contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Use RETR_LIST to get all contours, not just the outer one.
+        # This treats each wall segment as a separate polygon, which is better
+        # for ray-casting calculations.
+        contours, _ = cv2.findContours(thresholded, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         # Get floorplan dimensions to scale the polygons
         floorplan = Floorplan.query.filter_by(name=floorplan_name).first()
