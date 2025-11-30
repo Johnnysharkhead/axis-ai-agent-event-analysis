@@ -312,9 +312,13 @@ function Floormap2D() {
                   .map(c =>
                     fetch(`http://localhost:5001/floorplan/${floorplanId}/camera/${c.id}/occluded_fov`)
                       .then(res => res.json())
-                      .then(fovData => ({ ...c, occludedFov: fovData.fov_polygon }))
+                      .then(fovData => {
+                        console.log(fovData); // Log the received FOV data
+                        return { ...c, occludedFov: fovData.fov_polygon };
+                      })
                       .catch(() => c) // If fetch fails, return original camera
                   );
+
 
                 Promise.all(fovPromises).then(camerasWithFov => {
                   const cameraMap = new Map(camerasWithFov.map(c => [c.id, c]));
@@ -323,7 +327,6 @@ function Floormap2D() {
                 });
 
               }
-              setCameras(fetchedCameras);
             })
             .catch((err) => {
               console.error("Failed to fetch cameras:", err);
