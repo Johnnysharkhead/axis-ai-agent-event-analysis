@@ -778,81 +778,77 @@ useEffect(() => {
             )}
 
             {/* The Floormap Container */}
-                  <div
-                    className={`floormap-container ${highlightEdges ? "highlight" : ""}`}
-                    
-                    style={{ width: `${(mapHeight * roomConfig.width) / roomConfig.depth}px`, height: `${mapHeight}px`, position: "relative" }}
-
-                    onDragOver={(e) => {
+            <div
+              className={`floormap-container ${highlightEdges ? "highlight" : ""}`}
+              style={{
+                width: `${(mapHeight * roomConfig.width) / roomConfig.depth}px`,
+                height: `${mapHeight}px`,
+                position: "relative",
+              }}
+              onDragOver={(e) => {
                 e.preventDefault();
-                handleAutoScroll(e); // Lägg till automatisk scrollning
-            
+                handleAutoScroll(e);
+
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-            
+
                 const isOnEdge =
                   x <= 15 ||
                   x >= rect.width - 15 ||
                   y <= 15 ||
                   y >= rect.height - 15;
-            
+
                 setHighlightEdges(isOnEdge);
               }}
               onDragLeave={() => setHighlightEdges(false)}
               onDrop={(e) => {
                 e.preventDefault();
                 setHighlightEdges(false);
-            
+
                 const cameraId = parseInt(e.dataTransfer.getData("cameraId"), 10);
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-            
+
                 const isOnEdge =
                   x <= 15 ||
                   x >= rect.width - 15 ||
                   y <= 15 ||
                   y >= rect.height - 15;
-            
+
                 if (isOnEdge) {
                   let normalizedX = (x / rect.width) * roomConfig.width;
-                  let normalizedY = roomConfig.depth - (y / rect.height) * roomConfig.depth;
-            
+                  let normalizedY =
+                    roomConfig.depth - (y / rect.height) * roomConfig.depth;
+
                   if (x <= 15) normalizedX = 0;
                   if (x >= rect.width - 15) normalizedX = roomConfig.width;
                   if (y <= 15) normalizedY = roomConfig.depth;
                   if (y >= rect.height - 15) normalizedY = 0;
-            
-                  console.log(`Placing camera ${cameraId} at (${normalizedX}, ${normalizedY})`);
-            
-                  fetch(`http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      camera_id: cameraId,
-                      placed_coords: [normalizedX, normalizedY],
-                    }),
-                  })
-                    .then((res) => {
-                      if (!res.ok) {
-                        throw new Error(`Server responded with status ${res.status}`);
-                      }
-                      return res.json();
-                    })
+
+                  fetch(
+                    `http://localhost:5001/floorplan/${roomConfig.new_floorplan_id}`,
+                    {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        camera_id: cameraId,
+                        placed_coords: [normalizedX, normalizedY],
+                      }),
+                    }
+                  )
+                    .then((res) => res.json())
                     .then((data) => {
-                      console.log("Camera updated successfully:", data);
-                      setCameras((prevCameras) =>
-                        prevCameras.map((camera) =>
-                          camera.id === cameraId
-                            ? { ...camera, x: normalizedX, y: normalizedY, placed: true }
-                            : camera
+                      setCameras((prev) =>
+                        prev.map((c) =>
+                          c.id === cameraId
+                            ? { ...c, x: normalizedX, y: normalizedY, placed: true }
+                            : c
                         )
                       );
                     })
-                    .catch((err) => {
-                      console.error("Failed to update camera position:", err);
-                    });
+                    .catch((err) => console.error(err));
                 } else {
                   alert("Camera must be placed on the edge!");
                 }
@@ -868,27 +864,25 @@ useEffect(() => {
                 />
               )}
 
-              {/* Absolute positioned content */}
               <div className="floormap-content">
-                {/* Wall overlay image for KY25 floorplan - from HEAD (commented out per user request) */}
-                { selectedFloorplan && selectedFloorplan.name === "KY25(TA EJ BORT)" && (
-                  <img
-                    src={KY25Image}
-                    alt="Floorplan walls"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "fill",
-                      opacity: 0.9,
-                      pointerEvents: "none",
-                    }}
-                  />
-                ) }
-                
-                {/* SVG for zones */}
+                {selectedFloorplan &&
+                  selectedFloorplan.name === "KY25(TA EJ BORT)" && (
+                    <img
+                      src={KY25Image}
+                      alt="Floorplan walls"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "fill",
+                        opacity: 0.9,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
+
                 <svg
                   viewBox={`0 0 ${roomConfig.width} ${roomConfig.depth}`}
                   style={{
@@ -897,32 +891,29 @@ useEffect(() => {
                     width: "100%",
                     height: "100%",
                     pointerEvents: "none",
-                    zIndex: 1,
                   }}
                   preserveAspectRatio="none"
                 >
-                  {/* Render zones as polygons */}
+                  {/* Zones */}
                   {zones.map((zone, i) => (
                     <polygon
                       key={zone.id}
-                      points={
-                        (zone.points || [])
-                          .map((p) => `${p.x},${roomConfig.depth - p.y}`)
-                          .join(" ")
-                      }
+                      points={(zone.points || [])
+                        .map((p) => `${p.x},${roomConfig.depth - p.y}`)
+                        .join(" ")}
                       fill={`hsl(${(i * 57) % 360} 75% 50% / 0.12)`}
                       stroke={`hsl(${(i * 57) % 360} 75% 35%)`}
-                      strokeWidth={0.01 * roomConfig.width} // much thinner lines
+                      strokeWidth={0.01 * roomConfig.width}
                     />
                   ))}
 
-                  {/* Render zone names at centroid */}
+                  {/* Zone labels */}
                   {zones.map((zone, i) =>
                     zone.centroid ? (
                       <text
                         key={zone.id + "_label"}
-                        x={zone.centroid?.x}
-                        y={zone.centroid ? roomConfig.depth - zone.centroid.y : 0}
+                        x={zone.centroid.x}
+                        y={roomConfig.depth - zone.centroid.y}
                         fontSize={0.18 * roomConfig.width}
                         textAnchor="middle"
                         fill={`hsl(${(i * 57) % 360} 75% 35%)`}
@@ -932,24 +923,60 @@ useEffect(() => {
                       </text>
                     ) : null
                   )}
+
+                  {/* FOV config*/}
+                  {cameras
+                    .filter((c) => c.placed)
+                    .map((camera) => {
+                      const range = 20;
+                      const halfFov = 33.5;
+
+                      const startDeg = camera.heading - halfFov;
+                      const endDeg = camera.heading + halfFov;
+
+                      const rad = (deg) => (deg * Math.PI) / 180;
+                      const mapAngle = (deg) => rad(90 - deg);
+
+                      const sx = camera.x + range * Math.cos(mapAngle(startDeg));
+                      const sy = camera.y + range * Math.sin(mapAngle(startDeg));
+                      const ex = camera.x + range * Math.cos(mapAngle(endDeg));
+                      const ey = camera.y + range * Math.sin(mapAngle(endDeg));
+
+                      const flip = (y) => roomConfig.depth - y;
+                      const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+
+                      const path = `
+                        M ${camera.x},${flip(camera.y)}
+                        L ${sx},${flip(sy)}
+                        A ${range} ${range} 0 ${largeArc} 1 ${ex} ${flip(ey)}
+                        Z
+                      `;
+
+                      return (
+                        <path
+                          key={"fov_" + camera.id}
+                          d={path}
+                          fill="rgba(255, 217, 0, 0.20)"
+                          stroke="yellow"
+                          strokeWidth={0.005 * roomConfig.width}
+                        />
+                      );
+                    })}
+
+                  {cameras
+                    .filter((c) => c.placed)
+                    .map((camera) => (
+                      <circle
+                        key={camera.id}
+                        cx={camera.x}
+                        cy={roomConfig.depth - camera.y}
+                        r={0.25}
+                        fill="blue"
+                      />
+                    ))}
                 </svg>
 
-                {/* Render cameras as blue circles */}
-                {cameras
-                  .filter((camera) => camera.placed)
-                  .map((camera) => (
-                    <div
-                      key={camera.id}
-                      className="camera-circle"
-                      style={{
-                        left: `${(camera.x / roomConfig.width) * 100}%`,
-                        bottom: `${(camera.y / roomConfig.depth) * 100}%`,
-                      }}
-                      title={`Camera ${camera.id}`}
-                    />
-                  ))}
-
-                {/* Render people as red circles */}
+                {/* PEOPLE (absolute divs, not in SVG) */}
                 {Object.entries(people).map(([trackId, person]) => (
                   <div
                     key={trackId}
@@ -958,11 +985,11 @@ useEffect(() => {
                       left: `${(person.x_m / roomConfig.width) * 100}%`,
                       bottom: `${(person.y_m / roomConfig.depth) * 100}%`,
                     }}
-                    title={`Track ID: ${trackId}`}
                   />
                 ))}
               </div>
             </div>
+
 
 
             {/* Legend */}
