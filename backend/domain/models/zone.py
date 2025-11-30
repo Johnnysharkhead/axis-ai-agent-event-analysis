@@ -237,8 +237,13 @@ def get_current_active_schedules(floorplan_id):
             .filter(Zone.floorplan_id == floorplan_id)
         )
 
-        # Use JSON containment operator instead of contains()
-        weekday_filter = ZoneSchedule.days.op("@>")([weekday])
+        # Check dialect for SQLite compatibility (testing environment)
+        if db.session.bind.dialect.name == 'sqlite':
+            # Fallback for SQLite: Cast JSON to string and search for the day
+            weekday_filter = ZoneSchedule.days.cast(db.String).like(f'%"{weekday}"%')
+        else:
+            # Production (PostgreSQL): Use the efficient JSONB containment operator
+            weekday_filter = ZoneSchedule.days.op("@>")([weekday])
 
         recurring = and_(
             ZoneSchedule.type == "recurring",
@@ -283,3 +288,4 @@ def get_current_active_schedules(floorplan_id):
 
     except Exception as e:
         traceback.print_exc()
+        return [], []
