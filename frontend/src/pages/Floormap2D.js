@@ -866,7 +866,7 @@ useEffect(() => {
 
               <div className="floormap-content">
                 {selectedFloorplan &&
-                  selectedFloorplan.name === "KY25(TA EJ BORT)" && (
+                  selectedFloorplan.name === "KY25" && (
                     <img
                       src={KY25Image}
                       alt="Floorplan walls"
