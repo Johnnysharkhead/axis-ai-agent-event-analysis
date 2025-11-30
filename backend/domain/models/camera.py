@@ -43,5 +43,7 @@ class Camera(db.Model):
             "lat" : self.lat if self.lat else None,
             "lon" : self.lon if self.lon else None,
             "heading" : self.heading_deg,
+            "tilt" : self.tilt_deg,
+            "installation_height" : self.height_m,
             "serialno" : self.serialno
         }

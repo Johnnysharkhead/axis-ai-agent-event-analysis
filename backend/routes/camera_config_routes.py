@@ -226,83 +226,87 @@ def restart_camera(camera_id):
     })
 
 #This route is for setting geolocation, orientation and restarting
-@camera_config_bp.route("/cameras/<int:camera_id>/configure", methods=["POST", "OPTIONS"])
+@camera_config_bp.route("/cameras/<int:camera_id>/configure", methods=["GET", "POST", "OPTIONS"])
 @validate_camera_id
 def configure_camera(camera_id):
     if request.method == "OPTIONS":
         return jsonify({"message": "CORS preflight"}), 200
 
-    data = request.get_json()
-    results = {"camera_id": camera_id, "steps": []}
     try:
-        camera = Camera.query.filter_by(camera_id = camera_id).first()
+        camera = Camera.query.filter_by(id = camera_id).first()
     except Exception as e:
         return jsonify({'error' : 'camera not found in database'}), 500
     
-    #Set Geolocation
-    if "latitude" in data and "longitude" in data:
-        response, error, formatted_lat, formatted_lng = set_geolocation(
-            g.camera_ip, data["latitude"], data["longitude"]
-        )
-        camera.lat = data["latitude"]
-        camera.lon = data["longitude"]
-        if error:
-            results["steps"].append({"step": "geolocation", "success": False, "error": error})
-        else:
-            results["steps"].append({
-                "step": "geolocation",
-                "success": response.status_code == 200,
-                "latitude": formatted_lat,
-                "longitude": formatted_lng
-            })
+    if request.method == "GET":
+        return jsonify({'camera' : camera.serialize()}), 200
+    
+    elif request.method == "POST":
+        data = request.get_json()
+        results = {"camera_id": camera_id, "steps": []}
+        #Set Geolocation
+        if "latitude" in data and "longitude" in data:
+            response, error, formatted_lat, formatted_lng = set_geolocation(
+                g.camera_ip, data["latitude"], data["longitude"]
+            )
+            camera.lat = data["latitude"]
+            camera.lon = data["longitude"]
+            if error:
+                results["steps"].append({"step": "geolocation", "success": False, "error": error})
+            else:
+                results["steps"].append({
+                    "step": "geolocation",
+                    "success": response.status_code == 200,
+                    "latitude": formatted_lat,
+                    "longitude": formatted_lng
+                })
 
 
-    #Set Orientation
-    if "tilt" in data and "heading" in data and "installation_height" in data:
-        response, error = set_orientation(
-            g.camera_ip,
-            data["tilt"],
-            data["heading"],
-            data["installation_height"],
-            data.get("elevation")
-        )
-        camera.tilt_deg = data["tilt"]
-        camera.heading_deg = data["heading"]
-        camera.height_m = data["installation_height"]
+        #Set Orientation
+        if "tilt" in data and "heading" in data and "installation_height" in data:
+            response, error = set_orientation(
+                g.camera_ip,
+                data["tilt"],
+                data["heading"],
+                data["installation_height"],
+                data.get("elevation")
+            )
+            camera.tilt_deg = data["tilt"]
+            camera.heading_deg = data["heading"]
+            camera.height_m = data["installation_height"]
 
-        if error:
-            results["steps"].append({"step": "orientation", "success": False, "error": error})
-        else:
-            step_result = {
-                "step": "orientation",
-                "success": response.status_code == 200,
-                "tilt": data["tilt"],
-                "heading": data["heading"],
-                "installation_height": data["installation_height"]
-            }
-            if data.get("elevation") is not None:
-                step_result["elevation"] = data["elevation"]
-            results["steps"].append(step_result)
+            if error:
+                results["steps"].append({"step": "orientation", "success": False, "error": error})
+            else:
+                step_result = {
+                    "step": "orientation",
+                    "success": response.status_code == 200,
+                    "tilt": data["tilt"],
+                    "heading": data["heading"],
+                    "installation_height": data["installation_height"]
+                }
+                if data.get("elevation") is not None:
+                    step_result["elevation"] = data["elevation"]
+                results["steps"].append(step_result)
 
-    #Restart
-    if data.get("restart", False):
-        url = f"http://{g.camera_ip}/axis-cgi/restart.cgi"
-        response, error = camera_request(url)
+        #Restart
+        if data.get("restart", False):
+            url = f"http://{g.camera_ip}/axis-cgi/restart.cgi"
+            response, error = camera_request(url)
 
-        if error:
-            results["steps"].append({"step": "restart", "success": False, "error": error})
-        else:
-            results["steps"].append({
-                "step": "restart",
-                "success": response.status_code == 200,
-                "message": "Camera restart initiated"
-            })
+            if error:
+                results["steps"].append({"step": "restart", "success": False, "error": error})
+            else:
+                results["steps"].append({
+                    "step": "restart",
+                    "success": response.status_code == 200,
+                    "message": "Camera restart initiated"
+                })
 
-    #Check success
-    all_success = all(step.get("success", False) for step in results["steps"])
-    results["success"] = all_success
-    db.session.commit()
-    return jsonify(results), 200 if all_success else 207
+        #Check success
+        all_success = all(step.get("success", False) for step in results["steps"])
+        results["success"] = all_success
+        db.session.commit()
+        return jsonify(results), 200 if all_success else 207
 
 #Get current geolocation of camera
 @camera_config_bp.route("/cameras/<int:camera_id>/geolocation", methods=["GET", "OPTIONS"])
