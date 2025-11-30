@@ -305,6 +305,23 @@ function Floormap2D() {
                     placed,
                   };
                 });
+
+                // After fetching cameras, fetch the occluded FOV for each placed camera
+                const fovPromises = fetchedCameras
+                  .filter(c => c.placed)
+                  .map(c =>
+                    fetch(`http://localhost:5001/floorplan/${floorplanId}/camera/${c.id}/occluded_fov`)
+                      .then(res => res.json())
+                      .then(fovData => ({ ...c, occludedFov: fovData.fov_polygon }))
+                      .catch(() => c) // If fetch fails, return original camera
+                  );
+
+                Promise.all(fovPromises).then(camerasWithFov => {
+                  const cameraMap = new Map(camerasWithFov.map(c => [c.id, c]));
+                  const allCameras = fetchedCameras.map(c => cameraMap.get(c.id) || c);
+                  setCameras(allCameras);
+                });
+
               }
               setCameras(fetchedCameras);
             })
@@ -866,7 +883,7 @@ useEffect(() => {
 
               <div className="floormap-content">
                 {selectedFloorplan &&
-                  selectedFloorplan.name === "KY25(TA EJ BORT)" && (
+                  selectedFloorplan.name === "KY25" && (
                     <img
                       src={KY25Image}
                       alt="Floorplan walls"
@@ -927,41 +944,28 @@ useEffect(() => {
                   {/* FOV config*/}
                   {cameras
                     .filter((c) => c.placed)
-                    .map((camera) => {
-                      const range = 20;
-                      const halfFov = 33.5;
-
-                      const startDeg = camera.heading - halfFov;
-                      const endDeg = camera.heading + halfFov;
-
-                      const rad = (deg) => (deg * Math.PI) / 180;
-                      const mapAngle = (deg) => rad(90 - deg);
-
-                      const sx = camera.x + range * Math.cos(mapAngle(startDeg));
-                      const sy = camera.y + range * Math.sin(mapAngle(startDeg));
-                      const ex = camera.x + range * Math.cos(mapAngle(endDeg));
-                      const ey = camera.y + range * Math.sin(mapAngle(endDeg));
-
-                      const flip = (y) => roomConfig.depth - y;
-                      const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-
-                      const path = `
-                        M ${camera.x},${flip(camera.y)}
-                        L ${sx},${flip(sy)}
-                        A ${range} ${range} 0 ${largeArc} 1 ${ex} ${flip(ey)}
-                        Z
-                      `;
-
-                      return (
+                    .map((camera) => (
+                      // If the occluded FOV polygon is available, render it.
+                      // Otherwise, you could fall back to the simple cone or render nothing.
+                      camera.occludedFov && (
                         <path
                           key={"fov_" + camera.id}
-                          d={path}
+                          d={
+                            "M " +
+                            camera.occludedFov
+                              .map(
+                                (p) =>
+                                  `${p.x},${roomConfig.depth - p.y}`
+                              )
+                              .join(" L ") +
+                            " Z"
+                          }
                           fill="rgba(255, 217, 0, 0.20)"
                           stroke="yellow"
                           strokeWidth={0.005 * roomConfig.width}
                         />
-                      );
-                    })}
+                      )
+                    ))}
 
                   {cameras
                     .filter((c) => c.placed)
