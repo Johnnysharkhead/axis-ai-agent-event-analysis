@@ -1,12 +1,23 @@
 from . import db
 from datetime import datetime
+from sqlalchemy import func, Time, Boolean, and_, or_, TypeDecorator, JSON
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import func, Time, Boolean, and_, or_
 from sqlalchemy.orm import joinedload
 import traceback
 
+class PortableFloatArray(TypeDecorator):
+    """Array type that uses PostgreSQL ARRAY in production, JSON in SQLite for testing"""
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(db.Float))
+        else:
+            return dialect.type_descriptor(JSON())
+
 class Zone(db.Model):
-    """Zone model storing polygon coordinates; bbox stored as PostgreSQL float8[]"""
+    """Zone model storing polygon coordinates; bbox uses ARRAY in PostgreSQL, JSON in SQLite"""
     __tablename__ = "zones"
 
     id = db.Column(db.BigInteger, primary_key=True)
@@ -18,7 +29,7 @@ class Zone(db.Model):
     )
     name = db.Column(db.String(128), nullable=False)
     coordinates = db.Column(db.JSON, nullable=False)       # jsonb column for points
-    bbox = db.Column(ARRAY(db.Float), nullable=False)       # float8[] in DB
+    bbox = db.Column(PortableFloatArray, nullable=False)   # ARRAY in PostgreSQL, JSON in SQLite
     centroid = db.Column(db.JSON, nullable=True)            # jsonb
     # timestamps removed per schema — handled elsewhere if needed
 
@@ -226,8 +237,13 @@ def get_current_active_schedules(floorplan_id):
             .filter(Zone.floorplan_id == floorplan_id)
         )
 
-        # Use JSON containment operator instead of contains()
-        weekday_filter = ZoneSchedule.days.op("@>")([weekday])
+        # Check dialect for SQLite compatibility (testing environment)
+        if db.session.bind.dialect.name == 'sqlite':
+            # Fallback for SQLite: Cast JSON to string and search for the day
+            weekday_filter = ZoneSchedule.days.cast(db.String).like(f'%"{weekday}"%')
+        else:
+            # Production (PostgreSQL): Use the efficient JSONB containment operator
+            weekday_filter = ZoneSchedule.days.op("@>")([weekday])
 
         recurring = and_(
             ZoneSchedule.type == "recurring",
@@ -272,3 +288,4 @@ def get_current_active_schedules(floorplan_id):
 
     except Exception as e:
         traceback.print_exc()
+        return [], []
