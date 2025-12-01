@@ -2,7 +2,7 @@ from flask import Blueprint, send_from_directory, jsonify, request, Response
 from domain.models import db, Floorplan, Camera
 import os
 from infrastructure.floorplan_handler import FloorplanManager
-from shapely.geometry import Point, LineString, mapping
+from shapely.geometry import Point, LineString, mapping, Polygon
 import traceback
 import math
 
@@ -196,8 +196,16 @@ def get_occluded_fov(floorplan_id, camera_id):
         cam_x, cam_y = cam_coords
         cam_point = Point(cam_x, cam_y)
         print(camera.heading_deg)
+
         wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
-        print(f"wall_polygons: {wall_polygons}")
+        # Create a polygon for the room boundary to ensure rays stop at the edge
+        room_boundary = Polygon([
+            (0, 0), 
+            (floorplan.width, 0), 
+            (floorplan.width, floorplan.depth), 
+            (0, floorplan.depth)
+        ])
+        wall_polygons.append(room_boundary)
         fov_range = 20
         half_fov_deg = 33.5
         num_rays = 100
