@@ -6,7 +6,15 @@ import HeatmapOverlay from "../components/HeatmapOverlay";
 import "../styles/Floormap2D.css";
 import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans, invalidateFloorplanCache } from "../utils/floorplanPersistence";
 
+function cameraFovColor(i) {
+  const h = (i * 137.5) % 360;
+  const s = 90; 
+  const l = 60; 
 
+  const fill = `hsla(${h}, ${s}%, ${l}%, 0.25)`;
+  const stroke = `hsl(${h}, ${s}%, ${l}%)`;
+  return { fill, stroke };
+}
 
 function Floormap2D() {
   const [persistedId, savePersistedId] = usePersistedFloorplan();
@@ -943,6 +951,28 @@ useEffect(() => {
                   }}
                   preserveAspectRatio="none"
                 >
+                  <defs>
+                    {cameras
+                      .filter((c) => c.placed && c.occludedFov)
+                      .map((camera, index) => {
+                        const { fill, stroke } = cameraFovColor(index);
+                        return (
+                          <pattern
+                            key={`pattern_${camera.id}`}
+                            id={`pattern_fov_${camera.id}`}
+                            width="0.2"
+                            height="0.2"
+                            patternUnits="userSpaceOnUse"
+                            patternTransform="rotate(45)"
+                          >
+                            <rect width="0.2" height="0.2" fill={fill} />
+                            <line x1="0" y1="0" x2="0" y2="0.2" stroke={stroke} strokeWidth="0.05" />
+                          </pattern>
+                        );
+                      })}
+                  </defs>
+
+
                   {/* Zones */}
                   {zones.map((zone, i) => (
                     <polygon
@@ -990,9 +1020,9 @@ useEffect(() => {
                   {/* FOV config*/}
                   {cameras
                     .filter((c) => c.placed)
-                    .map((camera) => {
-                      if (camera.occludedFov) {
-                        // console.log(`FOV data for camera ${camera.id}:`, camera.occludedFov);
+                    .map((camera, index) => {
+                      if (camera.occludedFov) { 
+                        const { stroke } = cameraFovColor(index);
                         // If the occluded FOV polygon is available, render it.
                         // Otherwise, you could fall back to the simple cone or render nothing.
                         return (
@@ -1005,8 +1035,8 @@ useEffect(() => {
                                 .join(" L ") +
                               " Z"
                             }
-                            fill="rgba(255, 217, 0, 0.20)"
-                            stroke="yellow"
+                            fill={`url(#pattern_fov_${camera.id})`}
+                            stroke={stroke}
                             strokeWidth={0.005 * roomConfig.width}
                           />
                         );

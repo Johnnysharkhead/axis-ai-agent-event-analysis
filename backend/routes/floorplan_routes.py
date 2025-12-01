@@ -162,7 +162,6 @@ def get_floorplan_walls(floorplan_id):
 
         wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
         
-        # Convert shapely polygons to a JSON-serializable list of coordinates
         walls_data = []
         for poly in wall_polygons:
             wall_coords = mapping(poly)['coordinates'][0] # Get the exterior ring
@@ -226,8 +225,6 @@ def get_occluded_fov(floorplan_id, camera_id):
             ray_end_x = cam_x + fov_range * math.cos(map_angle_rad)
             ray_end_y = cam_y + fov_range * math.sin(map_angle_rad)
 
-            # Initialize the closest intersection for *this specific ray* to its maximum range.
-            # This needs to be inside the loop to reset for each ray.
             closest_intersection = Point(ray_end_x, ray_end_y)
 
             min_dist_sq = fov_range ** 2
