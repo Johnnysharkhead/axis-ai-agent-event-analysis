@@ -238,7 +238,7 @@ def get_current_active_schedules(floorplan_id):
         )
 
         # Check dialect for SQLite compatibility (testing environment)
-        if db.session.bind.dialect.name == 'sqlite':
+        if db.engine.dialect.name == 'sqlite':
             # Fallback for SQLite: Cast JSON to string and search for the day
             weekday_filter = ZoneSchedule.days.cast(db.String).like(f'%"{weekday}"%')
         else:
