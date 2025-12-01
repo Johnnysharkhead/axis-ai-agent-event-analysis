@@ -29,6 +29,8 @@ function Floormap2D() {
   const [isFloorplanVisible, setIsFloorplanVisible] = useState(true);
   const [isActivePeopleVisible, setIsActivePeopleVisible] = useState(true);
   const [isPlacedCamerasVisible, setIsPlacedCamerasVisible] = useState(true);
+  const [walls, setWalls] = useState([]);
+  const [showWalls, setShowWalls] = useState(false);
 
 
 
@@ -325,6 +327,19 @@ function Floormap2D() {
                   const allCameras = fetchedCameras.map(c => cameraMap.get(c.id) || c);
                   setCameras(allCameras);
                 });
+
+                // Fetch wall data for visualization
+                fetch(`http://localhost:5001/floorplan/${floorplanId}/walls`)
+                  .then(res => res.json())
+                  .then(wallData => {
+                    if (wallData.walls) {
+                      setWalls(wallData.walls);
+                    } else {
+                      setWalls([]);
+                    }
+                  }).catch(() => {
+                    setWalls([]);
+                  });
 
               }
             })
@@ -712,6 +727,20 @@ useEffect(() => {
             )}
           </div>
 
+          {/* Wall Visualization Toggle */}
+          <div className="page__section">
+            <h3 className="page__section-title">Debug Tools</h3>
+            <button
+              onClick={() => setShowWalls(!showWalls)}
+              className={`stream-settings-button ${showWalls ? "mock" : "real"}`}
+            >
+              {showWalls ? "Hide" : "Show"} Calculated Walls
+            </button>
+            <small className="stream-settings-info">
+              Visualize the wall polygons used for FOV calculation.
+            </small>
+          </div>
+
           {/* Heatmap Panel */}
           <div className="page__section heatmap-panel">
             <h3
@@ -944,31 +973,46 @@ useEffect(() => {
                     ) : null
                   )}
 
+                  {/* Render Wall Polygons if showWalls is true */}
+                  {showWalls && walls.map((wall, index) => (
+                    <polygon
+                      key={`wall_${index}`}
+                      points={wall.map(p => `${p.x},${roomConfig.depth - p.y}`).join(" ")}
+                      fill="rgba(255, 0, 0, 0.2)"
+                      stroke="red"
+                      strokeWidth={0.01 * roomConfig.width}
+                    />
+                  ))}
+
+
+
+
                   {/* FOV config*/}
                   {cameras
                     .filter((c) => c.placed)
-                    .map((camera) => (
-                      // If the occluded FOV polygon is available, render it.
-                      // Otherwise, you could fall back to the simple cone or render nothing.
-                      camera.occludedFov && (
-                        <path
-                          key={"fov_" + camera.id}
-                          d={
-                            "M " +
-                            camera.occludedFov
-                              .map(
-                                (p) =>
-                                  `${p.x},${roomConfig.depth - p.y}`
-                              )
-                              .join(" L ") +
-                            " Z"
-                          }
-                          fill="rgba(255, 217, 0, 0.20)"
-                          stroke="yellow"
-                          strokeWidth={0.005 * roomConfig.width}
-                        />
-                      )
-                    ))}
+                    .map((camera) => {
+                      if (camera.occludedFov) {
+                        // console.log(`FOV data for camera ${camera.id}:`, camera.occludedFov);
+                        // If the occluded FOV polygon is available, render it.
+                        // Otherwise, you could fall back to the simple cone or render nothing.
+                        return (
+                          <path
+                            key={"fov_" + camera.id}
+                            d={
+                              `M ${camera.x},${roomConfig.depth - camera.y} L ` + // Start at camera
+                              camera.occludedFov.slice(1) // Exclude the first point from backend (which is camera pos)
+                                .map(p => `${p.x},${roomConfig.depth - p.y}`)
+                                .join(" L ") + 
+                              " Z" // Close the path back to the camera
+                            }
+                            fill="rgba(255, 217, 0, 0.20)"
+                            stroke="yellow"
+                            strokeWidth={0.005 * roomConfig.width}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
 
                   {cameras
                     .filter((c) => c.placed)

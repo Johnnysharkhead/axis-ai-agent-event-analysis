@@ -2,7 +2,7 @@ from flask import Blueprint, send_from_directory, jsonify, request, Response
 from domain.models import db, Floorplan, Camera
 import os
 from infrastructure.floorplan_handler import FloorplanManager
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, mapping
 import traceback
 import math
 
@@ -150,6 +150,29 @@ def handle_floorplan(floorplan_id):
         except Exception as e:
             return jsonify({'error' : 'failed to remove floorplan from floorplan {floorplan_id}'})
         
+@floorplan_bp.route("/floorplan/<floorplan_id>/walls", methods=["GET", "OPTIONS"])
+def get_floorplan_walls(floorplan_id):
+    if request.method == "OPTIONS":
+        return _build_cors_preflight_response()
+    
+    try:
+        floorplan = Floorplan.query.filter_by(id=floorplan_id).first()
+        if not floorplan:
+            return jsonify({'error' : 'floorplan not found in database'}), 404
+
+        wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
+        
+        # Convert shapely polygons to a JSON-serializable list of coordinates
+        walls_data = []
+        for poly in wall_polygons:
+            wall_coords = mapping(poly)['coordinates'][0] # Get the exterior ring
+            walls_data.append([{'x': x, 'y': y} for x, y in wall_coords])
+
+        return jsonify({'walls': walls_data}), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error' : 'failed to get wall polygons'}), 500
 @floorplan_bp.route("/floorplan/<floorplan_id>/camera/<camera_id>/occluded_fov", methods=["GET", "OPTIONS"])
 def get_occluded_fov(floorplan_id, camera_id):
     
@@ -174,17 +197,15 @@ def get_occluded_fov(floorplan_id, camera_id):
         cam_point = Point(cam_x, cam_y)
 
         wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
-        for wall in wall_polygons:
-            print(f"Wall : {wall}")
+        print(f"wall_polygons: {wall_polygons}")
         fov_range = 20
         half_fov_deg = 33.5
         num_rays = 100
 
-        start_deg = camera.heading_deg - half_fov_deg
-        end_deg = camera.heading_deg + half_fov_deg
-        print(camera.heading_deg)
+        start_deg = (camera.heading_deg - half_fov_deg)
+        end_deg = (camera.heading_deg + half_fov_deg)
         occluded_points = []
-
+        
         for i in range(num_rays + 1):
             
             current_angle_deg = start_deg + (i / num_rays) * (end_deg - start_deg)
@@ -197,16 +218,17 @@ def get_occluded_fov(floorplan_id, camera_id):
             # Initialize the closest intersection for *this specific ray* to its maximum range.
             # This needs to be inside the loop to reset for each ray.
             closest_intersection = Point(ray_end_x, ray_end_y)
+
             min_dist_sq = fov_range ** 2
-            ray = LineString([cam_point, closest_intersection])
 
             for wall in wall_polygons:
+                ray = LineString([cam_point, closest_intersection]) # Recreate the ray with the current closest intersection
                 if ray.intersects(wall):
                     intersection = ray.intersection(wall)
 
                     if intersection.geom_type == 'Point':
                         dist_sq = cam_point.distance(intersection) ** 2
-                        if dist_sq < min_dist_sq:
+                        if dist_sq < min_dist_sq and dist_sq > 1e-9:
                             min_dist_sq = dist_sq
                             closest_intersection = intersection
                     elif intersection.geom_type in ['MultiPoint', 'LineString', 'MultiLineString']:
@@ -215,7 +237,7 @@ def get_occluded_fov(floorplan_id, camera_id):
                             for point_candidate in list(p.coords):
                                 pt = Point(point_candidate)
                                 dist_sq = cam_point.distance(pt) ** 2
-                                if dist_sq < min_dist_sq:
+                                if dist_sq < min_dist_sq and dist_sq > 1e-9:
                                     min_dist_sq = dist_sq
                                     closest_intersection = pt
             occluded_points.append({'x' : closest_intersection.x, 'y' : closest_intersection.y})
