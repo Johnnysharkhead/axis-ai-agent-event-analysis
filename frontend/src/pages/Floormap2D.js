@@ -580,7 +580,7 @@ useEffect(() => {
                     .map((camera) => (
                       <div key={camera.id} className="placed-camera-item">
                         <div className="placed-camera-info">
-                          <strong>Camera {camera.id}</strong>
+                          <strong>Camera {camera.id} {camera.heading}</strong>
                           <div className="placed-camera-coordinates">
                            ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
                           </div>
@@ -999,11 +999,11 @@ useEffect(() => {
                           <path
                             key={"fov_" + camera.id}
                             d={
-                              `M ${camera.x},${roomConfig.depth - camera.y} L ` + // Start at camera
-                              camera.occludedFov.slice(1) // Exclude the first point from backend (which is camera pos)
-                                .map(p => `${p.x},${roomConfig.depth - p.y}`)
-                                .join(" L ") + 
-                              " Z" // Close the path back to the camera
+                              "M " +
+                              camera.occludedFov
+                                .map((p) => `${p.x},${roomConfig.depth - p.y}`)
+                                .join(" L ") +
+                              " Z"
                             }
                             fill="rgba(255, 217, 0, 0.20)"
                             stroke="yellow"

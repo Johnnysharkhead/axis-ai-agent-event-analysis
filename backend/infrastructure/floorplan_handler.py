@@ -126,15 +126,18 @@ class FloorplanManager:
         if not floorplan:
             return []
 
-        img_height, img_width = image.shape[:2]
-        scale_x = floorplan.width / img_width
-        scale_y = floorplan.depth / img_height
-
         polygons = []
+        # We iterate through all contours, but only process the ones that are "holes" or inner boundaries.
+        # In a CCOMP hierarchy, contours without a parent (hierarchy[0][i][3] == -1) are outer boundaries.
+        # We are interested in the inner ones.
         for contour in contours:
             # Simplify the contour to reduce vertex count
             epsilon = 0.01 * cv2.arcLength(contour, True)
             approx_contour = cv2.approxPolyDP(contour, epsilon, True)
+
+            img_height, img_width = image.shape[:2]
+            scale_x = floorplan.width / img_width
+            scale_y = floorplan.depth / img_height
 
             if len(approx_contour) >= 3:
                 # Scale and flip the Y-axis to match your room coordinate system

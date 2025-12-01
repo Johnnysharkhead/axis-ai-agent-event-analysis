@@ -195,22 +195,25 @@ def get_occluded_fov(floorplan_id, camera_id):
 
         cam_x, cam_y = cam_coords
         cam_point = Point(cam_x, cam_y)
-
+        print(camera.heading_deg)
         wall_polygons = FloorplanManager.get_wall_polygons(floorplan.name)
         print(f"wall_polygons: {wall_polygons}")
         fov_range = 20
         half_fov_deg = 33.5
         num_rays = 100
 
-        start_deg = (camera.heading_deg - half_fov_deg)
-        end_deg = (camera.heading_deg + half_fov_deg)
+        # Convert navigational heading (0=North, clockwise) to mathematical angle (0=East, counter-clockwise)
+        math_heading_deg = (450 - camera.heading_deg) % 360
+
+        start_deg = math_heading_deg - half_fov_deg
+        end_deg = math_heading_deg + half_fov_deg
         occluded_points = []
         
         for i in range(num_rays + 1):
             
             current_angle_deg = start_deg + (i / num_rays) * (end_deg - start_deg)
 
-            map_angle_rad = math.radians(90 - current_angle_deg)
+            map_angle_rad = math.radians(current_angle_deg)
 
             ray_end_x = cam_x + fov_range * math.cos(map_angle_rad)
             ray_end_y = cam_y + fov_range * math.sin(map_angle_rad)
