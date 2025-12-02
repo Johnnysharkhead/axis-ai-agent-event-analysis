@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import "../styles/pages.css";
 
 function CameraConfig() {
-  const [cameraId, setCameraId] = useState(1);
-  const [latitude, setLatitude] = useState(58.3977);
-  const [longitude, setLongitude] = useState(15.5765);
-  const [tilt, setTilt] = useState(-45.0);
-  const [heading, setHeading] = useState(0.0);
-  const [elevation, setElevation] = useState(0.0);
-  const [installationHeight, setInstallationHeight] = useState(3.0);
+  const [cameraId, setCameraId] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [tilt, setTilt] = useState("");
+  const [heading, setHeading] = useState("");
+  const [elevation, setElevation] = useState("");
+  const [installationHeight, setInstallationHeight] = useState("");
   const [restart, setRestart] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -44,6 +44,40 @@ function CameraConfig() {
     }
   };
 
+  const fetchCurrentCamera = async (cameraId) => {
+    // e.preventDefault();
+
+    try {
+      fetch(
+        `http://localhost:5001/cameras/${cameraId}/configure`, {
+        method: 'GET',
+        headers: {
+          "Content-Type" : "application/json"
+        },
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Camera data:", data);
+
+        if (!data.camera) return;
+
+        const cam = data.camera;
+
+        // Safely update states
+        setLatitude(parseFloat(cam.lat) || 0);
+        setLongitude(parseFloat(cam.lon) || 0);
+        setHeading(cam.heading || 0);
+        setTilt(cam.tilt || 0);
+        // setRoll(cam.roll || 0);
+        setInstallationHeight(cam.installation_height || 0);
+
+        // setSelectedCamera(cam);
+      });
+    } catch (error) {
+      console.error(error.message)
+    }
+  }
+
   return (
     <section className="page">
       <header className="header">
@@ -60,7 +94,11 @@ function CameraConfig() {
             </label>
             <select
               value={cameraId}
-              onChange={(e) => setCameraId(parseInt(e.target.value))}
+              onChange={(e) => {
+                const id = parseInt(e.target.value)
+              setCameraId(id)
+              fetchCurrentCamera(id)
+              }}
               style={{
                 width: "100%",
                 padding: "0.5rem",
@@ -68,6 +106,7 @@ function CameraConfig() {
                 border: "1px solid #ccc",
               }}
             >
+              <option value="" disabled> Select a camera: </option>
               <option value={1}>Camera 1 (192.168.0.97)</option>
               <option value={2}>Camera 2 (192.168.0.98)</option>
               <option value={3}>Camera 3 (192.168.0.96)</option>

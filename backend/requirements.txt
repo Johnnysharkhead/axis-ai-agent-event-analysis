@@ -11,3 +11,4 @@ paho-mqtt==1.6.1
 psutil>=5.9.0
 flask-login
 requests==2.31.0
+shapely==2.1.2
