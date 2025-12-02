@@ -6,7 +6,15 @@ import HeatmapOverlay from "../components/HeatmapOverlay";
 import "../styles/Floormap2D.css";
 import { usePersistedFloorplan, getCachedFloorplans, cacheFloorplans, invalidateFloorplanCache } from "../utils/floorplanPersistence";
 
+function cameraFovColor(i) {
+  const h = (i * 137.5) % 360;
+  const s = 90; 
+  const l = 60; 
 
+  const fill = `hsla(${h}, ${s}%, ${l}%, 0.25)`;
+  const stroke = `hsl(${h}, ${s}%, ${l}%)`;
+  return { fill, stroke };
+}
 
 function Floormap2D() {
   const [persistedId, savePersistedId] = usePersistedFloorplan();
@@ -29,6 +37,8 @@ function Floormap2D() {
   const [isFloorplanVisible, setIsFloorplanVisible] = useState(true);
   const [isActivePeopleVisible, setIsActivePeopleVisible] = useState(true);
   const [isPlacedCamerasVisible, setIsPlacedCamerasVisible] = useState(true);
+  const [walls, setWalls] = useState([]);
+  const [showWalls, setShowWalls] = useState(false);
 
 
 
@@ -305,8 +315,41 @@ function Floormap2D() {
                     placed,
                   };
                 });
+
+                // After fetching cameras, fetch the occluded FOV for each placed camera
+                const fovPromises = fetchedCameras
+                  .filter(c => c.placed)
+                  .map(c =>
+                    fetch(`http://localhost:5001/floorplan/${floorplanId}/camera/${c.id}/occluded_fov`)
+                      .then(res => res.json())
+                      .then(fovData => {
+                        console.log(fovData); // Log the received FOV data
+                        return { ...c, occludedFov: fovData.fov_polygon };
+                      })
+                      .catch(() => c) // If fetch fails, return original camera
+                  );
+
+
+                Promise.all(fovPromises).then(camerasWithFov => {
+                  const cameraMap = new Map(camerasWithFov.map(c => [c.id, c]));
+                  const allCameras = fetchedCameras.map(c => cameraMap.get(c.id) || c);
+                  setCameras(allCameras);
+                });
+
+                // Fetch wall data for visualization
+                fetch(`http://localhost:5001/floorplan/${floorplanId}/walls`)
+                  .then(res => res.json())
+                  .then(wallData => {
+                    if (wallData.walls) {
+                      setWalls(wallData.walls);
+                    } else {
+                      setWalls([]);
+                    }
+                  }).catch(() => {
+                    setWalls([]);
+                  });
+
               }
-              setCameras(fetchedCameras);
             })
             .catch((err) => {
               console.error("Failed to fetch cameras:", err);
@@ -545,7 +588,7 @@ useEffect(() => {
                     .map((camera) => (
                       <div key={camera.id} className="placed-camera-item">
                         <div className="placed-camera-info">
-                          <strong>Camera {camera.id}</strong>
+                          <strong>Camera {camera.id} {camera.heading}</strong>
                           <div className="placed-camera-coordinates">
                            ({camera.x.toFixed(2)}, {camera.y.toFixed(2)})
                           </div>
@@ -690,6 +733,20 @@ useEffect(() => {
                 )}
               </>
             )}
+          </div>
+
+          {/* Wall Visualization Toggle */}
+          <div className="page__section">
+            <h3 className="page__section-title">Debug Tools</h3>
+            <button
+              onClick={() => setShowWalls(!showWalls)}
+              className={`stream-settings-button ${showWalls ? "mock" : "real"}`}
+            >
+              {showWalls ? "Hide" : "Show"} Calculated Walls
+            </button>
+            <small className="stream-settings-info">
+              Visualize the wall polygons used for FOV calculation.
+            </small>
           </div>
 
           {/* Heatmap Panel */}
@@ -894,6 +951,28 @@ useEffect(() => {
                   }}
                   preserveAspectRatio="none"
                 >
+                  <defs>
+                    {cameras
+                      .filter((c) => c.placed && c.occludedFov)
+                      .map((camera, index) => {
+                        const { fill, stroke } = cameraFovColor(index);
+                        return (
+                          <pattern
+                            key={`pattern_${camera.id}`}
+                            id={`pattern_fov_${camera.id}`}
+                            width="0.2"
+                            height="0.2"
+                            patternUnits="userSpaceOnUse"
+                            patternTransform="rotate(45)"
+                          >
+                            <rect width="0.2" height="0.2" fill={fill} />
+                            <line x1="0" y1="0" x2="0" y2="0.2" stroke={stroke} strokeWidth="0.05" />
+                          </pattern>
+                        );
+                      })}
+                  </defs>
+
+
                   {/* Zones */}
                   {zones.map((zone, i) => (
                     <polygon
@@ -924,43 +1003,45 @@ useEffect(() => {
                     ) : null
                   )}
 
+                  {/* Render Wall Polygons if showWalls is true */}
+                  {showWalls && walls.map((wall, index) => (
+                    <polygon
+                      key={`wall_${index}`}
+                      points={wall.map(p => `${p.x},${roomConfig.depth - p.y}`).join(" ")}
+                      fill="rgba(255, 0, 0, 0.2)"
+                      stroke="red"
+                      strokeWidth={0.01 * roomConfig.width}
+                    />
+                  ))}
+
+
+
+
                   {/* FOV config*/}
                   {cameras
                     .filter((c) => c.placed)
-                    .map((camera) => {
-                      const range = 20;
-                      const halfFov = 33.5;
-
-                      const startDeg = camera.heading - halfFov;
-                      const endDeg = camera.heading + halfFov;
-
-                      const rad = (deg) => (deg * Math.PI) / 180;
-                      const mapAngle = (deg) => rad(90 - deg);
-
-                      const sx = camera.x + range * Math.cos(mapAngle(startDeg));
-                      const sy = camera.y + range * Math.sin(mapAngle(startDeg));
-                      const ex = camera.x + range * Math.cos(mapAngle(endDeg));
-                      const ey = camera.y + range * Math.sin(mapAngle(endDeg));
-
-                      const flip = (y) => roomConfig.depth - y;
-                      const largeArc = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-
-                      const path = `
-                        M ${camera.x},${flip(camera.y)}
-                        L ${sx},${flip(sy)}
-                        A ${range} ${range} 0 ${largeArc} 1 ${ex} ${flip(ey)}
-                        Z
-                      `;
-
-                      return (
-                        <path
-                          key={"fov_" + camera.id}
-                          d={path}
-                          fill="rgba(255, 217, 0, 0.20)"
-                          stroke="yellow"
-                          strokeWidth={0.005 * roomConfig.width}
-                        />
-                      );
+                    .map((camera, index) => {
+                      if (camera.occludedFov) { 
+                        const { stroke } = cameraFovColor(index);
+                        // If the occluded FOV polygon is available, render it.
+                        // Otherwise, you could fall back to the simple cone or render nothing.
+                        return (
+                          <path
+                            key={"fov_" + camera.id}
+                            d={
+                              "M " +
+                              camera.occludedFov
+                                .map((p) => `${p.x},${roomConfig.depth - p.y}`)
+                                .join(" L ") +
+                              " Z"
+                            }
+                            fill={`url(#pattern_fov_${camera.id})`}
+                            stroke={stroke}
+                            strokeWidth={0.005 * roomConfig.width}
+                          />
+                        );
+                      }
+                      return null;
                     })}
 
                   {cameras

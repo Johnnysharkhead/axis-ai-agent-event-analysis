@@ -1,6 +1,11 @@
 from domain.models import Floorplan, Camera
 import math
 import traceback
+import os
+import cv2
+import numpy as np
+from shapely.geometry import Polygon, LineString, Point
+
     
 class FloorplanManager:
     @staticmethod
@@ -86,4 +91,62 @@ class FloorplanManager:
         return {"x_m": abs(x_m), "y_m": abs(y_m)}
 
         
+    @staticmethod
+    def get_wall_polygons(floorplan_name):
+        """
+        Vectorizes a floorplan image to extract wall polygons.
+        This is a placeholder implementation. For a real-world scenario,
+        you would want to cache the results of this function.
+        """
 
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        image_path = os.path.join(base_dir, 'static', 'images', 'floorplans', f"{floorplan_name}.png")
+
+        if not os.path.exists(image_path):
+            print(f"Image not found at {image_path}")
+            return []
+
+            
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            print(f"Failed to read image at {image_path}")
+            return []
+            
+        # Invert the image so walls are white (for findContours)
+        _, thresholded = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
+        
+        # Use RETR_LIST to get all contours, not just the outer one.
+        # This treats each wall segment as a separate polygon, which is better
+        # for ray-casting calculations.
+        contours, _ = cv2.findContours(thresholded, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Get floorplan dimensions to scale the polygons
+        floorplan = Floorplan.query.filter_by(name=floorplan_name).first()
+        if not floorplan:
+            return []
+
+        polygons = []
+        # We iterate through all contours, but only process the ones that are "holes" or inner boundaries.
+        # In a CCOMP hierarchy, contours without a parent (hierarchy[0][i][3] == -1) are outer boundaries.
+        # We are interested in the inner ones.
+        for contour in contours:
+            # Simplify the contour to reduce vertex count
+            epsilon = 0.01 * cv2.arcLength(contour, True)
+            approx_contour = cv2.approxPolyDP(contour, epsilon, True)
+
+            img_height, img_width = image.shape[:2]
+            scale_x = floorplan.width / img_width
+            scale_y = floorplan.depth / img_height
+
+            if len(approx_contour) >= 3:
+                # Scale and flip the Y-axis to match your room coordinate system
+                points = [
+                    (
+                        p[0][0] * scale_x,
+                        floorplan.depth - (p[0][1] * scale_y)
+                    ) for p in approx_contour
+                ]
+                polygons.append(Polygon(points))
+
+        return polygons
