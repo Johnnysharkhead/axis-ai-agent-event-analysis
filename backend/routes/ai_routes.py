@@ -24,6 +24,7 @@ def get_latest_analysis():
 from flask import Blueprint, jsonify
 from application.ai_analysis import generate_security_summary
 from domain.models import DailySummary
+from datetime import date
 
 ai_bp = Blueprint('ai_routes', __name__)
 
@@ -31,14 +32,31 @@ ai_bp = Blueprint('ai_routes', __name__)
 def get_latest_analysis():
     """
     Endpoint to trigger AI analysis on the latest relevant DB row.
+    Checks if today's summary already exists before calling LLM.
     """
+    # 1. Check if today's summary already exists in the database
+    today = date.today()
+    existing_summary = DailySummary.query.filter_by(
+        summary_date=today
+    ).order_by(DailySummary.created_at.desc()).first()
+    
+    # 2. If summary exists and was successful, return it directly (no LLM call)
+    if existing_summary and existing_summary.status == 'success':
+        return jsonify({
+            "message": existing_summary.summary_text,
+            "cached": True,
+            "generated_at": existing_summary.created_at.isoformat() if existing_summary.created_at else None
+        }), 200
+    
+    # 3. Otherwise, generate new summary using LLM
     result = generate_security_summary()
     
     if result['status'] == 'success':
-        # ✅ CHANGE: Only return the 'message' part
-        return jsonify({"message": result['message']}), 200
+        return jsonify({
+            "message": result['message'],
+            "cached": False
+        }), 200
     else:
-        # On error, still return json but with the error message
         return jsonify({"message": result['message']}), 500
 
 

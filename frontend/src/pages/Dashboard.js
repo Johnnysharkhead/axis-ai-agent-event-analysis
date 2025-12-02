@@ -80,18 +80,24 @@ function Dashboard({ isAlarmFiring = false }) {
         const data = await triggerAiAnalysis();
         
         // 2. Format the response for the UI
-        // The API returns { message: "..." }
-        // We create a 'short' version by taking the first sentence or first 100 chars
+        // The API now returns { message: "...", cached: true/false, generated_at: "..." }
         const fullText = data.message || "No analysis available.";
         const shortText = fullText.length > 120 
           ? fullText.substring(0, 120) + "..." 
           : fullText;
 
+        // 3. Determine the time label based on whether it's cached
+        let timeLabel = sinceLabel;
+        if (data.cached && data.generated_at) {
+          timeLabel = formatSinceLabel(data.generated_at);
+        }
+
         setAiSummary({
-          title: "AI Security Agent",
+          title: data.cached ? "AI Security Agent" : "AI Security Agent",
           short: shortText,
           detail: fullText,
-          sinceLabel: sinceLabel,
+          sinceLabel: timeLabel,
+          isCached: data.cached || false,
         });
 
       } catch (error) {
