@@ -85,11 +85,25 @@ function Dashboard({ isAlarmFiring = false }) {
         const shortText = fullText.length > 120 
           ? fullText.substring(0, 120) + "..." 
           : fullText;
-
+/*
         // 3. Determine the time label based on whether it's cached
         let timeLabel = sinceLabel;
         if (data.cached && data.generated_at) {
-          timeLabel = formatSinceLabel(data.generated_at);
+          //timeLabel = formatSinceLabel(data.generated_at);
+          timeLabel = "on " + new Date(data.generated_at).toLocaleString();
+        }
+          */
+
+
+        let timeLabel = sinceLabel;
+        if (data.cached && data.generated_at) {
+          // FIX: Append 'Z' to force JS to treat it as UTC
+          // .toLocaleString() will convert it to Sweden's Local time
+          const utcString = data.generated_at.endsWith('Z') 
+            ? data.generated_at 
+            : data.generated_at + 'Z';
+            
+          timeLabel = "on " + new Date(utcString).toLocaleString();
         }
 
         setAiSummary({

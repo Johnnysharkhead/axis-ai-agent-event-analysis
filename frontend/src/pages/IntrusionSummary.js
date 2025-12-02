@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react"; // Added useEffect
 import "../styles/pages.css";
 import "../styles/eventHistory.css";
 import { getCachedUser } from "../utils/userStorage";
-import { getAiHistory } from "../utils/api"; // <--- IMPORT API
+import { getAiHistory } from "../utils/api"; // API function to fetch AI history
 
 const formatSinceLabel = (dateString) => {
   if (!dateString) return "since your last session";
@@ -37,6 +37,43 @@ export default function IntrusionSummary() {
   const [selectedRange, setSelectedRange] = useState("7days");
   const [searchTerm, setSearchTerm] = useState("");
 
+
+  // --- HELPER: To Generate a clean title from the long text ---
+  const generateSmartHeadline = (text) => {
+    if (!text) return "Security Log Entry";
+    const lowerText = text.toLowerCase();
+
+    // 1. Check for "Noise" or "Dismissed" events
+    if (lowerText.includes("transient") || lowerText.includes("noise") || lowerText.includes("auto-dismissed")) {
+      return "⚠️ Low Priority: Transient Noise Detected";
+    }
+
+    // 2. Extract Key Details using Regex
+    const objectMatch = text.match(/(human|person|vehicle|face)/i);
+    const cameraMatch = text.match(/Camera\s+([A-Za-z0-9]+)/i); // Captures "Camera 2" or "Camera B8..."
+    const zoneMatch = text.match(/Zone\s+([A-Za-z0-9]+)/i);     // Captures "Zone B"
+
+    let title = "Activity Detected";
+
+    // 3. Construct the Title
+    if (objectMatch) {
+      // Capitalize first letter (e.g., "Human") for better presentation
+      title = `${objectMatch[0].charAt(0).toUpperCase() + objectMatch[0].slice(1)} Detected`;
+    }
+
+    if (zoneMatch) {
+      title += ` in Zone ${zoneMatch[1]}`;
+    }
+    
+    if (cameraMatch) {
+      // Add camera info if space permits, otherwise keep it short
+      title += ` • ${cameraMatch[0]}`; 
+    }
+
+    return title;
+  };
+
+
   // --- FETCH DATA ON MOUNT ---
   useEffect(() => {
     const fetchHistory = async () => {
@@ -48,11 +85,13 @@ export default function IntrusionSummary() {
         const formattedData = data.map((item) => {
           // Create a headline by taking the first few words of the summary
           const text = item.summary_text || "";
+          const smartHeadline = generateSmartHeadline(text); // Use the helper function for smart headline
           const generatedHeadline = text.split('.')[0] + "..."; // First sentence as headline
 
           return {
             date: item.summary_date || item.created_at.split('T')[0],
-            headline: generatedHeadline,
+            //headline: generatedHeadline, // Original simple headline, doesnt say much replaced with smart one below 
+            headline: smartHeadline, // uses the smart headline generator
             summary: text
           };
         });
@@ -93,7 +132,7 @@ export default function IntrusionSummary() {
     const toTs = resolvedRange.to ? resolvedRange.to.getTime() : null;
     const term = searchTerm.trim();
 
-    // Use 'summaries' state instead of mock data
+    // Using 'summaries' state instead of mock data
     return summaries
       .filter((item) => {
         const itemTs = new Date(item.date).getTime();
