@@ -1,105 +1,335 @@
-# Axis Project
+# Axis Intelligent Security Surveillance System
 
- This repository contains a microservices-based application running inside Docker, consisting of four key services:
+Intelligent Security Surveillance Platform featuring an autonomous AI Agent pipeline that analyzes camera detection events and generates actionable security reports. 
 
- * **React (Frontend):** A real-time dashboard for monitoring security events.
- * **Flask (Backend):** The API layer that processes data and manages the database.
- * **Mosquitto (MQTT):** The message broker that ingests raw metadata from camera sensors.
- * **Ollama (AI):** A local Large Language Model (Phi 4 Mini) that generates human-readable event summaries.
+Key AI Features:
+• 🤖 AI Security Agent - Autonomous LLM-powered analyst using Phi4-Mini
+• 📊 Smart Summarization - Generates structured Event/Location/Suggestion reports
+• 💬 Natural Language Output - Human-readable security insights from raw sensor data
+• ⚡ Intelligent Caching - Daily summary persistence to avoid redundant LLM calls
+• 🔗 Multi-Camera Fusion - TrackFusion algorithm correlates detections across cameras
 
+Tech Stack: Flask | React | Ollama | PostgreSQL | MQTT | Docker
 
-## 🚀 First time setup
+![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue)
+![Backend](https://img.shields.io/badge/Backend-Flask-green)
+![Frontend](https://img.shields.io/badge/Frontend-React-61DAFB)
+![AI](https://img.shields.io/badge/AI-Ollama%20Phi4--Mini-orange)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
 
-#### 1. Install Git  
-Make sure you have Git, otherwise [download git](https://git-scm.com/downloads)
+## 🏗️ Architecture Overview
 
-#### 2. Install Docker  
-Make sure you have Docker installed, otherwise: 
-* On Mac/Windows → install [Docker Desktop](https://www.docker.com/products/docker-desktop/)  
-* On Linux → install `docker` and `docker-compose` via package manager
-
-### 3. Clone the repo
-````
-git clone <repo-url-from-gitlab>
-cd company3
-````
-
-### 4. Copy environment variables
-Mac/Linux (bash):
-````
-cp .env.example .env
-````
-Windows (PowerShell):
-````
-copy .env.example .env
-````
-
-
-### 5. Update .evn
-Open an editor, for example VS Code, and go to the file `.env`, that you just created from teh file .env.example. Replace the outcommented variables with the real secret keys (more detailed instruction are found in the file `.env.example`).
-
-### 6. Start Project
-Everything before this is only first time setup. But now we start to enviorment with this command every time a Dockerfile is updated:
-```bash
-# Builds Frontend, Backend and mqtt_broker
-docker compose up --build
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Axis Network Cameras                         │
+│                    (Q1656 with built-in analytics)                  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+              ┌────────────────┴────────────────┐
+              │                                 │
+              ▼                                 ▼
+    ┌──────────────────┐              ┌──────────────────┐
+    │   RTSP Stream    │              │   MQTT Metadata  │
+    │  (Live Video)    │              │   (Detections)   │
+    └────────┬─────────┘              └────────┬─────────┘
+             │                                  │
+             ▼                                  ▼
+    ┌──────────────────┐              ┌──────────────────┐
+    │   Flask Backend  │◄────────────►│  Mosquitto MQTT  │
+    │   (REST API)     │              │    (Broker)      │
+    └────────┬─────────┘              └──────────────────┘
+             │
+    ┌────────┴─────────────────────────┐
+    │                                  │
+    ▼                                  ▼
+┌──────────────┐              ┌──────────────────┐
+│  PostgreSQL  │              │   Ollama LLM     │
+│  (Neon DB)   │              │  (Phi4-Mini)     │
+└──────────────┘              └──────────────────┘
+             │
+             ▼
+    ┌──────────────────┐
+    │  React Frontend  │
+    │   (Dashboard)    │
+    └──────────────────┘
 ```
 
-```bash
-# Builds all container(Includes LLM)
-docker compose --profile ai up --build
-````
+## ✨ Key Features
 
-* Frontend will be available at: http://localhost:3000 (or the port you have specified for frontend in the file `.env`)
-* Backend (Flask) will be available at: http://localhost:5001 (or the backend port you have specified in `.env`)
-* AI Service (Ollama) will be available at: http://localhost:11434
+### 🎥 Real-Time Video Surveillance
+- **Multi-camera RTSP streaming** with adaptive quality control
+- **Live video feed** with low-latency playback
+- **Recording management** with playback and download capabilities
+- **Snapshot capture** for event documentation
 
+### 🤖 AI-Powered Security Agent
+- **Autonomous AI Agent** powered by local Phi4-Mini LLM
+- **Automated event analysis** generating structured security reports
+- **Smart caching** - Daily summaries stored to avoid redundant LLM calls
+- **Configurable parameters** (temperature, top_k, num_predict) via environment variables
 
-#### Stop project:
+### 📡 Multi-Camera Track Fusion
+- **TrackFusion Algorithm** - Correlates detections across multiple cameras
+- **Spatial matching** - Links observations within 0.5m proximity
+- **Global track management** - Maintains unified identity across camera views
+- **Automatic track cleanup** - Removes stale tracks after timeout
+
+### 🚨 Intrusion Detection
+- **Zone-based monitoring** with customizable boundaries
+- **Real-time alerts** when intrusions are detected
+- **Event history** with detailed logs and metadata
+- **GPS coordinate tracking** for precise location data
+
+### 🗺️ 2D Floor Plan Visualization
+- **Interactive floor plan** with camera overlay
+- **Real-time position tracking** of detected persons
+- **Zone configuration** with drag-and-drop editing
+- **Heatmap visualization** for traffic analysis
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac/Windows) or Docker + Docker Compose (Linux)
+- [Git](https://git-scm.com/downloads)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd axis-security-system
+   ```
+
+2. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration:
+   ```env
+   # Database
+   DATABASE_URL=postgresql://user:pass@host:5432/dbname
+   
+   # Ports
+   FRONTEND_PORT=3000
+   BACKEND_PORT=5001
+   
+   # Camera credentials
+   camera_login=admin
+   camera_password=yourpassword
+   
+   # AI Settings (optional)
+   OLLAMA_MODEL_NAME=phi4-mini
+   OLLAMA_TEMPERATURE=0.1
+   ```
+
+3. **Start the services**
+   
+   **Without AI Agent:**
+   ```bash
+   docker compose up --build
+   ```
+   
+   **With AI Agent (requires ~8GB RAM):**
+   ```bash
+   docker compose --profile ai up --build
+   ```
+
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5001
+   - AI Service: http://localhost:11434
+
+### Stopping the Services
 ```bash
-# All except LLM
-docker-compose down -v 
-````
-```bash
-# All four containers
+# Without AI
+docker compose down -v
+
+# With AI
 docker compose --profile ai down -v
-````
+```
 
-## 📂 Repo structure
-````
-company3/
-├─ ai_service/             # LLM (Ollama)
-ai_service/ README.md
-│        ├─ Dockerfile
-├─ backend/                # Python backend (Flask) - more info in backend/README.md
-│    ├─ main.py
-│    ├─ requirements.txt
-│    ├─ Dockerfile
-│    └─ instance/
-│       └─ database.db
-│
-├─ frontend/               # React frontend - more info in frontend/README.md
-│    ├─ public/
-│    ├─ src/
-│    ├─ package.json
-│    ├─ package-lock.json
-│    └─ Dockerfile
-│
-├─ test/                   # System integration tests
-│
-├─ docs/                   # Documentation
-│    ├─ git-guidelines.md
-│    └─ docker.md
-│
-├─ .env                    # Local environment variables (not in Git)
-├─ .env.example            # Template for environment variables (shared)
-├─ docker-compose.yml      # Compose setup to run backend & frontend containers
-├─ .gitignore              # Files that are not added to Git
-├─ .gitlab-ci.yml          # GitLab CI/CD pipelines
-└─ README.md               # Project documentation and instructions, this file :)
-````
+---
 
-## ⚡ Best prectices 
-* Do NOT commit `node_modules/` or `venv/` or `.env` or `backend/instance/`
-* Always commit `package-lock.json` (frontend) and `requirements.txt` (backend)
-* Use Docker for all development —> no need to install Node, Python or anything else globally on your computer
+## 📁 Project Structure
+
+```
+axis-security-system/
+├── ai_service/                 # Ollama LLM container
+│   └── Dockerfile
+├── backend/                    # Flask REST API
+│   ├── main.py                 # Application entry point
+│   ├── requirements.txt        # Python dependencies
+│   ├── routes/                 # API endpoints
+│   │   ├── ai_routes.py        # AI analysis endpoints
+│   │   ├── authentication.py   # User auth
+│   │   ├── camera_config_routes.py
+│   │   ├── event_routes.py
+│   │   ├── recording_routes.py
+│   │   └── zone_routes.py
+│   ├── application/            # Business logic
+│   │   ├── ai_analysis.py      # AI Agent pipeline
+│   │   └── hls_handler.py      # HLS streaming
+│   ├── domain/                 # Data models
+│   │   └── models/
+│   │       ├── camera.py
+│   │       ├── fusion_data.py
+│   │       ├── daily_summary.py
+│   │       ├── user.py
+│   │       └── zone.py
+│   ├── infrastructure/         # External integrations
+│   │   ├── mqtt_client.py      # MQTT message handler
+│   │   ├── track_fusion.py     # Multi-camera fusion algorithm
+│   │   ├── fusion_persistence.py
+│   │   ├── livestream.py       # RTSP video capture
+│   │   ├── intrusion_detection.py
+│   │   └── video_saver.py
+│   └── tests/                  # Unit tests
+├── frontend/                   # React application
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Dashboard.js    # Main dashboard with AI summary
+│   │   │   ├── LiveCameraPage.js
+│   │   │   ├── Floormap2D.js
+│   │   │   ├── ZoneConfiguration.js
+│   │   │   ├── EventHistoryPage.js
+│   │   │   └── RecordingLibrary.js
+│   │   ├── components/
+│   │   │   ├── CameraPlayer.js
+│   │   │   ├── HeatmapOverlay.js
+│   │   │   └── RoomConfiguration.js
+│   │   └── utils/
+│   │       └── api.js          # API client
+│   └── public/
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+---
+
+## 🔌 API Reference
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/login` | User login |
+| POST | `/api/auth/signup` | User registration |
+| POST | `/api/auth/logout` | User logout |
+
+### AI Analysis
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/ai/latest-analysis` | Get AI security summary (cached daily) |
+| GET | `/api/ai/history` | Get last 10 AI summaries |
+
+### Cameras
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cameras` | List all cameras |
+| GET | `/api/cameras/<id>/stream` | Get RTSP stream |
+| POST | `/api/cameras/<id>/snapshot` | Capture snapshot |
+
+### Zones
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/zones` | List all zones |
+| POST | `/api/zones` | Create zone |
+| PUT | `/api/zones/<id>` | Update zone |
+| DELETE | `/api/zones/<id>` | Delete zone |
+
+### Events
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/events` | List intrusion events |
+| GET | `/api/events/<id>` | Get event details |
+
+---
+
+## 🧠 AI Agent Configuration
+
+The AI Agent uses Ollama with Phi4-Mini model for generating security summaries.
+
+### Environment Variables
+```env
+OLLAMA_HOST=http://ollama:11434
+OLLAMA_MODEL_NAME=phi4-mini
+OLLAMA_TEMPERATURE=0.1      # Lower = more deterministic
+OLLAMA_TOP_K=3              # Consider top 3 tokens
+OLLAMA_NUM_PREDICT=256      # Max tokens to generate
+```
+
+### AI Output Format
+The agent generates structured reports with three sections:
+```
+Event: [What happened with timestamp and camera details]
+Location: [GPS coordinates of the detection]
+Suggestion: [Actionable recommendation for security team]
+```
+
+### Caching Behavior
+- Daily summaries are cached in the database
+- Subsequent requests on the same day return cached results
+- No redundant LLM calls when refreshing the dashboard
+
+---
+
+## 🔧 Development
+
+### Running Tests
+```bash
+# Backend tests
+docker compose exec backend pytest
+
+# Frontend tests
+docker compose exec frontend npm test
+```
+
+### Database Migrations
+```bash
+docker compose exec backend flask db upgrade
+```
+
+### Adding New Dependencies
+```bash
+# Backend (Python)
+echo "package-name" >> backend/requirements.txt
+docker compose build backend
+
+# Frontend (Node.js)
+docker compose exec frontend npm install package-name
+```
+
+---
+
+## 📊 Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, JavaScript, CSS |
+| Backend | Flask, Python, SQLAlchemy |
+| Database | PostgreSQL (Neon) |
+| Message Broker | Mosquitto (MQTT) |
+| AI/ML | Ollama, Phi4-Mini LLM |
+| Video | OpenCV, RTSP, HLS |
+| Containerization | Docker, Docker Compose |
+
+---
+
+## ⚡ Best Practices
+
+- Do **NOT** commit `node_modules/`, `venv/`, `.env`, or `backend/instance/`
+- Always commit `package-lock.json` (frontend) and `requirements.txt` (backend)
+- Use Docker for all development — no need to install Node, Python, or other dependencies globally
+
+---
+
+## 📄 License
+
+This project was developed as part of a university course collaboration with Axis Communications.
+
+---
+
+**Note**: This system is designed to work with Axis network cameras. Ensure you have proper camera credentials and network access configured.
